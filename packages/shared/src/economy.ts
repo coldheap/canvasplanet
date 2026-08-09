@@ -17,6 +17,7 @@ import {
   COST_OVERPAINT,
   COST_RESTORE,
   COST_VIOLATION,
+  EVENT_BONUS_MULTIPLIER,
 } from "./config.js";
 import { Family, familyOf } from "./palette.js";
 
@@ -101,41 +102,75 @@ export interface Bank {
  *
  * `updatedAt` advances by whole regen periods only, so the partial progress
  * toward the next charge is never silently discarded by a read.
+ *
+ * `regenMs` defaults to the fixed economy constant; the one caller that
+ * passes something else is the corruption event's charge-rate reward
+ * (ROADMAP.md Phase 7, see `effectiveRegenMs` below) — a temporarily shorter
+ * period is the entire mechanism, nothing else about spend/regen changes.
  */
-export function regenerate(bank: Bank, now: number, max = CHARGE_MAX): Bank {
+export function regenerate(bank: Bank, now: number, max = CHARGE_MAX, regenMs = CHARGE_REGEN_MS): Bank {
   if (bank.charges >= max) {
     // Already full: reset the accrual clock so the next spend starts a fresh
     // period rather than instantly granting a backlog.
     return { charges: max, updatedAt: now };
   }
   const elapsed = now - bank.updatedAt;
-  if (elapsed < CHARGE_REGEN_MS) return bank;
+  if (elapsed < regenMs) return bank;
 
-  const gained = Math.floor(elapsed / CHARGE_REGEN_MS);
+  const gained = Math.floor(elapsed / regenMs);
   const charges = Math.min(max, bank.charges + gained);
-  const updatedAt =
-    charges >= max ? now : bank.updatedAt + gained * CHARGE_REGEN_MS;
+  const updatedAt = charges >= max ? now : bank.updatedAt + gained * regenMs;
   return { charges, updatedAt };
 }
 
 /** Milliseconds until the next charge lands, or null when the bank is full. */
-export function msUntilNextCharge(bank: Bank, now: number, max = CHARGE_MAX): number | null {
+export function msUntilNextCharge(
+  bank: Bank,
+  now: number,
+  max = CHARGE_MAX,
+  regenMs = CHARGE_REGEN_MS,
+): number | null {
   if (bank.charges >= max) return null;
   const elapsed = now - bank.updatedAt;
-  return Math.max(0, CHARGE_REGEN_MS - (elapsed % CHARGE_REGEN_MS));
+  return Math.max(0, regenMs - (elapsed % regenMs));
 }
 
-export function canAfford(bank: Bank, cost: number, now: number, max = CHARGE_MAX): boolean {
-  return regenerate(bank, now, max).charges >= cost;
+export function canAfford(
+  bank: Bank,
+  cost: number,
+  now: number,
+  max = CHARGE_MAX,
+  regenMs = CHARGE_REGEN_MS,
+): boolean {
+  return regenerate(bank, now, max, regenMs).charges >= cost;
 }
 
 /** Spend, or return null if unaffordable. Never mutates the input. */
-export function spend(bank: Bank, cost: number, now: number, max = CHARGE_MAX): Bank | null {
-  const r = regenerate(bank, now, max);
+export function spend(
+  bank: Bank,
+  cost: number,
+  now: number,
+  max = CHARGE_MAX,
+  regenMs = CHARGE_REGEN_MS,
+): Bank | null {
+  const r = regenerate(bank, now, max, regenMs);
   if (r.charges < cost) return null;
   // Dropping below max starts the accrual clock at the moment of the spend.
   const wasFull = r.charges >= max;
   return { charges: r.charges - cost, updatedAt: wasFull ? now : r.updatedAt };
+}
+
+/**
+ * The corruption event's reward (ROADMAP.md Phase 7): while a session's
+ * `eventBonusUntil` is in the future, charges regenerate EVENT_BONUS_MULTIPLIER
+ * times faster. A plain number in, a plain number out, so every regen call
+ * site (paint, bootstrap, the WS charges push) computes it the same way from
+ * whatever `event_bonus_until` that session currently has.
+ */
+export function effectiveRegenMs(eventBonusUntil: number | null, now: number): number {
+  return eventBonusUntil !== null && eventBonusUntil > now
+    ? CHARGE_REGEN_MS / EVENT_BONUS_MULTIPLIER
+    : CHARGE_REGEN_MS;
 }
 
 // ---------------------------------------------------------------------------

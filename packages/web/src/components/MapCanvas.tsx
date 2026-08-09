@@ -12,9 +12,9 @@
  */
 
 import { useEffect, useRef } from "react";
-import { AlertTriangle } from "lucide-react";
 import L from "leaflet";
 import {
+  EVENT_WIN_THRESHOLD,
   GRID_ZOOM,
   MAX_MAP_ZOOM,
   MIN_MAP_ZOOM,
@@ -151,6 +151,43 @@ export function MapCanvas({
       else if (!on && map.hasLayer(heat)) map.removeLayer(heat);
     };
 
+    // ---- corruption event zone (ROADMAP.md Phase 7) ------------------------
+    // A dedicated rectangle rather than reusing `bbox` (BboxDraw) below: that
+    // instance is the shared picker for six other "draw an area" tools and
+    // gets cleared/reused constantly, which would fight with an outline that
+    // needs to persist for the whole event regardless of what else is open.
+    let eventRect: L.Rectangle | null = null;
+    let eventRectId: number | null = null;
+    const applyEventZone = () => {
+      const ev = useStore.getState().event;
+      if (!ev) {
+        if (eventRect) {
+          eventRect.remove();
+          eventRect = null;
+          eventRectId = null;
+        }
+        return;
+      }
+      // Bounds are fixed for an event's whole lifetime; only recompute them
+      // (and the endpoint recolour) when the corruption % actually moves.
+      const color = ev.corruptionPct >= EVENT_WIN_THRESHOLD ? "#dc2626" : "#f59e0b";
+      if (eventRectId !== ev.id) {
+        const nw = pixelToLatLng({ x: ev.bbox.x0, y: ev.bbox.y0 });
+        const se = pixelToLatLng({ x: ev.bbox.x1 + 1, y: ev.bbox.y1 + 1 });
+        eventRect?.remove();
+        eventRect = L.rectangle(L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]), {
+          color,
+          weight: 2,
+          dashArray: "6 4",
+          fillOpacity: 0.1,
+          interactive: false,
+        }).addTo(map);
+        eventRectId = ev.id;
+      } else {
+        eventRect?.setStyle({ color });
+      }
+    };
+
     // ---- interaction -------------------------------------------------------
     // Shift held: moving the mouse paints a freehand stroke, one call to
     // onPaint per pixel entered — no click or held button required. Map
@@ -258,15 +295,18 @@ export function MapCanvas({
 
     applyGrid();
     applyHeat();
+    applyEventZone();
     emitViewport();
     const bbox = new BboxDraw(map);
     const template = new TemplateLayer(map);
     cb.current.onReady({ map, overlay, refreshTiles, flyTo, bbox, template });
 
-    // Settings can toggle the grid or heatmap without a map event to hang off.
+    // Settings can toggle the grid or heatmap without a map event to hang off,
+    // and the corruption zone changes on its own 1Hz WS push, not a map event.
     const unsubscribe = useStore.subscribe(() => {
       applyGrid();
       applyHeat();
+      applyEventZone();
     });
 
     return () => {
@@ -284,19 +324,7 @@ export function MapCanvas({
     };
   }, []);
 
-  const frozen = useStore((s) => s.frozen);
-
-  return (
-    <>
-      <div ref={ref} className="wc-map" />
-      {frozen && (
-        <div className="wc-frozen-banner">
-          <AlertTriangle size={15} />
-          The canvas is temporarily frozen.
-        </div>
-      )}
-    </>
-  );
+  return <div ref={ref} className="wc-map" />;
 }
 
 /**

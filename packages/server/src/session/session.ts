@@ -30,6 +30,10 @@ export interface Session {
   lastCountryId: number | null;
   bannedUntil: number | null;
   allianceId: number | null;
+  /** Charges regenerate EVENT_BONUS_MULTIPLIER times faster until this time —
+   *  the corruption event's reward (ROADMAP.md Phase 7). Null for the vast
+   *  majority of sessions that never defended a winning event. */
+  eventBonusUntil: number | null;
 }
 
 const hash = (token: string) => createHash("sha256").update(token).digest();
@@ -105,9 +109,11 @@ async function findByToken(token: string): Promise<Session | null> {
     last_country_id: number | null;
     banned_until: Date | null;
     alliance_id: number | null;
+    event_bonus_until: Date | null;
     stale: boolean;
   }>(
     `SELECT id, charges, charges_updated_at, turnstile_ok, last_country_id, banned_until, alliance_id,
+            event_bonus_until,
             last_seen_at < now() - ($2 || ' milliseconds')::interval AS stale
        FROM sessions WHERE token_hash = $1`,
     [hash(token), SEEN_REFRESH_MS],
@@ -132,6 +138,7 @@ async function findByToken(token: string): Promise<Session | null> {
     lastCountryId: r.last_country_id,
     bannedUntil: r.banned_until?.getTime() ?? null,
     allianceId: r.alliance_id,
+    eventBonusUntil: r.event_bonus_until?.getTime() ?? null,
   };
 }
 
@@ -176,5 +183,6 @@ async function createSession(req: FastifyRequest, reply: FastifyReply): Promise<
     lastCountryId: null,
     bannedUntil: null,
     allianceId: null,
+    eventBonusUntil: null,
   };
 }

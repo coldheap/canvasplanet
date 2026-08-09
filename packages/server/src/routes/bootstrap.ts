@@ -1,12 +1,13 @@
 import {
   CHARGE_MAX,
-  CHARGE_REGEN_MS,
+  effectiveRegenMs,
   type BootstrapResponse,
   msUntilNextCharge,
   regenerate,
 } from "@worldcanvas/shared";
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
+import { events } from "../events/engine.js";
 import { leaderboard } from "../leaderboard/store.js";
 import { alliances } from "../alliances/store.js";
 import { players } from "../players/store.js";
@@ -15,7 +16,6 @@ import * as turnstile from "../security/turnstile.js";
 import { getOrCreateSession } from "../session/session.js";
 import { getProtectedRegions, isFrozen } from "../state/policy.js";
 import { getAuthUser, getUserDTO } from "./auth.js";
-import { getStaff } from "./staff.js";
 
 /**
  * One round trip from cold load to a usable app. Everything the client needs
@@ -25,18 +25,24 @@ import { getStaff } from "./staff.js";
 export function registerBootstrapRoutes(app: FastifyInstance): void {
   app.get("/api/bootstrap", async (req, reply) => {
     const session = await getOrCreateSession(req, reply);
-    const staff = await getStaff(req);
     const authUser = await getAuthUser(req);
+    // Derived from the same user lookup rather than a second getStaff() query
+    // — staff is just a role on this account now, not a separate session.
+    const staff = authUser?.role
+      ? { id: authUser.id, username: authUser.displayName, role: authUser.role }
+      : null;
     const now = Date.now();
 
     // Regenerate for display only; the authoritative spend happens in the
     // paint transaction. This is a read, so it does not persist.
+    const regenMs = effectiveRegenMs(session.eventBonusUntil, now);
     const bank = regenerate(
       { charges: session.charges, updatedAt: session.chargesUpdatedAt },
       now,
       CHARGE_MAX,
+      regenMs,
     );
-    const nextMs = msUntilNextCharge(bank, now, CHARGE_MAX);
+    const nextMs = msUntilNextCharge(bank, now, CHARGE_MAX, regenMs);
 
     const { rows: countries } = await pool.query(
       `SELECT id, iso_a2, name, flag FROM countries ORDER BY id`,
@@ -49,7 +55,7 @@ export function registerBootstrapRoutes(app: FastifyInstance): void {
       bank: bank.charges,
       max: CHARGE_MAX,
       nextAt: nextMs === null ? null : now + nextMs,
-      regenMs: CHARGE_REGEN_MS,
+      regenMs,
       yourCountryId: session.lastCountryId,
       verified: session.turnstileOk || !turnstile.isEnabled(),
       staff: staff ? { id: staff.id, username: staff.username, role: staff.role } : null,
@@ -72,6 +78,7 @@ export function registerBootstrapRoutes(app: FastifyInstance): void {
       frozen: isFrozen(),
       turnstileSitekey: turnstile.sitekey(),
       discordEnabled: env.discord.enabled,
+      event: events.current(),
     };
     return reply.send(body);
   });

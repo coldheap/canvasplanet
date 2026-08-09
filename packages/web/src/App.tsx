@@ -14,6 +14,7 @@ import { useStore } from "./store.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
 import { PalettePanel } from "./components/Palette.js";
 import { ChargeBar } from "./components/ChargeBar.js";
+import { EventBanner } from "./components/EventBanner.js";
 import { LeaderboardPanel } from "./components/LeaderboardPanel.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { AdminPanel } from "./components/AdminPanel.js";
@@ -29,7 +30,8 @@ import { TimelapsePanel } from "./components/TimelapsePanel.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 
 export function App() {
-  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user } = useStore();
+  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event } =
+    useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const toastId = useRef(0);
@@ -95,6 +97,7 @@ export function App() {
         onAllianceLeaderboard: (rows) => useStore.setState({ allianceLeaderboard: rows }),
         onUserLeaderboard: (rows) => useStore.setState({ playerLeaderboard: rows }),
         onFreeze: (on) => useStore.setState({ frozen: on }),
+        onEvent: (event) => useStore.setState({ event }),
         onPixels: (pixels) => {
           handle.current?.overlay.add(pixels);
           // Keep the template's notion of the canvas current from the same
@@ -284,9 +287,29 @@ export function App() {
         onViewport={onViewport}
       />
 
-      <div className="wc-topbar">
-        <ActivityFeed />
-        <ChargeBar />
+      <div className="wc-hud">
+        {frozen && (
+          <div className="wc-frozen-banner">
+            <AlertTriangle size={15} />
+            The canvas is temporarily frozen.
+          </div>
+        )}
+        {event && (
+          <EventBanner
+            event={event}
+            onLocate={() =>
+              handle.current?.flyTo(
+                Math.round((event.bbox.x0 + event.bbox.x1) / 2),
+                Math.round((event.bbox.y0 + event.bbox.y1) / 2),
+                15,
+              )
+            }
+          />
+        )}
+        <div className="wc-topbar">
+          <ActivityFeed />
+          <ChargeBar />
+        </div>
       </div>
 
       <nav className="wc-rail wc-card" aria-label="Panels">

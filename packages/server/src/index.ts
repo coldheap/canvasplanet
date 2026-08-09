@@ -12,6 +12,7 @@ import websocket from "@fastify/websocket";
 import {
   CHARGE_MAX,
   type ClientMessage,
+  effectiveRegenMs,
   msUntilNextCharge,
   regenerate,
 } from "@worldcanvas/shared";
@@ -19,6 +20,7 @@ import Fastify from "fastify";
 import { migrate } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
 import { env } from "./env.js";
+import { events } from "./events/engine.js";
 import { geo } from "./geo/index.js";
 import { loadSources } from "./geo/source.js";
 import { subdivisions } from "./geo/subdivisions.js";
@@ -34,7 +36,6 @@ import { registerExploreRoutes } from "./routes/explore.js";
 import { registerExportRoutes } from "./routes/export.js";
 import { registerPaintRoutes } from "./routes/paint.js";
 import { registerReportRoutes } from "./routes/reports.js";
-import { registerStaffRoutes } from "./routes/staff.js";
 import { registerStatusRoutes } from "./routes/status.js";
 import { registerTileRoutes } from "./routes/tiles.js";
 import { findSession } from "./session/session.js";
@@ -62,6 +63,9 @@ async function main(): Promise<void> {
   await leaderboard.load();
   await alliances.load();
   await players.load();
+  // Reverts anything a prior crash left mid-event before anyone can see it —
+  // see events/engine.ts's recoverOnBoot() doc comment.
+  await events.recoverOnBoot();
   try {
     await geo.load();
     // The source polygons resolve MIXED tiles (coastlines, borders) at
@@ -94,7 +98,6 @@ async function main(): Promise<void> {
   registerReportRoutes(app);
   registerAllianceRoutes(app);
   registerAuthRoutes(app);
-  registerStaffRoutes(app);
   registerAdminRoutes(app);
   registerStatusRoutes(app);
 
@@ -173,12 +176,14 @@ async function main(): Promise<void> {
         // Send the current bank immediately so a reconnecting tab is
         // accurate before the user touches anything.
         const now = Date.now();
+        const regenMs = effectiveRegenMs(session.eventBonusUntil, now);
         const bank = regenerate(
           { charges: session.charges, updatedAt: session.chargesUpdatedAt },
           now,
           CHARGE_MAX,
+          regenMs,
         );
-        const nextMs = msUntilNextCharge(bank, now, CHARGE_MAX);
+        const nextMs = msUntilNextCharge(bank, now, CHARGE_MAX, regenMs);
         hub.sendToSession(session.id, {
           t: "charges",
           bank: bank.charges,
@@ -193,7 +198,12 @@ async function main(): Promise<void> {
     })();
   });
 
-  hub.start([() => leaderboard.tick(), () => alliances.tick(), () => players.tick()]);
+  hub.start([
+    () => leaderboard.tick(),
+    () => alliances.tick(),
+    () => players.tick(),
+    () => events.tick(),
+  ]);
   startTileWorker();
   startStatusHistory();
   startExportWorker();

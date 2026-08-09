@@ -6,13 +6,16 @@
  * Disabling cuts every `user_sessions` row for that account server-side
  * (routes/admin.ts), so it blocks both future logins and any already-open
  * browser tab, not just the account at next login.
+ *
+ * Admins additionally get a role control per row — this is also how staff
+ * gets granted in the first place (see StaffTab, which only lists/revokes).
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Ban, RotateCcw, Search, UserCog } from "lucide-react";
 import { api, type AdminUser } from "../../api.js";
 
-export function UsersTab() {
+export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
   const [rows, setRows] = useState<AdminUser[] | null>(null);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +80,22 @@ export function UsersTab() {
                 </span>
                 <span className="wc-hint">{u.email ?? "Discord only"}</span>
                 <span className="wc-role">{u.cumulative.toLocaleString()} painted</span>
+                {isAdmin && (
+                  <select
+                    className="wc-mini-select"
+                    value={u.role ?? ""}
+                    title="Staff role"
+                    onChange={async (e) => {
+                      const role = (e.target.value || null) as "mod" | "admin" | null;
+                      await api.admin.setUserRole(u.id, role);
+                      await load(query);
+                    }}
+                  >
+                    <option value="">Not staff</option>
+                    <option value="mod">Mod</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                )}
                 <button
                   className={disabled ? "wc-mini" : "wc-mini-danger"}
                   title={disabled ? "Re-enable" : "Disable"}

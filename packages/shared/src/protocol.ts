@@ -110,6 +110,27 @@ export interface SPong {
   t: "pong";
 }
 
+/** A corruption event in progress (ROADMAP.md Phase 7), or null when none
+ *  is active — the latter is broadcast once, right when an event resolves,
+ *  so every connected client clears its banner/zone outline together rather
+ *  than waiting for it to time out locally. */
+export interface EventStateDTO {
+  id: number;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+  botColor: number;
+  startedAt: number;
+  endsAt: number;
+  /** Corrupted pixels / zone area, 0..1, live. */
+  corruptionPct: number;
+  /** Distinct sessions that have landed at least one defending paint so far. */
+  defenders: number;
+}
+
+export interface SEvent {
+  t: "event";
+  event: EventStateDTO | null;
+}
+
 export type ServerMessage =
   | SPixels
   | SLeaderboard
@@ -119,6 +140,7 @@ export type ServerMessage =
   | SPulse
   | SFreeze
   | SRegion
+  | SEvent
   | SPong;
 
 // ---------------------------------------------------------------------------
@@ -173,7 +195,8 @@ export interface BootstrapResponse {
   /** True once this session has passed Turnstile; false means the first
    *  paint will come back 428. */
   verified: boolean;
-  /** Present only for a logged-in staff session. */
+  /** Present only when the logged-in player account has been granted a
+   *  staff role (routes/admin.ts's POST /api/admin/users/:id/role). */
   staff: { id: number; username: string; role: "mod" | "admin" } | null;
   /** Present only for a logged-in player account (ROADMAP.md §5.1). */
   user: UserDTO | null;
@@ -195,6 +218,10 @@ export interface BootstrapResponse {
    *  client hide the "Continue with Discord" button rather than offer a
    *  flow that would 404 at the first hop. */
   discordEnabled: boolean;
+  /** Present only while a corruption event (ROADMAP.md Phase 7) is running —
+   *  lets a client that loads mid-event show the banner immediately instead
+   *  of waiting for the next 1Hz tick. */
+  event: EventStateDTO | null;
 }
 
 export interface PaintRequest {

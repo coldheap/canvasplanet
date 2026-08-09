@@ -144,20 +144,20 @@ check("leave is refused inside the cooldown right after creating", left.status =
 
 // ---- authorisation for admin moderation --------------------------------------
 const noAuth = await fetch(`${BASE}/api/admin/alliances`);
-check("admin alliance list is hidden without a staff cookie", noAuth.status === 404, `HTTP ${noAuth.status}`);
+check("admin alliance list is hidden without a staff role", noAuth.status === 404, `HTTP ${noAuth.status}`);
 
 // ---- admin disable (optional, staff-gated like admin.mjs) -------------------
-const ADMIN_USER = process.env.VERIFY_ADMIN_USER ?? "verify";
+const ADMIN_EMAIL = process.env.VERIFY_ADMIN_EMAIL ?? "verify@example.com";
 const ADMIN_PASS = process.env.VERIFY_ADMIN_PASSWORD;
 if (!ADMIN_PASS) {
   console.log("SKIP  VERIFY_ADMIN_PASSWORD not set — admin disable check skipped");
 } else {
   const staffBoot = await fetch(`${BASE}/api/bootstrap`);
   let jar = cookiesOf(staffBoot);
-  const login = await fetch(`${BASE}/api/staff/login`, {
+  const login = await fetch(`${BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: jar.join("; ") },
-    body: JSON.stringify({ username: ADMIN_USER, password: ADMIN_PASS }),
+    body: JSON.stringify({ identifier: ADMIN_EMAIL, password: ADMIN_PASS }),
   });
   if (login.status === 200) {
     jar = [...jar, ...cookiesOf(login)];

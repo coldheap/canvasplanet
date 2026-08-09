@@ -13,6 +13,7 @@
 import {
   SUB_ZOOM,
   type AllianceLbRow,
+  type EventStateDTO,
   type LbRow,
   type PixelTuple,
   type ServerMessage,
@@ -28,6 +29,7 @@ type Handlers = {
   onCharges: (bank: number, nextAt: number | null) => void;
   onPulse: (pps: number, recent: number[]) => void;
   onFreeze: (on: boolean) => void;
+  onEvent: (event: EventStateDTO | null) => void;
   onReconnect: () => void;
 };
 
@@ -94,6 +96,9 @@ export class WsClient {
           break;
         case "freeze":
           this.handlers.onFreeze?.(msg.on);
+          break;
+        case "event":
+          this.handlers.onEvent?.(msg.event);
           break;
       }
     };

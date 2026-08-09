@@ -2,13 +2,14 @@
  * Admin + explore endpoints against a running server.
  *
  * Exercises the paths that only staff can reach (stamp, revert, staff
- * management, freeze) plus timelapse and templates. Requires a staff account
- * — create one with `pnpm staff:create -- --user verify --role admin` and
- * pass the password as VERIFY_ADMIN_PASSWORD.
+ * management, freeze) plus timelapse and templates. Requires an account with
+ * the admin role — create one with
+ * `pnpm staff:create -- --email verify@example.com --role admin` and pass
+ * its email/password as VERIFY_ADMIN_EMAIL/VERIFY_ADMIN_PASSWORD.
  */
 import { finish } from "./finish.mjs";
 const BASE = "http://127.0.0.1:8080";
-const USER = process.env.VERIFY_ADMIN_USER ?? "verify";
+const EMAIL = process.env.VERIFY_ADMIN_EMAIL ?? "verify@example.com";
 const PASS = process.env.VERIFY_ADMIN_PASSWORD;
 
 let failures = 0;
@@ -27,10 +28,10 @@ if (!PASS) {
 const anon = await fetch(`${BASE}/api/bootstrap`);
 let jar = cookiesOf(anon);
 
-const login = await fetch(`${BASE}/api/staff/login`, {
+const login = await fetch(`${BASE}/api/auth/login`, {
   method: "POST",
   headers: { "Content-Type": "application/json", cookie: jar.join("; ") },
-  body: JSON.stringify({ username: USER, password: PASS }),
+  body: JSON.stringify({ identifier: EMAIL, password: PASS }),
 });
 check("staff login", login.status === 200, `HTTP ${login.status}`);
 if (login.status !== 200) process.exit(1);
@@ -114,16 +115,37 @@ check("revert applies", rApply.status === 200 && rApply.body.affected === 15);
 const reverted = await (await fetch(`${BASE}/api/pixel/${SX}/${SY}`)).json();
 check("stamped pixel is gone after revert", reverted.color === null, `color=${reverted.color}`);
 
-// ---- staff management -----------------------------------------------------
-const weak = await api("/api/admin/staff", "POST", { username: "tmpuser", password: "short", role: "mod" });
-check("rejects a weak staff password", weak.status === 400, `HTTP ${weak.status}`);
-const badRole = await api("/api/admin/staff", "POST", {
-  username: "tmpuser", password: "a-long-enough-password", role: "root",
-});
-check("rejects an unknown role", badRole.status === 400, `HTTP ${badRole.status}`);
+// ---- staff role management --------------------------------------------------
+// Staff is a role on a player account now, granted via /api/admin/users/:id/role
+// — mint a throwaway account and look up its id the same way the Users tab
+// does (search), since signup doesn't hand the id back directly.
+const tmpEmail = `verify-staffrole-${Date.now()}@example.com`;
+const tmpName = `StaffRoleTmp${Date.now() % 100000}`;
+await api("/api/auth/signup", "POST", { email: tmpEmail, password: "correcthorsebattery", displayName: tmpName });
+const tmpSearch = await api(`/api/admin/users?q=${encodeURIComponent(tmpName)}`);
+const tmpUser = (tmpSearch.body ?? []).find((u) => u.display_name === tmpName);
+check("temp account exists to grant a role to", Boolean(tmpUser), JSON.stringify(tmpSearch.body));
 
-const me = await api(`/api/admin/staff/${boot.staff.id}/disable`, "POST", { disabled: true });
-check("refuses to disable your own account", me.status === 400, `HTTP ${me.status}`);
+if (tmpUser) {
+  const badRole = await api(`/api/admin/users/${tmpUser.id}/role`, "POST", { role: "root" });
+  check("rejects an unknown role", badRole.status === 400, `HTTP ${badRole.status}`);
+
+  const grant = await api(`/api/admin/users/${tmpUser.id}/role`, "POST", { role: "mod" });
+  check("grants a role to an existing account", grant.status === 200, `HTTP ${grant.status}`);
+
+  const staffList = await api("/api/admin/staff");
+  check(
+    "the granted account shows up in the staff list",
+    (staffList.body ?? []).some((s) => s.id === tmpUser.id && s.role === "mod"),
+    JSON.stringify(staffList.body),
+  );
+
+  const revoke = await api(`/api/admin/users/${tmpUser.id}/role`, "POST", { role: null });
+  check("revokes a role", revoke.status === 200, `HTTP ${revoke.status}`);
+}
+
+const me = await api(`/api/admin/users/${boot.staff.id}/role`, "POST", { role: null });
+check("refuses to revoke your own admin role", me.status === 400, `HTTP ${me.status}`);
 
 // ---- freeze ---------------------------------------------------------------
 // Wrapped so the canvas is ALWAYS unfrozen again. A failure between these two
@@ -170,7 +192,7 @@ const noAuth = await fetch(`${BASE}/api/admin/revert`, {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ since: Date.now() - 1000, preview: true }),
 });
-check("admin routes are hidden without a staff cookie", noAuth.status === 404, `HTTP ${noAuth.status}`);
+check("admin routes are hidden without a staff role", noAuth.status === 404, `HTTP ${noAuth.status}`);
 
 // ---- timelapse ------------------------------------------------------------
 const tl = await api(

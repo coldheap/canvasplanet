@@ -58,7 +58,7 @@ export function SettingsPanel() {
 
       <fieldset>
         <legend>Appearance</legend>
-        <Toggle label="Dark map" on={settings.darkMap} set={(darkMap) => updateSettings({ darkMap })} />
+        <Toggle label="Dark mode" on={settings.darkMode} set={(darkMode) => updateSettings({ darkMode })} />
         <label>
           Reduce motion
           <select
@@ -85,10 +85,12 @@ export function SettingsPanel() {
         System status
       </button>
 
-      <button className="wc-btn wc-admin-entry" onClick={() => setPanel("admin")}>
-        <ShieldCheck size={15} />
-        {staff ? `Admin (${staff.role})` : "Staff sign in"}
-      </button>
+      {staff && (
+        <button className="wc-btn wc-admin-entry" onClick={() => setPanel("admin")}>
+          <ShieldCheck size={15} />
+          {`Admin (${staff.role})`}
+        </button>
+      )}
     </div>
   );
 }

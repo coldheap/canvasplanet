@@ -2,8 +2,9 @@
  * The in-app admin panel — a tab beside Settings, not a separate site.
  *
  * The 3am requirement is that this works from a phone, which is why it lives
- * in the app rather than behind SSH. It appears only when /api/bootstrap
- * reports a staff session; there is no secret URL to leak into browser
+ * in the app rather than behind SSH. It appears only when the signed-in
+ * player account has been granted a staff role (an admin does this from the
+ * Users tab — see StaffTab); there is no secret URL to leak into browser
  * history and nothing to discover by probing (admin routes answer 404, not
  * 403, when unauthorised).
  *
@@ -14,10 +15,9 @@
 
 import { useState } from "react";
 import {
-  AlertOctagon,
+  Biohazard,
   Flag,
   Handshake,
-  LogIn,
   LogOut,
   MapPinned,
   RotateCcw,
@@ -29,7 +29,6 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { api } from "../api.js";
 import { useStore } from "../store.js";
 import type { MapHandle } from "./MapCanvas.js";
 import { ControlTab } from "./admin/ControlTab.js";
@@ -41,6 +40,7 @@ import { StaffTab } from "./admin/StaffTab.js";
 import { AuditTab } from "./admin/AuditTab.js";
 import { AlliancesTab } from "./admin/AlliancesTab.js";
 import { UsersTab } from "./admin/UsersTab.js";
+import { EventsTab } from "./admin/EventsTab.js";
 
 type Tab =
   | "control"
@@ -50,6 +50,7 @@ type Tab =
   | "stamp"
   | "alliances"
   | "users"
+  | "events"
   | "staff"
   | "audit";
 
@@ -61,6 +62,7 @@ const TAB_ICON: Record<Tab, LucideIcon> = {
   stamp: Stamp,
   alliances: Handshake,
   users: UserCog,
+  events: Biohazard,
   staff: Users,
   audit: ScrollText,
 };
@@ -69,7 +71,10 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
   const staff = useStore((s) => s.staff);
   const [tab, setTab] = useState<Tab>("control");
 
-  if (!staff) return <StaffLogin />;
+  // Defense in depth only — SettingsPanel already hides the button that gets
+  // here unless bootstrap reported a role, and every route behind this UI
+  // enforces the same check server-side.
+  if (!staff) return null;
 
   const isAdmin = staff.role === "admin";
   const tabs: Array<[Tab, string, boolean]> = [
@@ -80,6 +85,7 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
     ["stamp", "Stamp", isAdmin],
     ["alliances", "Alliances", true],
     ["users", "Users", true],
+    ["events", "Events", true],
     ["staff", "Staff", isAdmin],
     ["audit", "Audit", isAdmin],
   ];
@@ -92,9 +98,11 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
         <span className="wc-role">{staff.role}</span>
         <button
           className="wc-mini"
-          title="Sign out"
+          title="Log out"
           onClick={async () => {
-            await fetch("/api/staff/logout", { method: "POST", credentials: "same-origin" });
+            // There is no separate staff session to end — signing out of the
+            // account is what ends admin access too.
+            await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
             location.reload();
           }}
         >
@@ -122,63 +130,10 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
       {tab === "regions" && isAdmin && <RegionsTab handle={handle} />}
       {tab === "stamp" && isAdmin && <StampTab handle={handle} />}
       {tab === "alliances" && <AlliancesTab />}
-      {tab === "users" && <UsersTab />}
+      {tab === "users" && <UsersTab isAdmin={isAdmin} />}
+      {tab === "events" && <EventsTab />}
       {tab === "staff" && isAdmin && <StaffTab />}
       {tab === "audit" && isAdmin && <AuditTab />}
     </div>
-  );
-}
-
-function StaffLogin() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await api.staffLogin(username, password);
-      // Reload rather than patching state: the staff cookie changes what
-      // /api/bootstrap returns, and re-bootstrapping from scratch is the
-      // one path guaranteed to be consistent.
-      location.reload();
-    } catch {
-      setError("Incorrect username or password.");
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="wc-staff-login" onSubmit={(e) => void submit(e)}>
-      <h2 className="wc-panel-title">
-        <ShieldCheck size={16} />
-        Staff sign in
-      </h2>
-      <input
-        autoComplete="username"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        autoComplete="current-password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit" className="wc-btn wc-btn-primary" disabled={busy}>
-        <LogIn size={15} />
-        Sign in
-      </button>
-      {error && (
-        <p className="wc-error">
-          <AlertOctagon size={14} />
-          {error}
-        </p>
-      )}
-    </form>
   );
 }

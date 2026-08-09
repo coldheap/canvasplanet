@@ -13,6 +13,7 @@
 
 import {
   CHARGE_MAX,
+  effectiveRegenMs,
   IP_BUDGET_FLAGGED_ASN,
   IP_BUDGET_MAX,
   IP_BUDGET_REFILL_MS,
@@ -92,8 +93,9 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
       asn: number | null;
       alliance_id: number | null;
       user_id: number | null;
+      event_bonus_until: Date | null;
     }>(
-      `SELECT charges, charges_updated_at, banned_until, asn, alliance_id, user_id
+      `SELECT charges, charges_updated_at, banned_until, asn, alliance_id, user_id, event_bonus_until
          FROM sessions WHERE id = $1 FOR UPDATE`,
       [sessionId],
     );
@@ -123,15 +125,19 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
 
     // ---- Phase 4: spend, unless staff --------------------------------------
     let bank = { charges: s.charges, updatedAt: s.charges_updated_at.getTime() };
+    // The corruption event's reward (ROADMAP.md Phase 7) — a session that
+    // defended a winning event regenerates faster until event_bonus_until.
+    // Null for almost every session, so this is a no-op comparison for them.
+    const regenMs = effectiveRegenMs(s.event_bonus_until?.getTime() ?? null, now);
 
     if (!staff) {
-      const spent = spend(bank, cost, now, CHARGE_MAX);
+      const spent = spend(bank, cost, now, CHARGE_MAX, regenMs);
       if (!spent) {
-        const regenned = regenerate(bank, now, CHARGE_MAX);
+        const regenned = regenerate(bank, now, CHARGE_MAX, regenMs);
         return {
           ok: false as const,
           reason: PaintRefusal.NoCharges,
-          retryAfterMs: msUntilNextCharge(regenned, now, CHARGE_MAX) ?? 0,
+          retryAfterMs: msUntilNextCharge(regenned, now, CHARGE_MAX, regenMs) ?? 0,
         };
       }
       bank = spent;
@@ -303,7 +309,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
       ok: true as const,
       cost,
       bank: bank.charges,
-      nextAt: nextChargeAt(bank, now),
+      nextAt: nextChargeAt(bank, now, regenMs),
       countryId,
       prevColor,
       prevCountryId,
@@ -315,8 +321,8 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
   });
 }
 
-function nextChargeAt(bank: { charges: number; updatedAt: number }, now: number): number | null {
-  const ms = msUntilNextCharge(bank, now, CHARGE_MAX);
+function nextChargeAt(bank: { charges: number; updatedAt: number }, now: number, regenMs: number): number | null {
+  const ms = msUntilNextCharge(bank, now, CHARGE_MAX, regenMs);
   return ms === null ? null : now + ms;
 }
 

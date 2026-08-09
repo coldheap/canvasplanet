@@ -27,11 +27,53 @@
   --wc-warn-ink: #92620a;
   --wc-good: #15803d;
   --wc-good-soft: #dcfce7;
+  /* Recessed surfaces: segmented-control tracks, hover states, progress
+     tracks — everywhere something needs to read as "sunk into" the panel
+     rather than as its own card. */
+  --wc-subtle: #f0f2f6;
+  /* The "no paint here" checkerboard behind a transparent pixel/thumbnail. */
+  --wc-checker: #d7dce3;
+  /* Barely-there row backgrounds (IP/audit/report list items) — visible on
+     the panel without competing with it. */
+  --wc-scrim-weak: rgba(0, 0, 0, 0.025);
   --wc-radius: 14px;
   --wc-radius-sm: 9px;
   --wc-gap: 14px;
   --wc-shadow: 0 4px 16px rgba(20, 30, 50, 0.1), 0 1px 3px rgba(20, 30, 50, 0.06);
   --wc-shadow-lg: 0 16px 48px rgba(20, 30, 50, 0.22), 0 2px 8px rgba(20, 30, 50, 0.08);
+}
+
+/* "Dark mode" setting (SettingsPanel.tsx "Dark mode" toggle, applied via a
+ * class on <html> — see store.ts's applyThemeClass). Repaints every token
+ * above; component CSS below reads these vars rather than literal colours,
+ * so this block is the entire theme. Brand/status colours (Discord blurple,
+ * the streak flame, the paint palette itself) intentionally do NOT change —
+ * they're recognisable colours, not chrome. */
+html.wc-dark {
+  color-scheme: dark;
+  --wc-bg: #0f1420;
+  --wc-panel: #1a212e;
+  --wc-panel-border: #2c3648;
+  --wc-text: #e7ebf2;
+  --wc-dim: #8b95a8;
+  --wc-accent: #5b9dff;
+  --wc-accent-ink: #ffffff;
+  --wc-accent-soft: #1d2c44;
+  --wc-danger: #ef4444;
+  --wc-danger-soft: #3a1917;
+  --wc-danger-ink: #ff8a80;
+  --wc-warn: #3a2e13;
+  --wc-warn-ink: #f2b544;
+  --wc-good: #22c55e;
+  --wc-good-soft: #14301f;
+  --wc-subtle: #26303f;
+  --wc-checker: #2a3444;
+  --wc-scrim-weak: rgba(255, 255, 255, 0.045);
+  --wc-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --wc-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+html.wc-dark .wc-modal-backdrop {
+  background: rgba(6, 8, 14, 0.6);
 }
 
 * {
@@ -103,14 +145,14 @@ button {
   padding: 8px 14px;
   border-radius: var(--wc-radius-sm);
   border: 1px solid var(--wc-panel-border);
-  background: #fff;
+  background: var(--wc-panel);
   color: var(--wc-text);
   font-weight: 500;
   text-decoration: none;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 .wc-btn:hover {
-  background: #f5f7fa;
+  background: var(--wc-subtle);
 }
 .wc-btn:disabled {
   opacity: 0.5;
@@ -205,7 +247,7 @@ button {
   transition: background 0.12s ease, color 0.12s ease;
 }
 .wc-rail-btn:hover {
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   color: var(--wc-text);
 }
 .wc-rail-btn[aria-pressed="true"] {
@@ -220,7 +262,7 @@ button {
   height: 7px;
   border-radius: 50%;
   background: var(--wc-danger);
-  border: 1.5px solid #fff;
+  border: 1.5px solid var(--wc-panel);
 }
 
 /* ---- panels ---------------------------------------------------------------- */
@@ -333,7 +375,7 @@ button {
   z-index: 1;
 }
 .wc-modal-close:hover {
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   color: var(--wc-text);
 }
 
@@ -355,7 +397,7 @@ button {
   display: flex;
   gap: 2px;
   margin-top: 10px;
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   border-radius: var(--wc-radius-sm);
   padding: 3px;
 }
@@ -368,7 +410,7 @@ button {
   color: var(--wc-dim);
 }
 .wc-lb-toggle button[aria-selected="true"] {
-  background: #fff;
+  background: var(--wc-panel);
   color: var(--wc-text);
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.12);
 }
@@ -419,7 +461,7 @@ button {
   font-weight: 600;
 }
 .wc-lb-expand:hover {
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   color: var(--wc-text);
 }
 
@@ -430,7 +472,7 @@ button {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 10px;
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   padding: 3px;
   border-radius: var(--wc-radius-sm);
 }
@@ -443,7 +485,7 @@ button {
   color: var(--wc-dim);
 }
 .wc-lb-tabs button[aria-selected="true"] {
-  background: #fff;
+  background: var(--wc-panel);
   color: var(--wc-text);
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.12);
 }
@@ -536,7 +578,7 @@ button {
 .wc-swatch {
   width: 21px;
   height: 21px;
-  border: 2px solid #fff;
+  border: 2px solid var(--wc-panel);
   outline: 1px solid var(--wc-panel-border);
   border-radius: 6px;
   cursor: pointer;
@@ -587,7 +629,7 @@ button {
   width: 120px;
   height: 10px;
   border-radius: 999px;
-  background: #e4e8ee;
+  background: var(--wc-subtle);
   overflow: hidden;
 }
 .wc-charge-bar-fill {
@@ -655,7 +697,7 @@ fieldset select {
   border: 1px solid var(--wc-panel-border);
   border-radius: 7px;
   padding: 5px 8px;
-  background: #fff;
+  background: var(--wc-panel);
 }
 
 .wc-toggle {
@@ -698,7 +740,7 @@ fieldset select {
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 14px;
-  background: #f0f2f6;
+  background: var(--wc-subtle);
   padding: 3px;
   border-radius: var(--wc-radius-sm);
 }
@@ -713,7 +755,7 @@ fieldset select {
   color: var(--wc-dim);
 }
 .wc-admin nav button[aria-selected="true"] {
-  background: #fff;
+  background: var(--wc-panel);
   color: var(--wc-text);
   box-shadow: 0 1px 2px rgba(20, 30, 50, 0.12);
 }
@@ -724,6 +766,8 @@ fieldset select {
   margin-top: 10px;
 }
 
+/* Shared vertical-form styling — the Account sign-in/sign-up/reset forms
+ * (AccountPanel.tsx) all use this class, not just admin surfaces. */
 .wc-staff-login {
   display: flex;
   flex-direction: column;
@@ -748,6 +792,7 @@ fieldset select {
   outline: 2px solid var(--wc-accent);
   outline-offset: -1px;
 }
+
 .wc-account-name {
   margin: 0;
   font-size: 16px;
@@ -815,12 +860,24 @@ fieldset select {
   }
 }
 
-.wc-frozen-banner {
+/**
+ * The whole top stack — freeze/event banners, then the pulse+charge topbar
+ * below them — lives in one flex column so a banner appearing pushes the
+ * topbar down in real document flow, rather than two independently
+ * absolutely-positioned pieces guessing pixel offsets and overlapping.
+ */
+.wc-hud {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.wc-frozen-banner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -830,6 +887,53 @@ fieldset select {
   font-weight: 600;
   text-align: center;
   padding: 8px;
+}
+
+.wc-event-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--wc-warn);
+  color: var(--wc-warn-ink);
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  padding: 6px 8px;
+}
+.wc-event-banner.wc-event-danger {
+  background: var(--wc-danger-soft);
+  color: var(--wc-danger-ink);
+}
+.wc-event-bar {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.wc-event-bar-fill {
+  height: 100%;
+  background: currentColor;
+  transition: width 0.4s ease;
+}
+.wc-event-locate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid currentColor;
+  color: inherit;
+  border-radius: var(--wc-radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.wc-event-locate:hover {
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .wc-hint,
@@ -845,11 +949,21 @@ fieldset select {
   font-size: 13px;
 }
 
+/* "Reduce motion" setting: "system" (default) defers entirely to the OS
+ * media query below. "on" forces the reduction even when the OS doesn't ask
+ * for it. "off" excludes itself from the media query's selector rather than
+ * trying to override the values it sets — `revert` would roll back past
+ * every element's own declared duration (e.g. `.wc-rail-btn`'s 0.12s) to the
+ * UA default of 0s, stripping transitions instead of restoring them. */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  html:not(.wc-motion-full) * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+html.wc-motion-reduce * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
 
 /* Phones: keep the rail put, just tighten it; panels go full-ish width. */
@@ -877,11 +991,10 @@ fieldset select {
 /* ---- activity pulse ----------------------------------------------------- */
 
 .wc-topbar {
-  position: absolute;
-  top: var(--wc-gap);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
+  /* In-flow inside .wc-hud now, not independently positioned — so a banner
+     above it pushes it down instead of the two overlapping. */
+  align-self: center;
+  margin-top: var(--wc-gap);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -975,8 +1088,8 @@ fieldset select {
   flex: none;
   /* Checkerboard shows through for an unpainted pixel rather than reading
      as a white pixel that is actually there. */
-  background-image: linear-gradient(45deg, #d7dce3 25%, transparent 25%),
-    linear-gradient(-45deg, #d7dce3 25%, transparent 25%);
+  background-image: linear-gradient(45deg, var(--wc-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--wc-checker) 25%, transparent 25%);
   background-size: 8px 8px;
 }
 .wc-inspector-coords {
@@ -1274,7 +1387,7 @@ fieldset select {
   gap: 8px;
   padding: 5px 8px;
   border-radius: var(--wc-radius-sm);
-  background: rgba(0, 0, 0, 0.025);
+  background: var(--wc-scrim-weak);
   font-size: 13px;
 }
 .wc-ip-list code {
@@ -1290,6 +1403,23 @@ fieldset select {
 .wc-region-list button.wc-mini-danger,
 .wc-staff-list button {
   margin-left: 6px;
+}
+/* A row can carry name + email + a stat + a role select + a button (Users
+ * tab) — text truncates with an ellipsis rather than pushing the trailing
+ * controls out of the modal, which has no horizontal scroll of its own. */
+.wc-staff-list li > span {
+  min-width: 0;
+}
+.wc-staff-name,
+.wc-staff-list li > span.wc-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-staff-list .wc-role,
+.wc-mini-select,
+.wc-staff-list button {
+  flex-shrink: 0;
 }
 .wc-region-name {
   background: none;
@@ -1329,6 +1459,15 @@ fieldset select {
 .wc-mini-danger:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.wc-mini-select {
+  border: 1px solid var(--wc-panel-border);
+  border-radius: 6px;
+  padding: 3px 5px;
+  font-size: 12px;
+  color: var(--wc-text);
+  background: none;
+  margin-left: 6px;
 }
 
 /* ---- admin: forms ------------------------------------------------------- */
@@ -1407,7 +1546,7 @@ fieldset select {
 .wc-audit-list li {
   padding: 7px 9px;
   border-left: 2px solid var(--wc-panel-border);
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--wc-scrim-weak);
   font-size: 13px;
 }
 .wc-audit-head {
@@ -1443,7 +1582,7 @@ fieldset select {
   gap: 10px;
   padding: 8px;
   border-left: 2px solid var(--wc-panel-border);
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--wc-scrim-weak);
 }
 .wc-report-thumb {
   width: 64px;
@@ -1509,10 +1648,10 @@ fieldset select {
   border: 1px solid var(--wc-panel-border);
   /* A checkerboard, so an unpainted pixel reads as absent rather than as a
      white pixel somebody actually placed. */
-  background-image: linear-gradient(45deg, #e6eaf0 25%, transparent 25%),
-    linear-gradient(-45deg, #e6eaf0 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #e6eaf0 75%),
-    linear-gradient(-45deg, transparent 75%, #e6eaf0 75%);
+  background-image: linear-gradient(45deg, var(--wc-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--wc-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--wc-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--wc-checker) 75%);
   background-size: 12px 12px;
   background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
@@ -1563,7 +1702,7 @@ fieldset select {
 .wc-progress { margin: 10px 0 4px; }
 .wc-progress-track {
   height: 8px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--wc-subtle);
   border-radius: 4px;
   overflow: hidden;
 }

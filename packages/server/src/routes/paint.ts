@@ -8,6 +8,7 @@ import {
 } from "@worldcanvas/shared";
 import type { FastifyInstance } from "fastify";
 import { paint } from "../paint/service.js";
+import { events } from "../events/engine.js";
 import { leaderboard } from "../leaderboard/store.js";
 import { alliances } from "../alliances/store.js";
 import { players } from "../players/store.js";
@@ -65,6 +66,9 @@ export function registerPaintRoutes(app: FastifyInstance): void {
     leaderboard.applyPaint(result.countryId, result.prevCountryId);
     alliances.applyPaint(result.allianceId, result.prevAllianceId);
     players.applyPaint(result.userId, result.prevUserId);
+    // ROADMAP.md Phase 7 — a no-op unless this pixel landed inside an active
+    // corruption zone. Ordinary paint, own attribution; this only tallies it.
+    events.applyPaint(x, y, color, session.id);
     score.record({ sessionId: session.id, x, y, at: Date.now() });
 
     return reply.send({

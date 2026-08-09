@@ -2,7 +2,12 @@ import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
-import { EXPORT_EXPIRY_HOURS, TILE_WORKER_INTERVAL_MS } from "@worldcanvas/shared";
+import {
+  EVENT_DURATION_MS,
+  EVENT_INTERVAL_MS,
+  EXPORT_EXPIRY_HOURS,
+  TILE_WORKER_INTERVAL_MS,
+} from "@worldcanvas/shared";
 
 // One .env at the repo root, shared by every package. Real environment
 // variables always win, so container env in production is unaffected.
@@ -61,6 +66,16 @@ export const env = {
    * off without a deploy if a load run shows it moved the p99.
    */
   heatmapWorkerEnabled: process.env.HEATMAP_WORKER !== "false",
+
+  /**
+   * Corruption event timing (ROADMAP.md Phase 7). Overridable so
+   * `verify/events.mjs` can run a whole event — start, bot ticks, a
+   * defending paint, resolution, revert — in seconds instead of the real
+   * ~90min/10min cadence, the same reason TILE_WORKER_INTERVAL_MS is
+   * overridable above.
+   */
+  eventIntervalMs: Number(process.env.EVENT_INTERVAL_MS ?? EVENT_INTERVAL_MS),
+  eventDurationMs: Number(process.env.EVENT_DURATION_MS ?? EVENT_DURATION_MS),
 
   cf: {
     token: process.env.CF_API_TOKEN ?? "",

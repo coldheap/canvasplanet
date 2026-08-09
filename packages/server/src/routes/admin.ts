@@ -9,12 +9,12 @@
  * always have an answer.
  */
 
-import argon2 from "argon2";
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { renderReportThumbnail, reportSuspects } from "../admin/reports.js";
 import { revert, type RevertSelector } from "../admin/revert.js";
 import { stamp, type StampInput } from "../admin/stamp.js";
+import { events } from "../events/engine.js";
 import { geo } from "../geo/index.js";
 import { eventLoopLag, tileEncodeTime, tileQueryTime } from "../metrics.js";
 import { leaderboard } from "../leaderboard/store.js";
@@ -168,6 +168,20 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     return reply.send({ ok: true, frozen: Boolean(req.body.on) });
   });
 
+  // ---- corruption events (mod: visibility + a manual escape hatch) --------
+  app.get("/api/admin/events", async (req, reply) => {
+    if (!(await mod(req, reply))) return;
+    return reply.send({ current: events.current(), history: await events.history() });
+  });
+
+  app.post("/api/admin/events/end", async (req, reply) => {
+    const staff = await mod(req, reply);
+    if (!staff) return;
+    const ended = await events.forceEnd();
+    if (ended) await audit(staff.id, "event.end", {}, null);
+    return reply.send({ ok: ended });
+  });
+
   // ---- image stamp (admin only) -------------------------------------------
   app.post<{ Body: StampInput }>("/api/admin/stamp", async (req, reply) => {
     const staff = await admin(req, reply);
@@ -227,9 +241,9 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       : "open";
     const { rows } = await pool.query(
       `SELECT r.id, r.x0, r.y0, r.x1, r.y1, r.reason, r.status, r.created_at,
-              r.session_id, r.ip::text AS ip, rs.username AS resolved_by
+              r.session_id, r.ip::text AS ip, rs.display_name AS resolved_by
          FROM area_reports r
-         LEFT JOIN staff rs ON rs.id = r.resolved_by
+         LEFT JOIN users rs ON rs.id = r.resolved_by
         WHERE $1 = 'all' OR r.status = $1
         ORDER BY (r.status = 'open') DESC, r.created_at ASC
         LIMIT 100`,
@@ -346,7 +360,7 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (!(await mod(req, reply))) return;
     const q = (req.query.q ?? "").trim();
     const { rows } = await pool.query(
-      `SELECT u.id, u.email, u.display_name, u.email_verified_at, u.disabled_at, u.created_at,
+      `SELECT u.id, u.email, u.display_name, u.email_verified_at, u.disabled_at, u.created_at, u.role,
               COALESCE(s.cumulative, 0) AS cumulative, COALESCE(s.held, 0) AS held
          FROM users u
          LEFT JOIN user_stats s ON s.user_id = u.id
@@ -381,12 +395,46 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     },
   );
 
-  // ---- staff management + audit (admin only) ------------------------------
+  // ---- staff role (admin only) ---------------------------------------------
+  // Staff is a role on an existing player account, not a separate account —
+  // grant it here, or from the same control on the Users tab. There is no
+  // staff session to revoke separately: getStaff() re-reads this column on
+  // every request, so a role change (or an account disable, above) takes
+  // effect on the granted user's very next request.
+  app.post<{ Params: { id: string }; Body: { role: "mod" | "admin" | null } }>(
+    "/api/admin/users/:id/role",
+    async (req, reply) => {
+      const staff = await admin(req, reply);
+      if (!staff) return;
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) {
+        return reply.code(400).send({ error: "id must be a valid user id" });
+      }
+      const role = req.body?.role ?? null;
+      if (role !== null && role !== "mod" && role !== "admin") {
+        return reply.code(400).send({ error: "role must be mod, admin, or null" });
+      }
+      // Locking yourself out mid-incident is not a recoverable mistake from
+      // inside the panel.
+      if (id === staff.id && role === null) {
+        return reply.code(400).send({ error: "you cannot revoke your own admin role" });
+      }
+      const { rows } = await pool.query(`UPDATE users SET role = $2 WHERE id = $1 RETURNING id`, [
+        id,
+        role,
+      ]);
+      if (!rows[0]) return reply.code(404).send();
+      await audit(staff.id, "user.role", { id, role }, null);
+      return reply.send({ ok: true });
+    },
+  );
+
+  // ---- staff overview + audit (admin only) ---------------------------------
   app.get("/api/admin/audit", async (req, reply) => {
     if (!(await admin(req, reply))) return;
     const { rows } = await pool.query(
-      `SELECT a.*, s.username FROM audit_log a
-         LEFT JOIN staff s ON s.id = a.staff_id
+      `SELECT a.*, s.display_name AS username FROM audit_log a
+         LEFT JOIN users s ON s.id = a.staff_id
         ORDER BY a.id DESC LIMIT 200`,
     );
     return reply.send(rows);
@@ -395,72 +443,11 @@ export function registerAdminRoutes(app: FastifyInstance): void {
   app.get("/api/admin/staff", async (req, reply) => {
     if (!(await admin(req, reply))) return;
     const { rows } = await pool.query(
-      `SELECT id, username, role, disabled_at, created_at FROM staff ORDER BY id`,
+      `SELECT id, display_name AS username, email, role, disabled_at, created_at
+         FROM users WHERE role IS NOT NULL ORDER BY role DESC, display_name`,
     );
     return reply.send(rows);
   });
-
-  app.post<{ Body: { username: string; password: string; role: "mod" | "admin" } }>(
-    "/api/admin/staff",
-    async (req, reply) => {
-      const staff = await admin(req, reply);
-      if (!staff) return;
-      const { username, password, role } = req.body ?? ({} as never);
-
-      if (!username || !/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
-        return reply.code(400).send({ error: "username must be 3-32 chars [a-zA-Z0-9_.-]" });
-      }
-      // Staff accounts hold revert and ban powers, so the floor is higher
-      // than for an ordinary login.
-      if (!password || password.length < 12) {
-        return reply.code(400).send({ error: "password must be at least 12 characters" });
-      }
-      if (role !== "mod" && role !== "admin") {
-        return reply.code(400).send({ error: "role must be mod or admin" });
-      }
-
-      // argon2id here, never a client-supplied hash — accepting one would let
-      // anyone who can call this route set a password they cannot produce.
-      const hash = await argon2.hash(password, { type: argon2.argon2id });
-      try {
-        const { rows } = await pool.query(
-          `INSERT INTO staff (username, password_hash, role) VALUES ($1,$2,$3)
-           RETURNING id, username, role, created_at`,
-          [username, hash, role],
-        );
-        await audit(staff.id, "staff.create", { username, role }, null);
-        return reply.send(rows[0]);
-      } catch (err) {
-        if ((err as { code?: string }).code === "23505") {
-          return reply.code(409).send({ error: "username already exists" });
-        }
-        throw err;
-      }
-    },
-  );
-
-  app.post<{ Params: { id: string }; Body: { disabled: boolean } }>(
-    "/api/admin/staff/:id/disable",
-    async (req, reply) => {
-      const staff = await admin(req, reply);
-      if (!staff) return;
-      const id = Number(req.params.id);
-      // Locking yourself out mid-incident is not a recoverable mistake from
-      // inside the panel.
-      if (id === staff.id) {
-        return reply.code(400).send({ error: "you cannot disable your own account" });
-      }
-      const disabled = req.body?.disabled !== false;
-      await pool.query(`UPDATE staff SET disabled_at = $2 WHERE id = $1`, [
-        id,
-        disabled ? new Date() : null,
-      ]);
-      // Disabling must cut existing sessions, not just block future logins.
-      if (disabled) await pool.query(`DELETE FROM staff_sessions WHERE staff_id = $1`, [id]);
-      await audit(staff.id, "staff.disable", { id, disabled }, null);
-      return reply.send({ ok: true });
-    },
-  );
 }
 
 async function audit(

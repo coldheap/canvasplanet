@@ -35,12 +35,15 @@ import { sendPasswordResetEmail, sendVerificationEmail } from "../email/mailer.j
 import { env } from "../env.js";
 import { players } from "../players/store.js";
 import { getOrCreateSession } from "../session/session.js";
+import type { Role } from "./staff.js";
 
 export interface AuthUser {
   id: number;
   /** Null for a Discord-only account with no verified email on file. */
   email: string | null;
   displayName: string;
+  /** Non-null only for an account an admin has granted staff powers to. */
+  role: Role | null;
 }
 
 const hash = (t: string) => createHash("sha256").update(t).digest();
@@ -71,13 +74,26 @@ export function normalizeSignup(
 }
 
 /**
- * A minimal in-memory sliding window, not a DB table — this is a login-form
- * abuse guard, not a first-class rate limit the way reports/alliances have
- * (those count real rows for legitimate business reasons). Resetting on
- * restart is fine for what this defends against.
+ * A minimal in-memory sliding window, not a DB table — this is a form-abuse
+ * guard, not a first-class rate limit the way reports/alliances have (those
+ * count real rows for legitimate business reasons). Resetting on restart is
+ * fine for what this defends against.
  */
-const loginAttempts = new Map<string, { count: number; windowStart: number }>();
 const LOGIN_WINDOW_MS = 15 * 60_000;
+
+function createRateLimiter(maxAttempts: number) {
+  const attempts = new Map<string, { count: number; windowStart: number }>();
+  return (ip: string): boolean => {
+    const now = Date.now();
+    const entry = attempts.get(ip);
+    if (!entry || now - entry.windowStart > LOGIN_WINDOW_MS) {
+      attempts.set(ip, { count: 1, windowStart: now });
+      return false;
+    }
+    entry.count += 1;
+    return entry.count > maxAttempts;
+  };
+}
 
 /**
  * Attempts allowed per IP per window.
@@ -93,17 +109,26 @@ const LOGIN_WINDOW_MS = 15 * 60_000;
  * already generous.
  */
 const LOGIN_MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS ?? 20);
+const loginRateLimited = createRateLimiter(LOGIN_MAX_ATTEMPTS);
 
-function loginRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  if (!entry || now - entry.windowStart > LOGIN_WINDOW_MS) {
-    loginAttempts.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > LOGIN_MAX_ATTEMPTS;
-}
+/**
+ * Signup creates a row and sends an email per success; a display-name-only
+ * conflict still costs an argon2 hash. Same shape as login's limiter, same
+ * env-override reasoning (the verify suite shares 127.0.0.1).
+ */
+const SIGNUP_MAX_ATTEMPTS = Number(process.env.SIGNUP_MAX_ATTEMPTS ?? 20);
+const signupRateLimited = createRateLimiter(SIGNUP_MAX_ATTEMPTS);
+
+/**
+ * resend-verification and request-reset each send an email on a hit, gated
+ * only by a 60s *per-account* cooldown otherwise — with no per-IP ceiling an
+ * attacker can email-bomb one victim address forever, one request per
+ * cooldown, forever. Shared between both routes: they are the same abuse
+ * shape (arbitrary-address emailer), so one budget covers both rather than
+ * doubling the effective ceiling by giving each its own.
+ */
+const EMAIL_ACTION_MAX_ATTEMPTS = Number(process.env.EMAIL_ACTION_MAX_ATTEMPTS ?? 20);
+const emailActionRateLimited = createRateLimiter(EMAIL_ACTION_MAX_ATTEMPTS);
 
 async function createVerificationToken(userId: number): Promise<string> {
   const token = randomBytes(32).toString("base64url");
@@ -138,15 +163,20 @@ async function issueUserSession(userId: number, reply: FastifyReply): Promise<vo
 export async function getAuthUser(req: FastifyRequest): Promise<AuthUser | null> {
   const token = req.cookies[USER_COOKIE];
   if (!token) return null;
-  const { rows } = await pool.query<{ id: number; email: string | null; display_name: string }>(
-    `SELECT u.id, u.email, u.display_name
+  const { rows } = await pool.query<{
+    id: number;
+    email: string | null;
+    display_name: string;
+    role: Role | null;
+  }>(
+    `SELECT u.id, u.email, u.display_name, u.role
        FROM user_sessions us
        JOIN users u ON u.id = us.user_id
       WHERE us.token_hash = $1 AND us.expires_at > now() AND u.disabled_at IS NULL`,
     [hash(token)],
   );
   const r = rows[0];
-  return r ? { id: r.id, email: r.email, displayName: r.display_name } : null;
+  return r ? { id: r.id, email: r.email, displayName: r.display_name, role: r.role } : null;
 }
 
 export async function getUserDTO(
@@ -250,6 +280,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   app.post<{ Body: { email?: string; password?: string; displayName?: string } }>(
     "/api/auth/signup",
     async (req, reply) => {
+      if (signupRateLimited(req.ip)) {
+        return reply.code(429).send({ error: "too many attempts, try again later" });
+      }
+
       const result = normalizeSignup(req.body ?? {});
       if ("error" in result) return reply.code(400).send({ error: result.error });
       const { email, password, displayName } = result;
@@ -264,8 +298,21 @@ export function registerAuthRoutes(app: FastifyInstance): void {
         );
         userId = rows[0]!.id;
       } catch (err) {
-        if ((err as { code?: string }).code === "23505") {
-          return reply.code(409).send({ error: "that email or display name is already taken" });
+        const pgErr = err as { code?: string; constraint?: string };
+        if (pgErr.code === "23505") {
+          // Display names are public (leaderboards, painted-pixel attribution)
+          // — no enumeration concern telling a prober this one is taken.
+          if (pgErr.constraint === "users_display_name_key") {
+            return reply.code(409).send({ error: "that display name is already taken" });
+          }
+          // Email already registered. Answer exactly like a fresh signup
+          // rather than a 409 — the same enumeration-resistance every other
+          // account-existence-adjacent route in this file follows (login,
+          // request-reset, resend-verification) — so this endpoint cannot be
+          // used as an oracle for which addresses have accounts. No second
+          // account is created and no email goes out; the owner of that
+          // inbox already has one from their real signup.
+          return reply.send({ ok: true, message: "check your email to verify your account" });
         }
         throw err;
       }
@@ -313,6 +360,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   });
 
   app.post<{ Body: { email?: string } }>("/api/auth/resend-verification", async (req, reply) => {
+    if (emailActionRateLimited(req.ip)) {
+      return reply.code(429).send({ error: "too many attempts, try again later" });
+    }
+
     const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
     if (!EMAIL_PATTERN.test(email)) return reply.code(400).send({ error: "enter a valid email address" });
 
@@ -348,6 +399,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   // query param (App.tsx picks it up and shows the "choose a new password"
   // form) rather than through a server redirect route.
   app.post<{ Body: { email?: string } }>("/api/auth/request-reset", async (req, reply) => {
+    if (emailActionRateLimited(req.ip)) {
+      return reply.code(429).send({ error: "too many attempts, try again later" });
+    }
+
     const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
     if (!EMAIL_PATTERN.test(email)) return reply.code(400).send({ error: "enter a valid email address" });
 
@@ -423,23 +478,28 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     return reply.send({ ok: true, user });
   });
 
-  app.post<{ Body: { email?: string; password?: string } }>("/api/auth/login", async (req, reply) => {
+  app.post<{ Body: { identifier?: string; password?: string } }>("/api/auth/login", async (req, reply) => {
     if (loginRateLimited(req.ip)) {
       return reply.code(429).send({ error: "too many attempts, try again later" });
     }
 
-    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const identifier = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
 
+    // Both columns are CITEXT, so this one comparison matches either an
+    // email or a display name case-insensitively — no need to guess which
+    // one the player typed.
     const { rows } = await pool.query<{
       id: number;
+      email: string | null;
       password_hash: string | null;
       display_name: string;
       email_verified_at: Date | null;
       disabled_at: Date | null;
     }>(
-      `SELECT id, password_hash, display_name, email_verified_at, disabled_at FROM users WHERE email = $1`,
-      [email],
+      `SELECT id, email, password_hash, display_name, email_verified_at, disabled_at
+         FROM users WHERE email = $1 OR display_name = $1`,
+      [identifier],
     );
     const row = rows[0];
 
@@ -453,7 +513,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       row && row.password_hash
         ? await argon2.verify(row.password_hash, password)
         : (await argon2.hash(password || "x"), false);
-    if (!ok || !row) return reply.code(401).send({ error: "wrong email or password" });
+    if (!ok || !row) return reply.code(401).send({ error: "wrong email/username or password" });
     if (row.disabled_at) return reply.code(403).send({ error: "this account has been disabled" });
     if (!row.email_verified_at) {
       return reply.code(403).send({ error: "verify your email before logging in" });
@@ -467,7 +527,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const session = await getOrCreateSession(req, reply);
     await pool.query(`UPDATE sessions SET user_id = $2 WHERE id = $1`, [session.id, row.id]);
 
-    const user = await getUserDTO(row.id, email, row.display_name);
+    const user = await getUserDTO(row.id, row.email, row.display_name);
     return reply.send({ ok: true, user });
   });
 

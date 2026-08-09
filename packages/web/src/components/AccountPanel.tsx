@@ -161,6 +161,7 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
   const discordEnabled = useStore((s) => s.discordEnabled);
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +186,7 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(identifier, password);
       setUser(res.user);
     } catch (err) {
       const body = (err as { body?: { error?: string } }).body;
@@ -319,22 +320,33 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
         </button>
       </div>
 
-      <input
-        type="email"
-        autoComplete="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      {mode === "signup" && (
+      {mode === "login" ? (
         <input
-          placeholder="Display name"
-          maxLength={24}
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
+          type="text"
+          autoComplete="username"
+          placeholder="Email or username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
           required
         />
+      ) : (
+        <>
+          <input
+            type="email"
+            autoComplete="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            placeholder="Display name"
+            maxLength={24}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+          />
+        </>
       )}
       <input
         type="password"

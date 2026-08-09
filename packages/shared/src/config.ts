@@ -172,9 +172,7 @@ export const EXPORT_EXPIRY_HOURS = 36;
 // ---------------------------------------------------------------------------
 
 export const SESSION_COOKIE = "wc_sess";
-export const STAFF_COOKIE = "wc_staff";
 export const SESSION_TTL_DAYS = 365;
-export const STAFF_TTL_HOURS = 12;
 
 // ---------------------------------------------------------------------------
 // Countries
@@ -196,7 +194,6 @@ export const LEADERBOARD_TOP_N = 10;
 // Alliances (ROADMAP.md §4.1)
 // ---------------------------------------------------------------------------
 
-/** Same shape check as staff usernames — see routes/admin.ts. */
 export const ALLIANCE_NAME_MIN_LEN = 3;
 export const ALLIANCE_NAME_MAX_LEN = 32;
 /** New alliances per session per day. Creation is rare; this only stops a
@@ -221,13 +218,15 @@ export const USER_COOKIE = "wc_user";
 /** Rows shown in the collapsed player leaderboard (ROADMAP.md §5.2), mirrors
  *  LEADERBOARD_TOP_N / ALLIANCE_LEADERBOARD_TOP_N. */
 export const PLAYER_LEADERBOARD_TOP_N = 10;
-/** Long-lived: unlike the staff cookie this is a player convenience, not a
- *  privileged surface, so it can outlast a browsing session comfortably. */
+/** Long-lived — a player convenience. Also, since ROADMAP's staff-role
+ *  change, the cookie an admin's session rides on: granting/revoking a role
+ *  takes effect immediately either way (staff.ts re-reads it per request),
+ *  but there is no shorter separate staff-session expiry anymore. */
 export const USER_SESSION_TTL_DAYS = 90;
 
 export const DISPLAY_NAME_MIN_LEN = 3;
 export const DISPLAY_NAME_MAX_LEN = 24;
-/** Same shape as staff/alliance names — see routes/admin.ts, routes/alliances.ts. */
+/** Same shape as alliance names — see routes/admin.ts, routes/alliances.ts. */
 export const DISPLAY_NAME_PATTERN = /^[a-zA-Z0-9_. -]{3,24}$/;
 
 export const PASSWORD_MIN_LEN = 8;
@@ -254,3 +253,28 @@ export const PASSWORD_RESET_COOLDOWN_MS = 60_000;
  *  lifetime; the whole authorize→callback hop is one browser navigation. */
 export const DISCORD_STATE_COOKIE = "wc_discord_state";
 export const DISCORD_STATE_TTL_SECONDS = 600;
+
+// ---------------------------------------------------------------------------
+// Corruption event (ROADMAP.md Phase 7) — recurring vs-server event
+// ---------------------------------------------------------------------------
+
+/** Roughly how often a new event fires, measured from the end of the last
+ *  one. Same "fixed, tunable constant" shape as ALLIANCE_JOIN_COOLDOWN_MS —
+ *  env.ts can override it for a fast test run without touching this file. */
+export const EVENT_INTERVAL_MS = 90 * 60_000;
+/** Square zone side length, in pixels. */
+export const EVENT_ZONE_SIZE = 48;
+/** How long defenders have to hold the zone before it's judged. */
+export const EVENT_DURATION_MS = 10 * 60_000;
+/** Palette index the bot corrupts pixels with — Black, so it reads as a
+ *  clear "something wrong happened here" rather than an ordinary colour. */
+export const EVENT_BOT_COLOR = 0;
+/** Bot brush size: pixels it (re-)paints per LB_TICK_MS tick. */
+export const EVENT_BOT_PIXELS_PER_TICK = 6;
+/** Coverage the zone must stay under, at the timer's end, for defenders to
+ *  win. Measured as corrupted pixels / zone area. */
+export const EVENT_WIN_THRESHOLD = 0.5;
+/** Regen-speed multiplier for the reward — 2x means half the wait per charge. */
+export const EVENT_BONUS_MULTIPLIER = 2;
+/** How long the reward lasts after a winning event ends. */
+export const EVENT_BONUS_DURATION_MS = 10 * 60_000;

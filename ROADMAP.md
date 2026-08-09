@@ -14,15 +14,16 @@ widget (§4.2), alliances (§4.1) and timelapse export (§4.3) are all built.
 OAuth) and §5.2 (leaderboard reorder) are both done.** One manual step is
 still outstanding on Discord OAuth: register the redirect URIs in Discord's
 Developer Portal (see §5.1) before the "Continue with Discord" button can
-complete a real login. **Phase 6 (streaks) is now done too, built 2026-08-09.**
+complete a real login. **Phase 6 (streaks) and Phase 7 (Corruption event) are
+both done too, built 2026-08-09.**
 Next up: §5.3 (creator tools / social — still just directions, not scoped),
-Phase 7 (Corruption event) or later, or §2.5's real-hardware load run — ask
+Phase 8 (Art Contests) or later, or §2.5's real-hardware load run — ask
 before assuming which.
 
 A 2026-08-09 feature brainstorm scoped nine further additions, below as
 **Phase 6–14** — each fully agreed in shape, and not yet prioritized against
-§5.3/§2.5 above beyond Phase 6 itself landing. Ask before assuming which (if
-any) comes next.
+§5.3/§2.5 above beyond Phase 6 and Phase 7 themselves landing. Ask before
+assuming which (if any) comes next.
 
 ---
 
@@ -472,6 +473,26 @@ working with zero account. An account is a claimable upgrade: a persistent
 display name and a place on the player leaderboard, nothing about paint
 eligibility changes.
 
+**Hardening pass (2026-08-09)**: `POST /api/auth/signup` used to answer a
+duplicate email with a plain 409 — an oracle a prober could use to test
+arbitrary addresses for an account, undermining the enumeration resistance
+every other account-existence-adjacent route here (login, request-reset,
+resend-verification) deliberately maintains. Fixed by branching on the
+Postgres unique-violation's `constraint` field: a `users_display_name_key`
+hit still 409s (display names are public, nothing to protect), but a
+`users_email_key` hit now answers exactly like a fresh signup — no second
+row, no second email, no distinguishable response. Also closed: `/signup`,
+`/resend-verification` and `/request-reset` had no per-IP rate limit at all
+(only `/login` did) — since two of those three send email gated solely by a
+60s *per-account* cooldown, an attacker could email-bomb any address
+indefinitely, one request per cooldown, forever. All three now share the
+same sliding-window limiter `/login` already used (`createRateLimiter`,
+factored out of what was `loginRateLimited`), env-overridable the same way
+for the verify suite's shared 127.0.0.1. Verified for real: full
+`verify/accounts.mjs` rerun against the live dev server (38/38 checks,
+including new duplicate-email/duplicate-display-name coverage) plus the
+server's vitest suite, both green.
+
 **Signup is a fresh start, deliberately** — a new `users` row and its stats
 begin at zero; the session's pre-existing charges/held/cumulative counts are
 *not* migrated onto it (already decided, see below). That keeps the paint
@@ -654,34 +675,111 @@ the account panel and the player's own leaderboard row, with zero console
 errors, after a real server restart re-synced the in-memory mirror to the
 (deliberately rewound) database state.
 
-## Phase 7 — Recurring event: Corruption (vs. server)
+## Phase 7 — Recurring event: Corruption (vs. server) — done
 
-Fires on an interval (start with a fixed, env-tunable ~90 min, same shape as
-`ALLIANCE_JOIN_COOLDOWN_MS`). Picks a small zone (e.g. 48×48), **at random**,
-skipping anything in `protected_regions` (the existing admin-tool table
-already checked on the paint path — `state/policy.ts`). A server-side bot
-session starts painting the zone a fixed corruption colour at a steady tick.
-Any player painting inside the zone with a different colour counts as
-defence — a completely ordinary paint (own attribution, own country/alliance
-credit, no special pixel type). If corruption coverage stays under a
-threshold when the timer ends, defenders win; otherwise the bot wins.
+Fires on an interval (`EVENT_INTERVAL_MS`, config.ts, ~90 min default —
+overridable via `env.eventIntervalMs`/`EVENT_INTERVAL_MS`, the same "fixed,
+tunable constant with an env escape hatch" shape as `TILE_WORKER_INTERVAL_MS`,
+used to compress the real ~90min/10min cadence into seconds for
+`verify/events.mjs`). `events/engine.ts`'s `EventEngine` picks a 48×48 zone
+(`EVENT_ZONE_SIZE`) **at random** within the paint-bounds scope gate,
+retrying (cheap — no I/O) up to 30 times if the candidate overlaps a
+`protected_regions` row, then skipping the cycle entirely and trying again
+next tick if every attempt lost — regions are sparse enough relative to the
+world that this never actually happens in practice. A bot session (no
+session row at all — same "staff bypass" shape as `admin/stamp.ts`: no
+charges, no alliance/user attribution) paints `EVENT_BOT_PIXELS_PER_TICK`
+(6) zone pixels Black (`EVENT_BOT_COLOR`) every hub tick. Any paint inside
+the zone with a different colour counts as defence — a completely ordinary
+paint through the real `/api/paint` route (own attribution, own
+country/alliance credit, no special pixel type); `routes/paint.ts` calls
+`events.applyPaint(x, y, color, session.id)` right alongside the
+leaderboard/alliance/player stores' own post-commit calls, an O(1) no-op
+whenever no event is running or the pixel falls outside the zone. Corruption
+% is tracked from live visual state, not from who undid what: a zone pixel
+counts as corrupted iff it currently shows the bot's colour, regardless of
+who painted it there last — so the bot can re-corrupt a pixel a defender
+already reclaimed, a real tug-of-war rather than a one-shot claim. If
+coverage stays under `EVENT_WIN_THRESHOLD` (50%) when the timer ends,
+defenders win; otherwise the bot does.
 
 **The whole zone reverts to its pre-event state when the timer ends, win or
 lose** — both the bot's paints and every player paint made inside it during
-the event get undone. This is the one genuinely new piece of infrastructure
-here: nothing today programmatically reverts committed paints outside the
-admin panel's Revert tool (§2.1), so this should extend that mechanism rather
-than build a parallel one. The payoff is that the event leaves zero permanent
-trace on the canvas either way — "nothing ever resets" stays true everywhere
-else, this is a contained, self-cleaning contest.
+the event get undone, via `admin/revert.ts`'s existing `{bbox, since}`
+selector (widened to accept a null `staffId`, since this is a programmatic
+system revert with no staff member behind it — the columns it writes into
+were already nullable). The payoff is that the event leaves zero permanent
+trace on the canvas either way; `corruption_events` (migration
+`0014_corruption_events.sql`) is the only permanent record, a summary row
+(zone, result, corruption %, defender count) written once on start and once
+on resolve, never the reverted pixels themselves.
 
-Reward: a temporary charge-rate bonus, for the event's duration plus a short
-window after, for anyone who landed at least one defending paint in a
-winning event. Broadcast shape mirrors leaderboard/alliances exactly — a new
-`EventEngine` tick source added to the existing array `hub.start()` already
-takes, dirty-flag broadcast on the same 1 Hz tick (zone bbox, corruption %,
-time remaining). UI: a banner with countdown/progress bar, zone outlined live
-on the map.
+Reward: a temporary charge-rate bonus (`EVENT_BONUS_MULTIPLIER` = 2x speed,
+`EVENT_BONUS_DURATION_MS` = 10 min) for anyone who landed at least one
+defending paint in a winning event, granted at resolution — it can only be
+granted then, since "in a winning event" isn't knowable mid-event without
+telegraphing the outcome. This needed genuinely new infrastructure per the
+original plan's own framing: `sessions.event_bonus_until` plus a `regenMs`
+parameter threaded through `economy.ts`'s `regenerate`/`spend`/
+`msUntilNextCharge`/`canAfford` (defaulting to the fixed `CHARGE_REGEN_MS`
+everywhere else), computed per-request by the new `effectiveRegenMs()` at
+every site that already called those — `paint/service.ts`, `bootstrap.ts`,
+and the WS `charges` push on reconnect in `index.ts`.
+
+Broadcast shape mirrors leaderboard/alliances exactly — `EventEngine.tick()`
+is a fourth tick source in the existing array `hub.start()` already takes,
+returning non-null (unlike the other three, `dirty`-flag stores) for an
+event's *entire* duration, since the countdown moves every second regardless
+of whether anything else changed; the two edges — start and resolve — are
+broadcast directly rather than waiting for the next tick, so every client
+updates the instant either happens. `BootstrapResponse.event` carries the
+same DTO for a client that loads or reconnects mid-event. UI: a countdown/
+corruption-%/defender-count banner (`MapCanvas.tsx`'s `EventBanner`, amber
+until the threshold then red) and a dashed zone outline — a dedicated
+`L.rectangle`, not the shared `BboxDraw` picker instance six other tools
+already fight over.
+
+**Decisions made along the way, beyond the original shape**:
+- **A frozen canvas pauses the whole event** (both starting a new one and the
+  bot's own ticks) rather than let a contest run that defenders are
+  structurally unable to respond to — not in the original plan, but a
+  correctness gap the freeze feature already implied.
+- **A server restart mid-event is handled**, not just theoretically safe:
+  `EventEngine.recoverOnBoot()` finds any `corruption_events` row with
+  `resolved_at IS NULL` and reverts+closes it (`result = 'aborted'`, a third
+  value alongside `defended`/`corrupted`) before anything else boots — the
+  "zero permanent trace" promise has to hold across a crash too. Proven for
+  real, not just written: a verification server was killed with `taskkill`
+  mid-event, and the next boot's log showed `reverting unresolved event N
+  left over from a restart` before the zone was confirmed empty again.
+- **A minimal mod-visible admin tab** (`EventsTab.tsx`, `GET
+  /api/admin/events`, `POST /api/admin/events/end`) was added beyond the
+  original spec — read-only status plus one force-end escape hatch, the same
+  shape as `ControlTab`'s freeze toggle — since an autonomous timer-driven
+  event with no operator visibility at all seemed worth the small addition.
+- The actual corruption/defence arithmetic (`contains`/`notePaint`/
+  `corruptionPct`/`result`/`toDTO`) was split into a pure, DB-free
+  `ActiveEventState` class (`events/state.ts`) specifically so it's
+  unit-testable the way `economy.ts` is, rather than living inline in the
+  I/O-heavy `EventEngine`.
+
+Verified for real, not just typechecked: 11 vitest cases exercise
+`ActiveEventState` directly (zone membership at every edge, corruption
+toggling both ways including re-corruption, defender credit being literal
+per the spec — any non-bot-colour paint counts, even a still-clean pixel —
+and the win/lose threshold at exactly `EVENT_WIN_THRESHOLD`). `verify/
+events.mjs` then drives the whole system against a real server and a real
+Postgres with the interval/duration compressed to seconds: waits for a real
+event to start, defends one pixel through the real `/api/paint` route,
+confirms the defence is credited before resolution, waits for the real
+resolve-and-revert, then confirms the zone has *zero* pixels left in it, the
+specific defended pixel is back to unpainted, `bootstrap.event` clears, and
+`regenMs` actually drops for that session afterward — the full loop, not a
+mocked slice. A Playwright pass against the same fast-timing server confirmed
+the live banner and dashed zone outline actually render in a real browser,
+the admin Events tab's live status matches the banner exactly, and clicking
+"Force end now" resolves the event immediately — zero console/page errors
+throughout.
 
 **Team-vs-team mode is an explicit fast-follow**, not this phase: a neutral
 zone, two **fresh, randomly-assigned teams per event** (not existing

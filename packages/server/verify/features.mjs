@@ -111,10 +111,13 @@ const PASS = process.env.VERIFY_ADMIN_PASSWORD;
 if (!PASS) {
   console.log("  SKIP  admin report queue (VERIFY_ADMIN_PASSWORD not set)");
 } else {
-  const login = await fetch(`${BASE}/api/staff/login`, {
+  const login = await fetch(`${BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie },
-    body: JSON.stringify({ username: process.env.VERIFY_ADMIN_USER ?? "verify", password: PASS }),
+    body: JSON.stringify({
+      identifier: process.env.VERIFY_ADMIN_EMAIL ?? "verify@example.com",
+      password: PASS,
+    }),
   });
   const staffCookie = [cookie, ...(login.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0])].join("; ");
 
@@ -143,7 +146,7 @@ if (!PASS) {
   // Unauthenticated access must reveal nothing, same as every other admin
   // route: 404, not 403.
   const noAuth = await fetch(`${BASE}/api/admin/reports`);
-  check("report queue hidden without a staff cookie", noAuth.status === 404, `HTTP ${noAuth.status}`);
+  check("report queue hidden without a staff role", noAuth.status === 404, `HTTP ${noAuth.status}`);
 }
 
 finish(failures, "features");

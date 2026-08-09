@@ -65,11 +65,18 @@ if (!maildevUp) {
   const signup = await post("/api/auth/signup", { email: EMAIL, password: PASSWORD, displayName: DISPLAY_NAME });
   check("signup succeeds", signup.status === 200 && signup.body.ok === true, JSON.stringify(signup.body));
 
-  const dupe = await post("/api/auth/signup", { email: EMAIL, password: PASSWORD, displayName: `${DISPLAY_NAME}x` });
-  check("rejects a duplicate email", dupe.status === 409, `HTTP ${dupe.status}`);
+  const dupeEmail = await post("/api/auth/signup", { email: EMAIL, password: PASSWORD, displayName: `${DISPLAY_NAME}x` });
+  check(
+    "duplicate email answers like a fresh signup, not a 409 (no account-existence oracle)",
+    dupeEmail.status === 200 && dupeEmail.body.ok === true,
+    JSON.stringify(dupeEmail.body),
+  );
+
+  const dupeName = await post("/api/auth/signup", { email: `x${EMAIL}`, password: PASSWORD, displayName: DISPLAY_NAME });
+  check("rejects a duplicate display name", dupeName.status === 409, `HTTP ${dupeName.status}`);
 
   // ---- login before verifying is refused ---------------------------------------
-  const earlyLogin = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  const earlyLogin = await post("/api/auth/login", { identifier: EMAIL, password: PASSWORD });
   check("login before verification is refused", earlyLogin.status === 403, `HTTP ${earlyLogin.status}`);
 
   // ---- the real email --------------------------------------------------------
@@ -149,12 +156,29 @@ if (!maildevUp) {
   }
 
   // ---- wrong password ------------------------------------------------------------
-  const wrongPw = await post("/api/auth/login", { email: EMAIL, password: "wrongpassword" });
+  const wrongPw = await post("/api/auth/login", { identifier: EMAIL, password: "wrongpassword" });
   check("wrong password is refused", wrongPw.status === 401, `HTTP ${wrongPw.status}`);
 
   // ---- real login, linking this browser's anonymous session --------------------
-  const login = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  const login = await post("/api/auth/login", { identifier: EMAIL, password: PASSWORD });
   check("login succeeds now that the account is verified", login.status === 200 && login.body.user?.email === EMAIL, JSON.stringify(login.body));
+
+  // ---- logging in by display name works exactly like by email ------------------
+  const loginByName = await post("/api/auth/login", { identifier: DISPLAY_NAME, password: PASSWORD });
+  check(
+    "login by display name succeeds",
+    loginByName.status === 200 && loginByName.body.user?.email === EMAIL,
+    JSON.stringify(loginByName.body),
+  );
+  const loginByNameMixedCase = await post("/api/auth/login", {
+    identifier: DISPLAY_NAME.toUpperCase(),
+    password: PASSWORD,
+  });
+  check(
+    "login by display name is case-insensitive",
+    loginByNameMixedCase.status === 200 && loginByNameMixedCase.body.user?.email === EMAIL,
+    JSON.stringify(loginByNameMixedCase.body),
+  );
   const sessCookie = login.cookies.find((c) => c.startsWith("wc_sess="));
   const loginUserCookie = login.cookies.find((c) => c.startsWith("wc_user="));
   check("login issues both an anonymous session and a user session", Boolean(sessCookie && loginUserCookie));
@@ -193,7 +217,7 @@ if (!maildevUp) {
   // above) — this is the one a real reset is supposed to kill, proving the
   // "a live reset link outranks a stolen session cookie" guarantee for real
   // rather than by reading the DELETE statement and assuming it fires.
-  const secondLogin = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+  const secondLogin = await post("/api/auth/login", { identifier: EMAIL, password: PASSWORD });
   const secondJar = [
     secondLogin.cookies.find((c) => c.startsWith("wc_sess=")),
     secondLogin.cookies.find((c) => c.startsWith("wc_user=")),
@@ -242,10 +266,10 @@ if (!maildevUp) {
     const replayReset = await post("/api/auth/reset", { token: resetToken, password: "anotherPassword2" });
     check("the same reset token cannot be replayed", replayReset.status === 400, `HTTP ${replayReset.status}`);
 
-    const oldPasswordLogin = await post("/api/auth/login", { email: EMAIL, password: PASSWORD });
+    const oldPasswordLogin = await post("/api/auth/login", { identifier: EMAIL, password: PASSWORD });
     check("the old password no longer works", oldPasswordLogin.status === 401, `HTTP ${oldPasswordLogin.status}`);
 
-    const newPasswordLogin = await post("/api/auth/login", { email: EMAIL, password: NEW_PASSWORD });
+    const newPasswordLogin = await post("/api/auth/login", { identifier: EMAIL, password: NEW_PASSWORD });
     check("the new password logs in", newPasswordLogin.status === 200, `HTTP ${newPasswordLogin.status}`);
 
     const secondMeAfter = await fetch(`${BASE}/api/auth/me`, { headers: { cookie: secondJar } });

@@ -15,6 +15,12 @@
  *
  * A revert is itself recorded as events with a fresh `batch_id`, so a revert
  * can be reverted.
+ *
+ * `staffId` is nullable: the corruption event engine (ROADMAP.md Phase 7,
+ * events/engine.ts) calls this programmatically to auto-revert a zone when
+ * its timer ends, with no staff member behind it — the nullable columns it
+ * writes into (pixel_events.staff_id, audit_log.staff_id) already allow this,
+ * same as an ordinary anonymous paint.
  */
 
 import { randomUUID } from "node:crypto";
@@ -38,7 +44,7 @@ export interface RevertResult {
   preview: boolean;
 }
 
-export async function revert(sel: RevertSelector, staffId: number): Promise<RevertResult> {
+export async function revert(sel: RevertSelector, staffId: number | null): Promise<RevertResult> {
   if (!sel.bbox && sel.sessionId === undefined && sel.since === undefined) {
     throw new Error("revert requires at least one selector");
   }

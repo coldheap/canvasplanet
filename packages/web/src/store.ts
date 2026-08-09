@@ -12,6 +12,7 @@ import {
   type AllianceLbRow,
   type BootstrapResponse,
   type CountryDTO,
+  type EventStateDTO,
   type LbRow,
   type UserDTO,
   type UserLbRow,
@@ -22,7 +23,9 @@ export interface Settings {
   grid: "auto" | "on" | "off";
   sound: boolean;
   notifyWhenFull: boolean;
-  darkMap: boolean;
+  /** Whole-app dark theme — see the `html.wc-dark` block in styles.css.
+   *  Deliberately leaves the map's own basemap tiles alone. */
+  darkMode: boolean;
   reduceMotion: "system" | "on" | "off";
   /** Paint-density overlay in place of colour — see canvas/heatLayer.ts. */
   heatmap: boolean;
@@ -35,7 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   grid: "off",
   sound: true,
   notifyWhenFull: false,
-  darkMap: false,
+  darkMode: false,
   reduceMotion: "system",
   heatmap: false,
 };
@@ -67,6 +70,9 @@ interface State {
   playerLeaderboard: UserLbRow[];
 
   frozen: boolean;
+  /** Live corruption event (ROADMAP.md Phase 7), or null when none is
+   *  running — drives the map's zone outline and countdown banner. */
+  event: EventStateDTO | null;
   regions: BootstrapResponse["regions"];
   staff: BootstrapResponse["staff"];
   /** Logged-in player account (ROADMAP.md §5.1) — null when signed out;
@@ -127,6 +133,7 @@ interface State {
   /** Set on login/signup-verify and cleared on logout — everywhere else
    *  `user` only ever changes via a fresh hydrate(). */
   setUser: (user: UserDTO | null) => void;
+  setEvent: (event: EventStateDTO | null) => void;
   setPendingResetToken: (token: string | null) => void;
   select: (color: number) => void;
   setPanel: (panel: State["panel"]) => void;
@@ -157,6 +164,7 @@ export const useStore = create<State>((set) => ({
   playerLeaderboard: [],
 
   frozen: false,
+  event: null,
   regions: [],
   staff: null,
   user: null,
@@ -187,6 +195,7 @@ export const useStore = create<State>((set) => ({
       yourAllianceId: b.yourAllianceId,
       playerLeaderboard: b.playerLeaderboard,
       frozen: b.frozen,
+      event: b.event,
       regions: b.regions,
       staff: b.staff,
       user: b.user,
@@ -202,6 +211,7 @@ export const useStore = create<State>((set) => ({
   setAlliances: (alliances, allianceLeaderboard) => set({ alliances, allianceLeaderboard }),
   setYourAlliance: (yourAllianceId) => set({ yourAllianceId }),
   setUser: (user) => set({ user }),
+  setEvent: (event) => set({ event }),
   setPendingResetToken: (pendingResetToken) => set({ pendingResetToken }),
   select: (selectedColor) => set({ selectedColor }),
   setPanel: (panel) => set({ panel }),
@@ -212,6 +222,8 @@ export const useStore = create<State>((set) => ({
       // Settings are cosmetic and per-device, so localStorage is fine here.
       // The session token deliberately is not — it stays httpOnly.
       localStorage.setItem("wc_settings", JSON.stringify(settings));
+      if (patch.reduceMotion) applyMotionClass(patch.reduceMotion);
+      if (patch.darkMode !== undefined) applyThemeClass(patch.darkMode);
       return { settings };
     }),
 }));
@@ -219,8 +231,25 @@ export const useStore = create<State>((set) => ({
 function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem("wc_settings");
-    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+    const settings = raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
+    applyMotionClass(settings.reduceMotion);
+    applyThemeClass(settings.darkMode);
+    return settings;
   } catch {
+    applyMotionClass(DEFAULT_SETTINGS.reduceMotion);
+    applyThemeClass(DEFAULT_SETTINGS.darkMode);
     return DEFAULT_SETTINGS;
   }
+}
+
+/** "system" leaves both classes off, so the `prefers-reduced-motion` media
+ *  query in styles.css is the only thing deciding — see that rule for why an
+ *  explicit "on"/"off" class still wins over it either way. */
+function applyMotionClass(mode: Settings["reduceMotion"]): void {
+  document.documentElement.classList.toggle("wc-motion-reduce", mode === "on");
+  document.documentElement.classList.toggle("wc-motion-full", mode === "off");
+}
+
+function applyThemeClass(darkMode: boolean): void {
+  document.documentElement.classList.toggle("wc-dark", darkMode);
 }

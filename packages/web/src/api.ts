@@ -2,6 +2,7 @@ import type {
   AllianceDTO,
   AllianceLbRow,
   BootstrapResponse,
+  EventStateDTO,
   ExportStatusResponse,
   TimelapseResponse,
   PaintError,
@@ -18,9 +19,9 @@ async function json<T>(res: Response): Promise<T> {
 
 /**
  * Admin routes answer 404 rather than 403 when unauthorised, so an
- * unauthenticated prober learns nothing about which of them exist. That means
- * the client cannot distinguish "no such route" from "not signed in" — the
- * panel treats any failure as "signed out" and shows the login form.
+ * unauthenticated prober learns nothing about which of them exist. The panel
+ * itself never calls these unless bootstrap already reported a staff role,
+ * so a 404 here means something else went wrong, not "not signed in".
  */
 const get = <T>(path: string) =>
   fetch(path, { credentials: "same-origin" }).then(json<T>);
@@ -119,8 +120,8 @@ export const api = {
 
   signup: (body: { email: string; password: string; displayName: string }) =>
     post<{ ok: boolean; message: string }>("/api/auth/signup", body),
-  login: (email: string, password: string) =>
-    post<{ ok: boolean; user: UserDTO }>("/api/auth/login", { email, password }),
+  login: (identifier: string, password: string) =>
+    post<{ ok: boolean; user: UserDTO }>("/api/auth/login", { identifier, password }),
   logout: () => post<{ ok: boolean }>("/api/auth/logout", {}),
   resendVerification: (email: string) =>
     post<{ ok: boolean; message: string }>("/api/auth/resend-verification", { email }),
@@ -128,14 +129,6 @@ export const api = {
     post<{ ok: boolean; message: string }>("/api/auth/request-reset", { email }),
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; user: UserDTO }>("/api/auth/reset", { token, password }),
-
-  staffLogin: (username: string, password: string) =>
-    fetch("/api/staff/login", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    }).then(json<{ ok: boolean; role: "mod" | "admin"; username: string }>),
 
   admin: {
     stats: () => get<AdminStats>("/api/admin/stats"),
@@ -154,10 +147,6 @@ export const api = {
       ),
 
     staff: () => get<StaffRow[]>("/api/admin/staff"),
-    addStaff: (body: { username: string; password: string; role: "mod" | "admin" }) =>
-      post<StaffRow>("/api/admin/staff", body),
-    setStaffDisabled: (id: number, disabled: boolean) =>
-      post<{ ok: boolean }>(`/api/admin/staff/${id}/disable`, { disabled }),
 
     audit: () => get<AuditRow[]>("/api/admin/audit"),
 
@@ -181,6 +170,11 @@ export const api = {
     users: (q = "") => get<AdminUser[]>(`/api/admin/users?q=${encodeURIComponent(q)}`),
     setUserDisabled: (id: number, disabled: boolean) =>
       post<{ ok: boolean }>(`/api/admin/users/${id}/disable`, { disabled }),
+    setUserRole: (id: number, role: "mod" | "admin" | null) =>
+      post<{ ok: boolean }>(`/api/admin/users/${id}/role`, { role }),
+
+    events: () => get<{ current: EventStateDTO | null; history: EventHistoryRow[] }>("/api/admin/events"),
+    endEvent: () => post<{ ok: boolean }>("/api/admin/events/end", {}),
   },
 };
 
@@ -218,6 +212,7 @@ export interface AdminRegion {
 export interface StaffRow {
   id: number;
   username: string;
+  email: string | null;
   role: "mod" | "admin";
   disabled_at: string | null;
   created_at?: string;
@@ -276,6 +271,7 @@ export interface AdminUser {
   email_verified_at: string | null;
   disabled_at: string | null;
   created_at: string;
+  role: "mod" | "admin" | null;
   cumulative: number;
   held: number;
 }
@@ -293,6 +289,21 @@ export interface AreaReport {
   ip: string | null;
   resolved_by: string | null;
   suspects: Array<{ sessionId: number; ip: string | null; paints: number }>;
+}
+
+export interface EventHistoryRow {
+  id: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  bot_color: number;
+  started_at: string;
+  ends_at: string;
+  resolved_at: string | null;
+  result: "defended" | "corrupted" | "aborted" | null;
+  corruption_pct: number | null;
+  defenders: number;
 }
 
 export interface StampRequest {

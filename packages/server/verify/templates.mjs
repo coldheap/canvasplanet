@@ -122,10 +122,13 @@ check("the same session cannot report twice", r2.ok === true && r2.counted === f
 // ---- admin removal --------------------------------------------------------
 const PASS_ENV = process.env.VERIFY_ADMIN_PASSWORD;
 if (PASS_ENV) {
-  const login = await fetch(`${BASE}/api/staff/login`, {
+  const login = await fetch(`${BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie },
-    body: JSON.stringify({ username: process.env.VERIFY_ADMIN_USER ?? "verify", password: PASS_ENV }),
+    body: JSON.stringify({
+      identifier: process.env.VERIFY_ADMIN_EMAIL ?? "verify@example.com",
+      password: PASS_ENV,
+    }),
   });
   const staffCookie = [cookie, ...(login.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0])].join("; ");
 

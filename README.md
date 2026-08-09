@@ -20,7 +20,7 @@ pnpm db:migrate
 
 pnpm geo:fetch && pnpm geo:bake   # ~28 MB download, ~5 min bake
 pnpm seed:landmark                # the protected monument at Null Island
-pnpm staff:create -- --user you --role admin
+pnpm staff:create -- --email you@example.com --role admin
 
 pnpm dev                      # server :8080, web :5173
 ```
@@ -69,11 +69,11 @@ country attribution, and the admin tooling. Start the server first.
 | `admin.mjs` | stamp/revert/freeze/staff/audit, protected regions holding against admins, timelapse, templates |
 | `export.mjs` | a real ffmpeg run produces a playable GIF and MP4, the cache hit is free, the rate limit only bites a genuinely new encode |
 
-`admin.mjs` needs a staff account:
+`admin.mjs` needs an account with the `admin` role:
 
 ```bash
-BOOTSTRAP_ADMIN_PASSWORD=some-long-password pnpm staff:create -- --user verify --role admin
-VERIFY_ADMIN_PASSWORD=some-long-password pnpm verify
+BOOTSTRAP_ADMIN_PASSWORD=some-long-password pnpm staff:create -- --email verify@example.com --role admin
+VERIFY_ADMIN_EMAIL=verify@example.com VERIFY_ADMIN_PASSWORD=some-long-password pnpm verify
 ```
 
 Without `VERIFY_ADMIN_PASSWORD` it skips rather than fails.
@@ -101,7 +101,7 @@ k6/                load and abuse tests from the definition of done
 | `pnpm geo:fetch` | Download boundary + ASN datasets (~50 MB) |
 | `pnpm geo:bake` | Build `data/geo-index.bin` (37.7 MB, ~5 min) |
 | `pnpm seed:landmark` | Paint and protect the Null Island monument |
-| `pnpm staff:create` | Mint a `mod` or `admin` account |
+| `pnpm staff:create` | Bootstrap-only: grant `mod`/`admin` to an account by email (mints one if it doesn't exist yet) |
 | `pnpm backup` | Dump the database, prune old dumps — **run nightly from cron** |
 | `pnpm backup:restore <file>` | Restore from a dump, with a confirm prompt |
 | `pnpm alert:watch` | Poll `/api/status` and push a notification on state changes — **run continuously, as its own process** |
