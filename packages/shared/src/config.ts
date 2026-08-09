@@ -137,14 +137,14 @@ export const CF_PURGE_BATCH = 30;
 // ---------------------------------------------------------------------------
 
 /** Highest zoom the land/ocean backdrop is pre-baked to; Leaflet upscales
- *  beyond it, the same trick the pixel canvas layer uses past Z_PIXEL. Two
- *  flat colours don't need pixel-canvas resolution to read correctly, and
- *  each zoom level is 4x the previous one's tile count with a much higher
- *  share of them coastal (hence slow to bake against full-detail water
- *  polygons) — z7 alone measured far slower than z0-z6 combined on the dev
- *  box. z6 is already ~10km/pixel of coastline resolution, plenty for a
- *  backdrop the actual painted pixels sit on top of. */
-export const BASEMAP_MAX_ZOOM = 6;
+ *  beyond it, the same trick the pixel canvas layer uses past Z_PIXEL — the
+ *  overzoom factor (and visible blockiness) at the paint-eligible zoom
+ *  (Z_PIXEL) is 2^(Z_PIXEL - BASEMAP_MAX_ZOOM), so this is worth raising as
+ *  far as the bake can afford. Only this deepest level is rasterised the
+ *  expensive way (see scripts/bake-basemap.ts); every shallower level is
+ *  derived from it by a cheap box-filter downsample, so raising this only
+ *  costs roughly 4x the previous value's bake time, not the whole pyramid's. */
+export const BASEMAP_MAX_ZOOM = 8;
 
 // ---------------------------------------------------------------------------
 // Status history (the public status page's uptime record)
