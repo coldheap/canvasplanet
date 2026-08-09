@@ -207,7 +207,7 @@ export const INTERNATIONAL_WATERS_ID = 0;
 export const INTERNATIONAL_WATERS = {
   id: INTERNATIONAL_WATERS_ID,
   iso_a2: "XX",
-  name: "International Waters",
+  name: "The Ocean",
   flag: "🌊",
 } as const;
 
