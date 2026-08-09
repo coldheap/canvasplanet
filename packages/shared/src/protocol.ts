@@ -131,6 +131,28 @@ export interface SEvent {
   event: EventStateDTO | null;
 }
 
+/** A public global-chat message. Deleted content never leaves the server;
+ * moderators can inspect the retained original through the admin API. */
+export interface ChatMessageDTO {
+  id: number;
+  userId: number;
+  displayName: string;
+  avatarRevision: string | null;
+  body: string | null;
+  createdAt: string;
+  deleted: boolean;
+}
+
+export interface SChatMessage {
+  t: "chat";
+  message: ChatMessageDTO;
+}
+
+export interface SChatUpdate {
+  t: "chat_update";
+  message: ChatMessageDTO;
+}
+
 export type ServerMessage =
   | SPixels
   | SLeaderboard
@@ -141,6 +163,8 @@ export type ServerMessage =
   | SFreeze
   | SRegion
   | SEvent
+  | SChatMessage
+  | SChatUpdate
   | SPong;
 
 // ---------------------------------------------------------------------------

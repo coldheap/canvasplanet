@@ -31,6 +31,8 @@ interface Conn {
    * leaderboard and pulse are public data regardless of who is watching.
    */
   sessionId: number | null;
+  /** Embeds receive canvas broadcasts but never the app's chat stream. */
+  receivesChat: boolean;
   tiles: Set<string>;
   /** Set when backpressure forced us to drop frames; the client is told to
    *  refetch its tiles rather than being left with a hole in the canvas. */
@@ -77,8 +79,8 @@ class Hub {
     if (this.lbTimer) clearInterval(this.lbTimer);
   }
 
-  add(socket: WebSocket, sessionId: number | null): Conn {
-    const conn: Conn = { socket, sessionId, tiles: new Set(), degraded: false };
+  add(socket: WebSocket, sessionId: number | null, receivesChat = true): Conn {
+    const conn: Conn = { socket, sessionId, receivesChat, tiles: new Set(), degraded: false };
     this.conns.add(conn);
     if (sessionId !== null) {
       let set = this.bySession.get(sessionId);
@@ -147,6 +149,15 @@ class Hub {
   broadcast(msg: ServerMessage): void {
     const frame = JSON.stringify(msg);
     for (const conn of this.conns) this.sendRaw(conn, frame, false);
+  }
+
+  /** Global chat reaches the full app, including logged-out viewers, but not
+   * read-only embed sockets that have no chat UI. */
+  broadcastChat(msg: Extract<ServerMessage, { t: "chat" | "chat_update" }>): void {
+    const frame = JSON.stringify(msg);
+    for (const conn of this.conns) {
+      if (conn.receivesChat) this.sendRaw(conn, frame, false);
+    }
   }
 
   /** Charge updates go to every tab of one session, and nowhere else. */

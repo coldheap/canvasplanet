@@ -11,6 +11,7 @@ import {
   type AllianceDTO,
   type AllianceLbRow,
   type BootstrapResponse,
+  type ChatMessageDTO,
   type CountryDTO,
   type EventStateDTO,
   type LbRow,
@@ -72,6 +73,10 @@ interface State {
   /** ROADMAP.md §5.2 — "your" row comes from `user`, not a separate id: a
    *  logged-out viewer has no row to pin in the first place. */
   playerLeaderboard: UserLbRow[];
+
+  /** Oldest to newest. History pages and live WebSocket frames merge here so
+   * neither path can duplicate or overwrite the other. */
+  chatMessages: ChatMessageDTO[];
 
   frozen: boolean;
   /** Live corruption event (ROADMAP.md Phase 7), or null when none is
@@ -141,6 +146,7 @@ interface State {
   setUser: (user: UserDTO | null) => void;
   setEvent: (event: EventStateDTO | null) => void;
   setPendingResetToken: (token: string | null) => void;
+  mergeChatMessages: (messages: ChatMessageDTO[]) => void;
   select: (color: number) => void;
   setHistoryAt: (at: number | null) => void;
   setPanel: (panel: State["panel"]) => void;
@@ -169,6 +175,7 @@ export const useStore = create<State>((set) => ({
   yourAllianceId: null,
 
   playerLeaderboard: [],
+  chatMessages: [],
 
   frozen: false,
   event: null,
@@ -221,6 +228,16 @@ export const useStore = create<State>((set) => ({
   setUser: (user) => set({ user }),
   setEvent: (event) => set({ event }),
   setPendingResetToken: (pendingResetToken) => set({ pendingResetToken }),
+  mergeChatMessages: (messages) =>
+    set((state) => {
+      const byId = new Map(state.chatMessages.map((message) => [message.id, message]));
+      for (const message of messages) byId.set(message.id, message);
+      // A tab left open in a very active room must not grow forever. The DB
+      // keeps the full moderation history; the compact on-screen window only
+      // needs a generous recent tail.
+      const sorted = [...byId.values()].sort((a, b) => a.id - b.id);
+      return { chatMessages: sorted.length > 500 ? sorted.slice(-500) : sorted };
+    }),
   select: (selectedColor) => set({ selectedColor }),
   setHistoryAt: (historyAt) => set({ historyAt }),
   setPanel: (panel) => set({ panel }),

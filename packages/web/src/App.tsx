@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle } from "lucide-react";
+import { Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle } from "lucide-react";
 import {
   Z_PIXEL,
   WORLD_SIZE,
@@ -29,6 +29,7 @@ import { CountryPage } from "./components/CountryPage.js";
 import { StatusPanel } from "./components/StatusPanel.js";
 import { TimelapsePanel } from "./components/TimelapsePanel.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
+import { ChatPanel } from "./components/ChatPanel.js";
 
 export function App() {
   const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event } =
@@ -41,6 +42,12 @@ export function App() {
   }, []);
   const [hoverInfo, setHoverInfo] = useState<PixelInfo | null>(null);
   const [pinnedInfo, setPinnedInfo] = useState<PixelInfo | null>(null);
+  // Chat begins open on desktop and closed on compact/mobile layouts. This is
+  // session UI state: pressing X closes it until the user opens it again.
+  const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 641px)").matches);
+  const [chatUnread, setChatUnread] = useState(0);
+  const chatOpenRef = useRef(chatOpen);
+  useEffect(() => { chatOpenRef.current = chatOpen; }, [chatOpen]);
 
   const ws = useRef<WsClient | null>(null);
   const handle = useRef<MapHandle | null>(null);
@@ -99,6 +106,11 @@ export function App() {
         onUserLeaderboard: (rows) => useStore.setState({ playerLeaderboard: rows }),
         onFreeze: (on) => useStore.setState({ frozen: on }),
         onEvent: (event) => useStore.setState({ event }),
+        onChatMessage: (message) => {
+          useStore.getState().mergeChatMessages([message]);
+          if (!chatOpenRef.current) setChatUnread((count) => Math.min(99, count + 1));
+        },
+        onChatUpdate: (message) => useStore.getState().mergeChatMessages([message]),
         onPixels: (pixels) => {
           handle.current?.overlay.add(pixels);
           // Keep the template's notion of the canvas current from the same
@@ -328,6 +340,23 @@ export function App() {
         </button>
         <button
           className="wc-rail-btn"
+          aria-pressed={chatOpen}
+          aria-label={chatUnread > 0 ? `Global chat, ${chatUnread} unread` : "Global chat"}
+          title="Global chat"
+          onClick={() => {
+            setChatOpen((open) => {
+              const next = !open;
+              chatOpenRef.current = next;
+              if (next) setChatUnread(0);
+              return next;
+            });
+          }}
+        >
+          <MessageCircle size={19} />
+          {chatUnread > 0 && <span className="wc-chat-badge">{chatUnread}</span>}
+        </button>
+        <button
+          className="wc-rail-btn"
           aria-pressed={panel === "overlay"}
           aria-label="Template overlay"
           title="Template overlay"
@@ -388,6 +417,15 @@ export function App() {
       {panel === "timelapse" && <TimelapsePanel handle={handle.current} />}
       {panel === "report" && <ReportTool handle={handle.current} />}
       {panel === "embed" && <EmbedTool handle={handle.current} />}
+      {chatOpen && (
+        <ChatPanel
+          onClose={() => {
+            chatOpenRef.current = false;
+            setChatOpen(false);
+          }}
+          onLogin={() => setPanel("account")}
+        />
+      )}
 
       <SharedTemplateBar handle={handle.current} />
 

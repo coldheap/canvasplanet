@@ -32,6 +32,7 @@ import { registerAllianceRoutes } from "./routes/alliances.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBasemapRoutes } from "./routes/basemap.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
+import { registerChatRoutes } from "./routes/chat.js";
 import { registerExploreRoutes } from "./routes/explore.js";
 import { registerExportRoutes } from "./routes/export.js";
 import { registerPaintRoutes } from "./routes/paint.js";
@@ -92,6 +93,7 @@ async function main(): Promise<void> {
   await loadAsnDatabase().catch((err) => app.log.warn({ err }, "[asn] load failed"));
 
   registerBootstrapRoutes(app);
+  registerChatRoutes(app);
   registerPaintRoutes(app);
   registerTileRoutes(app);
   registerBasemapRoutes(app);
@@ -171,7 +173,7 @@ async function main(): Promise<void> {
       }
       if (closed) return; // client gave up during the lookup
 
-      conn = hub.add(socket, session?.id ?? null);
+      conn = hub.add(socket, session?.id ?? null, !readOnly);
 
       if (session) {
         // Send the current bank immediately so a reconnecting tab is

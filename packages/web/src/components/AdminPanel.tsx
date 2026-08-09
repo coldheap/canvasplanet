@@ -20,6 +20,7 @@ import {
   Handshake,
   LogOut,
   MapPinned,
+  MessageCircleWarning,
   RotateCcw,
   ScrollText,
   ShieldCheck,
@@ -41,10 +42,12 @@ import { AuditTab } from "./admin/AuditTab.js";
 import { AlliancesTab } from "./admin/AlliancesTab.js";
 import { UsersTab } from "./admin/UsersTab.js";
 import { EventsTab } from "./admin/EventsTab.js";
+import { ChatTab } from "./admin/ChatTab.js";
 
 type Tab =
   | "control"
   | "reports"
+  | "chat"
   | "revert"
   | "regions"
   | "stamp"
@@ -57,6 +60,7 @@ type Tab =
 const TAB_ICON: Record<Tab, LucideIcon> = {
   control: Sliders,
   reports: Flag,
+  chat: MessageCircleWarning,
   revert: RotateCcw,
   regions: MapPinned,
   stamp: Stamp,
@@ -80,6 +84,7 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
   const tabs: Array<[Tab, string, boolean]> = [
     ["control", "Control", true],
     ["reports", "Reports", true],
+    ["chat", "Chat", true],
     ["revert", "Revert", true],
     ["regions", "Regions", isAdmin],
     ["stamp", "Stamp", isAdmin],
@@ -126,6 +131,7 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
 
       {tab === "control" && <ControlTab isAdmin={isAdmin} />}
       {tab === "reports" && <ReportsTab handle={handle} />}
+      {tab === "chat" && <ChatTab />}
       {tab === "revert" && <RevertTab handle={handle} isAdmin={isAdmin} />}
       {tab === "regions" && isAdmin && <RegionsTab handle={handle} />}
       {tab === "stamp" && isAdmin && <StampTab handle={handle} />}

@@ -13,6 +13,7 @@
 import {
   SUB_ZOOM,
   type AllianceLbRow,
+  type ChatMessageDTO,
   type EventStateDTO,
   type LbRow,
   type PixelTuple,
@@ -30,6 +31,8 @@ type Handlers = {
   onPulse: (pps: number, recent: number[]) => void;
   onFreeze: (on: boolean) => void;
   onEvent: (event: EventStateDTO | null) => void;
+  onChatMessage: (message: ChatMessageDTO) => void;
+  onChatUpdate: (message: ChatMessageDTO) => void;
   onReconnect: () => void;
 };
 
@@ -99,6 +102,12 @@ export class WsClient {
           break;
         case "event":
           this.handlers.onEvent?.(msg.event);
+          break;
+        case "chat":
+          this.handlers.onChatMessage?.(msg.message);
+          break;
+        case "chat_update":
+          this.handlers.onChatUpdate?.(msg.message);
           break;
       }
     };

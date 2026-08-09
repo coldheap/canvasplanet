@@ -2,6 +2,7 @@ import type {
   AllianceDTO,
   AllianceLbRow,
   BootstrapResponse,
+  ChatMessageDTO,
   EventStateDTO,
   ExportStatusResponse,
   TimelapseResponse,
@@ -59,6 +60,15 @@ export const api = {
   },
 
   pixel: (x: number, y: number) => fetch(`/api/pixel/${x}/${y}`).then(json<PixelInfo>),
+  chatMessages: (before?: number) =>
+    get<{ messages: ChatMessageDTO[]; hasMore: boolean }>(
+      `/api/chat/messages${before === undefined ? "" : `?before=${before}`}`,
+    ),
+  sendChatMessage: (body: string) =>
+    post<{ message: ChatMessageDTO }>("/api/chat/messages", { body }),
+  reportChatMessage: (id: number, reason?: string) =>
+    post<{ ok: boolean; counted: boolean }>(`/api/chat/messages/${id}/report`, { reason }),
+
 
   country: (iso: string) => fetch(`/api/country/${iso}`).then(json<Record<string, unknown>>),
 
@@ -172,6 +182,18 @@ export const api = {
       post<{ ok: boolean }>(`/api/admin/users/${id}/disable`, { disabled }),
     setUserRole: (id: number, role: "mod" | "admin" | null) =>
       post<{ ok: boolean }>(`/api/admin/users/${id}/role`, { role }),
+    chatReports: (status: "open" | "all" = "open") =>
+      get<AdminChatReport[]>(`/api/admin/chat/reports?status=${status}`),
+    deleteChatMessage: (id: number, reason?: string) =>
+      post<{ ok: boolean; message: ChatMessageDTO }>(`/api/admin/chat/messages/${id}/delete`, { reason }),
+    resolveChatReport: (id: number, resolution: "dismissed" | "reviewed" = "dismissed") =>
+      post<{ ok: boolean }>(`/api/admin/chat/reports/${id}/resolve`, { resolution }),
+    chatMutes: () => get<AdminChatMute[]>("/api/admin/chat/mutes"),
+    muteChatUser: (id: number, hours: number | null, reason?: string) =>
+      post<{ ok: boolean; until: string | null }>(`/api/admin/chat/users/${id}/mute`, { hours, reason }),
+    unmuteChatUser: (id: number) =>
+      post<{ ok: boolean }>(`/api/admin/chat/users/${id}/unmute`, {}),
+
 
     events: () => get<{ current: EventStateDTO | null; history: EventHistoryRow[] }>("/api/admin/events"),
     endEvent: () => post<{ ok: boolean }>("/api/admin/events/end", {}),
@@ -290,6 +312,33 @@ export interface AreaReport {
   resolved_by: string | null;
   suspects: Array<{ sessionId: number; ip: string | null; paints: number }>;
 }
+export interface AdminChatReport {
+  id: number;
+  reason: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  resolution: string | null;
+  reporter_name: string;
+  message_id: number;
+  user_id: number;
+  display_name: string;
+  avatar_revision: string | null;
+  original_body: string;
+  display_body: string;
+  message_created_at: string;
+  deleted_at: string | null;
+}
+
+export interface AdminChatMute {
+  id: number;
+  user_id: number;
+  display_name: string;
+  until_at: string | null;
+  reason: string | null;
+  created_at: string;
+  created_by_name: string;
+}
+
 
 export interface EventHistoryRow {
   id: number;
