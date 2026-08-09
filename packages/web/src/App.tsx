@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle } from "lucide-react";
 import {
+  ERASED,
   Z_PIXEL,
   WORLD_SIZE,
   type PaintError,
@@ -12,6 +13,7 @@ import { api } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
 import { useStore } from "./store.js";
+import { PaintColorTracker } from "./canvas/paintColorTracker.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
 import { PalettePanel } from "./components/Palette.js";
 import { ChargeBar } from "./components/ChargeBar.js";
@@ -52,6 +54,8 @@ export function App() {
   const handle = useRef<MapHandle | null>(null);
   /** Pixel info cache, so hovering back over a pixel costs nothing. */
   const pixelCache = useRef(new Map<number, PixelInfo>());
+  /** Colours learned from pixel info, live frames, and optimistic paints. */
+  const paintColors = useRef(new PaintColorTracker());
   const hoverTimer = useRef<number | null>(null);
 
   // ---- boot ---------------------------------------------------------------
@@ -117,6 +121,11 @@ export function App() {
           // well as your own without re-reading the region.
           let touched = false;
           for (const [x, y, c] of pixels) {
+            const color = c === ERASED ? null : c;
+            paintColors.current.observe(x, y, color);
+            const k = x * WORLD_SIZE + y;
+            const known = pixelCache.current.get(k);
+            if (known) pixelCache.current.set(k, { ...known, color });
             if (handle.current?.template.applyPaint(x, y, c)) touched = true;
           }
           if (touched) useStore.setState((s) => ({ templateTick: s.templateTick + 1 }));
@@ -180,9 +189,12 @@ export function App() {
     }
 
     hoverTimer.current = window.setTimeout(() => {
+      const revision = paintColors.current.revision(pixel.x, pixel.y);
       void api.pixel(pixel.x, pixel.y).then((info) => {
         if (pixelCache.current.size > 2000) pixelCache.current.clear();
-        pixelCache.current.set(k, info);
+        if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
+          pixelCache.current.set(k, info);
+        }
         // Ignore a response for a pixel the cursor has already left.
         const now = useStore.getState().hoverPixel;
         if (now && now.x === pixel.x && now.y === pixel.y) setHoverInfo(info);
@@ -195,8 +207,11 @@ export function App() {
     // Always refetch rather than trusting the hover cache: a pin is a
     // deliberate "tell me about this one", and the cached copy may predate
     // someone else painting over it.
+    const revision = paintColors.current.revision(pixel.x, pixel.y);
     void api.pixel(pixel.x, pixel.y).then((info) => {
-      pixelCache.current.set(pixel.x * WORLD_SIZE + pixel.y, info);
+      if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
+        pixelCache.current.set(pixel.x * WORLD_SIZE + pixel.y, info);
+      }
       setPinnedInfo(info);
     });
   }, []);
@@ -211,12 +226,19 @@ export function App() {
     const { selectedColor, bank } = useStore.getState();
     const k = x * WORLD_SIZE + y;
 
+    // Shift strokes can revisit a coordinate many times before the first
+    // response arrives. Remember the optimistic colour so those revisits do
+    // not enqueue zero-cost server no-ops or fake-spend charges in the UI.
+    const colorAttempt = paintColors.current.begin(x, y, selectedColor);
+    if (!colorAttempt) return;
+
     // Best guess at the cost so the bank does not visibly jump when the
     // response lands. Falls back to 1 for a pixel we have not inspected.
     const known = pixelCache.current.get(k);
     const guess = known ? costOf(known).cost : 1;
 
     if (bank < guess) {
+      paintColors.current.rollback(colorAttempt);
       showToast("Not enough charges yet.");
       return;
     }
@@ -236,7 +258,7 @@ export function App() {
           const token = await solveTurnstile(err.turnstileSitekey);
           res = await api.paint(x, y, selectedColor, token);
         } catch (e) {
-          handle.current?.overlay.remove(x, y);
+          if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
           showToast(e instanceof Error ? e.message : "Verification failed.");
           void api.bootstrap().then(hydrate);
           return;
@@ -246,7 +268,7 @@ export function App() {
 
     if (!("ok" in res) || res.ok !== true) {
       const err = res as PaintError;
-      handle.current?.overlay.remove(x, y);
+      if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
       showToast(err.message ?? "Could not paint that pixel.");
       // Resync rather than guess at how far the optimistic bank drifted.
       void api.bootstrap().then(hydrate);
