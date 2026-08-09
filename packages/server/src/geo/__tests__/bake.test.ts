@@ -8,6 +8,7 @@ import {
   TerrainBits,
   bake,
   pack2Bit,
+  rasterizeTile,
   serialise,
   tileRect,
   unpack2Bit,
@@ -129,6 +130,51 @@ describe("bake — full pipeline on synthetic geometry", () => {
     );
     // ~38 MB is the budget stated in the plan.
     expect(buf.byteLength / 1e6).toBeLessThan(45);
+  });
+});
+
+describe("rasterizeTile — the static land/ocean basemap (routes/basemap.ts)", () => {
+  // Same "sea near (120,0), everything else land" world as the bake suite
+  // above, but exercised through the tile-scoped raster instead of the
+  // whole-world quadtree.
+  const waterIdx = new PolygonIndex();
+  waterIdx.add(1, [box(100, -10, 140, 10)]);
+
+  // At z6 each tile spans 5.625° of longitude and (near the equator) about
+  // 5.6° of latitude — tx=52 (lon 112.5-118.1) sits fully inside the sea box,
+  // tx=0 (lon -180..-174.4) is nowhere near it, and tx=49 (lon 95.6-101.25)
+  // straddles the sea's western edge at lon=100. ty=32 (lat 0..-5.6) is
+  // inside the box's -10..10 latitude range throughout.
+
+  it("fills a tile wholly inside the sea with water everywhere", () => {
+    const mask = rasterizeTile(waterIdx, 6, 52, 32, 16);
+    expect(mask.every((v) => v === TerrainBits.Water)).toBe(true);
+  });
+
+  it("fills a tile far from the sea box with land everywhere", () => {
+    const mask = rasterizeTile(waterIdx, 6, 0, 32, 16);
+    expect(mask.every((v) => v === TerrainBits.Land)).toBe(true);
+  });
+
+  it("resolves a coastal tile to a mix of both, not a single flat colour", () => {
+    // The sea's western edge (lon=100) crosses this tile.
+    const mask = rasterizeTile(waterIdx, 6, 49, 32, 16);
+    const hasWater = mask.some((v) => v === TerrainBits.Water);
+    const hasLand = mask.some((v) => v === TerrainBits.Land);
+    expect(hasWater).toBe(true);
+    expect(hasLand).toBe(true);
+  });
+
+  it("output is always Water or Land, never the Mixed sentinel", () => {
+    const mask = rasterizeTile(waterIdx, 6, 49, 32, 16);
+    expect(mask.every((v) => v === TerrainBits.Water || v === TerrainBits.Land)).toBe(true);
+  });
+
+  it("scales to any outSize without changing the answer for a uniform tile", () => {
+    const small = rasterizeTile(waterIdx, 6, 0, 32, 4);
+    const big = rasterizeTile(waterIdx, 6, 0, 32, 64);
+    expect(small.every((v) => v === TerrainBits.Land)).toBe(true);
+    expect(big.every((v) => v === TerrainBits.Land)).toBe(true);
   });
 });
 

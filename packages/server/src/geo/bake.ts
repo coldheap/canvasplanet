@@ -51,6 +51,77 @@ export function tileRect(z: number, tx: number, ty: number): Rect {
   };
 }
 
+/**
+ * A flat land/water raster for one basemap tile (see routes/basemap.ts) —
+ * the pre-baked backdrop that renders under the pixel canvas when the OSM
+ * layer is off, so unpainted ocean/land reads as ocean/land instead of the
+ * transparent-by-design pixel tiles (see tiles/renderer.ts) showing raw page
+ * background. `z`/`tx`/`ty` address the SAME grid as the pixel canvas — this
+ * just stops descending at `outSize` cells per tile instead of at Z_PIXEL,
+ * so the same quadtree trick stays cheap at any zoom: `outSize` (256, one
+ * output pixel per leaf) never changes, so the recursion depth is a constant
+ * 8 levels regardless of z, and still resolves in O(1) wherever no coastline
+ * runs through the tile.
+ */
+export function rasterizeTile(waterIdx: PolygonIndex, z: number, tx: number, ty: number, outSize = 256): Uint8Array {
+  const scale = 2 ** (Z_PIXEL - z) * 256; // world-pixel extent of this tile, same formula as tileRect()
+  const leaf = scale / outSize; // world pixels per output cell
+  const x0 = tx * scale;
+  const y0 = ty * scale;
+  const mask = new Uint8Array(outSize * outSize);
+  descendRaster(waterIdx, x0, y0, scale, leaf, x0, y0, outSize, mask);
+  return mask;
+}
+
+function descendRaster(
+  waterIdx: PolygonIndex,
+  x0: number,
+  y0: number,
+  size: number,
+  leaf: number,
+  originX: number,
+  originY: number,
+  outSize: number,
+  mask: Uint8Array,
+): void {
+  if (size > leaf) {
+    const verdict = waterIdx.classify(pixelRect(x0, y0, size));
+    if ("uniform" in verdict) {
+      fillBlock(mask, outSize, (x0 - originX) / leaf, (y0 - originY) / leaf, size / leaf, verdict.uniform !== null ? TerrainBits.Water : TerrainBits.Land);
+      return;
+    }
+    const half = size / 2;
+    descendRaster(waterIdx, x0, y0, half, leaf, originX, originY, outSize, mask);
+    descendRaster(waterIdx, x0 + half, y0, half, leaf, originX, originY, outSize, mask);
+    descendRaster(waterIdx, x0, y0 + half, half, leaf, originX, originY, outSize, mask);
+    descendRaster(waterIdx, x0 + half, y0 + half, half, leaf, originX, originY, outSize, mask);
+    return;
+  }
+  // A leaf cell too small to keep subdividing profitably: one representative
+  // point test (its centre) decides the whole cell, same trade-off the
+  // pixel-level MIXED-tile fallback makes in geo/index.ts's terrainFromMask.
+  const isWater = waterIdx.lookup(xToLng(x0 + leaf / 2), yToLat(y0 + leaf / 2)) !== null;
+  const lx = (x0 - originX) / leaf;
+  const ly = (y0 - originY) / leaf;
+  mask[ly * outSize + lx] = isWater ? TerrainBits.Water : TerrainBits.Land;
+}
+
+function pixelRect(x0: number, y0: number, size: number): Rect {
+  return {
+    minX: xToLng(x0),
+    maxX: xToLng(x0 + size),
+    maxY: yToLat(y0),
+    minY: yToLat(y0 + size),
+  };
+}
+
+function fillBlock(mask: Uint8Array, outSize: number, lx: number, ly: number, size: number, value: number): void {
+  for (let y = ly; y < ly + size; y++) {
+    const row = y * outSize;
+    mask.fill(value, row + lx, row + lx + size);
+  }
+}
+
 /** Every z12 tile id under a node at (z, tx, ty). */
 function fillSubtree(z: number, tx: number, ty: number, write: (tileId: number) => void): void {
   const span = 2 ** (Z_PIXEL - z); // z12 tiles per edge

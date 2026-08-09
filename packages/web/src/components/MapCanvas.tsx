@@ -2,21 +2,28 @@
  * The map, the canvas, and the click-to-paint interaction.
  *
  * Stacked layers, bottom to top:
- *   1. OSM raster basemap — off by default (Settings → Canvas → Street map
- *      overlay). The default view is the pixels themselves, unobscured.
- *   2. /tiles TileLayer — the authoritative canvas, up to ~2s stale
- *   3. the live-delta overlay canvas (see canvas/liveOverlay.ts)
- *   4. the grid + cursor highlight
+ *   1. The static land/ocean backdrop (see geo/bake.ts's rasterizeTile,
+ *      routes/basemap.ts) — always on. Two flat colours, no roads or
+ *      labels, just enough so unpainted ocean/land reads correctly instead
+ *      of the (deliberately transparent, see tiles/renderer.ts) pixel
+ *      canvas showing raw page background.
+ *   2. OSM raster basemap (roads, labels, place names) — off by default
+ *      (Settings → Canvas → Street map overlay), for anyone who wants that
+ *      context back.
+ *   3. /tiles TileLayer — the authoritative canvas, up to ~2s stale
+ *   4. the live-delta overlay canvas (see canvas/liveOverlay.ts)
+ *   5. the grid + cursor highlight
  *
- * Layer 3 is what makes paint feel instant despite the debounced tile
- * worker. Layer 2 and layer 3 hand off to each other on `tileload`. Layer 1
- * and layer 2 both carry an explicit zIndex so toggling the basemap on/off
- * can never flip it on top of the pixel canvas.
+ * Layer 4 is what makes paint feel instant despite the debounced tile
+ * worker. Layer 3 and layer 4 hand off to each other on `tileload`. Layers
+ * 1-3 each carry an explicit zIndex so toggling the OSM overlay on/off can
+ * never flip it on top of the pixel canvas or under the land/ocean backdrop.
  */
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import {
+  BASEMAP_MAX_ZOOM,
   EVENT_WIN_THRESHOLD,
   GRID_ZOOM,
   MAX_MAP_ZOOM,
@@ -92,6 +99,14 @@ export function MapCanvas({
       boxZoom: false,
     });
     mapRef.current = map;
+
+    // Always on — see the file doc comment's layer 1. zIndex 0 pins it
+    // under both the OSM overlay and the pixel canvas.
+    L.tileLayer("/basemap/{z}/{x}/{y}.png", {
+      maxNativeZoom: BASEMAP_MAX_ZOOM,
+      maxZoom: MAX_MAP_ZOOM,
+      zIndex: 0,
+    }).addTo(map);
 
     // Not added to the map here — toggled on by applyOsm() below, off by
     // default. zIndex pins it under the canvas regardless of add/remove order.

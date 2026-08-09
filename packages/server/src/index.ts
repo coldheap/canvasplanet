@@ -31,6 +31,7 @@ import { players } from "./players/store.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAllianceRoutes } from "./routes/alliances.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerBasemapRoutes } from "./routes/basemap.js";
 import { registerBootstrapRoutes } from "./routes/bootstrap.js";
 import { registerExploreRoutes } from "./routes/explore.js";
 import { registerExportRoutes } from "./routes/export.js";
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
   registerBootstrapRoutes(app);
   registerPaintRoutes(app);
   registerTileRoutes(app);
+  registerBasemapRoutes(app);
   registerExploreRoutes(app);
   registerExportRoutes(app);
   registerReportRoutes(app);

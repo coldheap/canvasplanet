@@ -9,6 +9,7 @@ tilecache/
 pgdata/
 .pgdev/
 data/geo-index.bin
+data/basemap-tiles/
 exports/
 
 # database dumps — never commit; see scripts/backup.sh

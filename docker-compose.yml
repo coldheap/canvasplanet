@@ -47,6 +47,7 @@ services:
       TURNSTILE_SECRET: ${TURNSTILE_SECRET}
       TILE_CACHE_DIR: /var/tilecache
       GEO_INDEX_PATH: /var/data/geo-index.bin
+      BASEMAP_DIR: /var/data/basemap-tiles
       EXPORT_OUTPUT_DIR: /var/exports
     volumes:
       - ./tilecache:/var/tilecache

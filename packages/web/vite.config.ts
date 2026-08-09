@@ -41,6 +41,7 @@ export default defineConfig({
     proxy: {
       "/api": { target: "http://localhost:8080", changeOrigin: true, configure: surviveApiRestarts },
       "/tiles": { target: "http://localhost:8080", changeOrigin: true, configure: surviveApiRestarts },
+      "/basemap": { target: "http://localhost:8080", changeOrigin: true, configure: surviveApiRestarts },
       "/ws": { target: "ws://localhost:8080", ws: true, configure: surviveApiRestarts },
     },
   },

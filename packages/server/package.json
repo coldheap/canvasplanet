@@ -14,6 +14,7 @@
     "db:partitions": "tsx scripts/ensure-partitions.ts",
     "geo:fetch": "tsx scripts/fetch-geodata.ts",
     "geo:bake": "tsx scripts/bake-geo.ts",
+    "geo:bake-basemap": "tsx scripts/bake-basemap.ts",
     "seed:landmark": "tsx scripts/seed-landmark.ts",
     "staff:create": "tsx scripts/create-staff.ts",
     "alert:watch": "tsx scripts/alert-watch.ts",

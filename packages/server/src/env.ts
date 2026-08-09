@@ -53,6 +53,10 @@ export const env = {
 
   tileCacheDir: repoPath(process.env.TILE_CACHE_DIR ?? "./tilecache"),
   geoIndexPath: repoPath(process.env.GEO_INDEX_PATH ?? "./data/geo-index.bin"),
+  /** Pre-baked, never written to at runtime — see `pnpm geo:bake-basemap`
+   *  and routes/basemap.ts. A missing tile there 404s; it never renders
+   *  on demand, unlike the pixel canvas's tilecache. */
+  basemapDir: repoPath(process.env.BASEMAP_DIR ?? "./data/basemap-tiles"),
   exportOutputDir: repoPath(process.env.EXPORT_OUTPUT_DIR ?? "./exports"),
   exportExpiryHours: Number(process.env.EXPORT_EXPIRY_HOURS ?? EXPORT_EXPIRY_HOURS),
   tileWorkerIntervalMs: Number(

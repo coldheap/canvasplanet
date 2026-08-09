@@ -21,6 +21,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import {
+  BASEMAP_MAX_ZOOM,
   DEFAULT_VIEW,
   MAX_MAP_ZOOM,
   MIN_MAP_ZOOM,
@@ -86,6 +87,14 @@ export function EmbedApp() {
         [se.lat, se.lng],
       ] as never, { padding: [16, 16] });
     }
+
+    // Always on, same land/ocean backdrop as the main app — see
+    // MapCanvas.tsx's layer-stack doc comment.
+    L.tileLayer("/basemap/{z}/{x}/{y}.png", {
+      maxNativeZoom: BASEMAP_MAX_ZOOM,
+      maxZoom: MAX_MAP_ZOOM,
+      zIndex: 0,
+    }).addTo(map);
 
     if (showOsm) {
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {

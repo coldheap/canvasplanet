@@ -11,6 +11,14 @@
 		reverse_proxy app:8080
 	}
 
+	# ---- static land/ocean backdrop ------------------------------------
+	# Pre-baked (`pnpm geo:bake-basemap`), never invalidated by the tile
+	# worker the way /tiles/* is — a long edge TTL is always safe here.
+	handle /basemap/* {
+		header Cache-Control "public, max-age=86400, s-maxage=604800"
+		reverse_proxy app:8080
+	}
+
 	# ---- websocket ----------------------------------------------------
 	handle /ws {
 		reverse_proxy app:8080
