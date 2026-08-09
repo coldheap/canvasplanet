@@ -153,7 +153,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
   }
 
   return (
-    <aside className="wc-chat wc-chat-compact wc-card" aria-label="World chat">
+    <aside id="world-chat-panel" className="wc-chat wc-chat-compact wc-card" aria-label="World chat">
       <header className="wc-chat-head">
         <strong>World chat</strong>
         <button className="wc-chat-close" aria-label="Close chat" title="Close chat" onClick={onClose}>

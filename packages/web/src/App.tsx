@@ -339,23 +339,6 @@ export function App() {
         </button>
         <button
           className="wc-rail-btn"
-          aria-pressed={chatOpen}
-          aria-label={chatUnread > 0 ? `World chat, ${chatUnread} unread` : "World chat"}
-          title="World chat"
-          onClick={() => {
-            setChatOpen((open) => {
-              const next = !open;
-              chatOpenRef.current = next;
-              if (next) setChatUnread(0);
-              return next;
-            });
-          }}
-        >
-          <MessageCircle size={19} />
-          {chatUnread > 0 && <span className="wc-chat-badge">{chatUnread}</span>}
-        </button>
-        <button
-          className="wc-rail-btn"
           aria-pressed={panel === "overlay"}
           aria-label="Template overlay"
           title="Template overlay"
@@ -425,6 +408,24 @@ export function App() {
           onLogin={() => setPanel("account")}
         />
       )}
+      <button
+        className="wc-chat-toggle wc-card"
+        aria-controls="world-chat-panel"
+        aria-expanded={chatOpen}
+        aria-label={chatUnread > 0 ? `World chat, ${chatUnread} unread` : chatOpen ? "Close world chat" : "Open world chat"}
+        title={chatOpen ? "Close world chat" : "Open world chat"}
+        onClick={() => {
+          setChatOpen((open) => {
+            const next = !open;
+            chatOpenRef.current = next;
+            if (next) setChatUnread(0);
+            return next;
+          });
+        }}
+      >
+        {chatOpen ? <X size={20} /> : <MessageCircle size={20} />}
+        {chatUnread > 0 && <span className="wc-chat-badge">{chatUnread}</span>}
+      </button>
 
       <SharedTemplateBar handle={handle.current} />
 
