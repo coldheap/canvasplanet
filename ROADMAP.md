@@ -10,9 +10,13 @@ hardware load run, not more code). Phase 3 is fully closed: the reporting
 queue (§3.1), backups with a proven restore (§3.2), and the status page plus
 alerting (§3.3) are all done. Phase 4 is fully closed too — the embeddable
 widget (§4.2), alliances (§4.1) and timelapse export (§4.3) are all built.
-**Phase 5: §5.1 (accounts + login) and §5.2 (leaderboard reorder) are both
-done.** Next up: §5.3 (creator tools / social — still just directions, not
-scoped) or §2.5's real-hardware load run — ask before assuming which.
+**Phase 5: §5.1 (accounts + login, including the admin Users tab and Discord
+OAuth) and §5.2 (leaderboard reorder) are both done.** One manual step is
+still outstanding on Discord OAuth: register the redirect URIs in Discord's
+Developer Portal (see §5.1) before the "Continue with Discord" button can
+complete a real login. Next up: §5.3 (creator tools / social — still just
+directions, not scoped) or §2.5's real-hardware load run — ask before
+assuming which.
 
 A 2026-08-09 feature brainstorm scoped nine further additions, below as
 **Phase 6–14** — each fully agreed in shape, none started, and not yet
@@ -372,10 +376,51 @@ in §5.3 mostly assume a persistent player identity to hang on to. Agreed
 
 Email/password (argon2id — same library and pattern `staff.ts` already uses
 for the mod/admin login, just applied to a new player-facing table, not
-`staff`). Discord OAuth stays a deliberate fast-follow, not built yet — it
-pairs naturally with §5.3's social angle, so it's worth doing once real
-signup volume shows whether it's worth it, rather than building two unrelated
-auth paths up front.
+`staff`).
+
+**Discord OAuth (built 2026-08-09 fast-follow)**: `GET /api/auth/discord`
+redirects to Discord's authorize screen (CSRF `state` round-tripped through a
+short-lived `wc_discord_state` cookie, `0012_users_discord.sql`'s DISCORD_STATE_COOKIE
+constant lives in shared/config.ts); `GET /api/auth/discord/callback` exchanges
+the code, fetches the profile from `discord.com/api/users/@me`, and logs in —
+same session-attach step as `/api/auth/login`. A Discord-only account has no
+password at all, which needed `0012_users_discord.sql` to drop `email` and
+`password_hash` down to nullable (`UserDTO.email` is now `string | null`
+throughout, including the admin Users tab) and add a unique `discord_id`.
+`findOrCreateDiscordUser` (routes/auth.ts) has three cases in order: an
+existing `discord_id` match (repeat login); no match but a **verified**
+Discord email matching an existing password account — links rather than
+bouncing off the email UNIQUE constraint with a 409 that would strand the
+same person with no way forward, since Discord already proved ownership (an
+*unverified* Discord email deliberately does not auto-link — Discord itself
+is the one saying it isn't verified, and it does not get to leapfrog what a
+password account's own email verification enforces everywhere else); or
+neither, so a brand-new password-less account is created, with the Discord
+username sanitized/collision-suffixed into a valid, unique `display_name`
+(`uniqueDisplayNameFrom`) since there is no signup form here to reject a bad
+one on.
+
+Verified for real, in two layers, given a live Discord user consenting is not
+something an unattended script can do: `verify/discord.mjs` exercises every
+HTTP-reachable path against the real running server *and* Discord's real
+endpoints — the authorize redirect's client_id/redirect_uri/scope, the CSRF
+state cookie actually being set and checked, every callback failure mode
+(missing state, mismatched state, Discord reporting the user declined), and a
+bogus code getting a genuine refusal from Discord's real token endpoint, not
+a mocked one. A Playwright pass confirmed the actual "Continue with Discord"
+button (Account panel, shown only when `bootstrap.discordEnabled` is true)
+navigates a real browser all the way to Discord's real authorize screen with
+zero console/page errors. `findOrCreateDiscordUser`'s account-linking logic
+itself — new account, repeat login, display-name collision, verified-email
+linking, unverified-email *not* linking — was exercised directly against the
+real dev Postgres (13 checks, all passing) since the DB layer is reachable
+without Discord's consent screen even though the HTTP endpoint isn't.
+**What is structurally still unverified**: a real code exchange succeeding
+end to end, which needs both a human clicking "Authorize" on Discord's own
+site and the redirect URIs actually registered in Discord's Developer Portal
+first (`http://localhost:5173/api/auth/discord/callback` dev,
+`https://worldcanvas.live/api/auth/discord/callback` prod) — do that, then
+click the real button once to close the loop.
 
 Landed beyond the original shape below, decided along the way: **email
 verification is required before login works** (`email_verified_at`, a
@@ -540,6 +585,143 @@ scoped to a specific build yet:
 Come back and scope one of these properly once §5.1/§5.2 are live and there's
 real signal on what players actually want next — deliberately left loose
 rather than guessed at now.
+
+---
+
+## Phase 6 — Streaks
+
+Cosmetic-only for now, by explicit decision — a milestone charge bonus was
+considered and deliberately deferred, not forgotten.
+
+`user_stats` gains `last_paint_date`, `streak_days`, `best_streak`, updated in
+the same paint transaction as the existing `gain_user` CTE (guarded on
+`user_id IS NOT NULL`, same guard shape as every other per-user stat here).
+UTC day boundary, matching how `pixel_events` timestamps already work. A flame
+icon + count surfaces on the player leaderboard row and player panel. Gated on
+§5.1 accounts — an anonymous session has no persistent identity to hang a
+streak on.
+
+## Phase 7 — Recurring event: Corruption (vs. server)
+
+Fires on an interval (start with a fixed, env-tunable ~90 min, same shape as
+`ALLIANCE_JOIN_COOLDOWN_MS`). Picks a small zone (e.g. 48×48), **at random**,
+skipping anything in `protected_regions` (the existing admin-tool table
+already checked on the paint path — `state/policy.ts`). A server-side bot
+session starts painting the zone a fixed corruption colour at a steady tick.
+Any player painting inside the zone with a different colour counts as
+defence — a completely ordinary paint (own attribution, own country/alliance
+credit, no special pixel type). If corruption coverage stays under a
+threshold when the timer ends, defenders win; otherwise the bot wins.
+
+**The whole zone reverts to its pre-event state when the timer ends, win or
+lose** — both the bot's paints and every player paint made inside it during
+the event get undone. This is the one genuinely new piece of infrastructure
+here: nothing today programmatically reverts committed paints outside the
+admin panel's Revert tool (§2.1), so this should extend that mechanism rather
+than build a parallel one. The payoff is that the event leaves zero permanent
+trace on the canvas either way — "nothing ever resets" stays true everywhere
+else, this is a contained, self-cleaning contest.
+
+Reward: a temporary charge-rate bonus, for the event's duration plus a short
+window after, for anyone who landed at least one defending paint in a
+winning event. Broadcast shape mirrors leaderboard/alliances exactly — a new
+`EventEngine` tick source added to the existing array `hub.start()` already
+takes, dirty-flag broadcast on the same 1 Hz tick (zone bbox, corruption %,
+time remaining). UI: a banner with countdown/progress bar, zone outlined live
+on the map.
+
+**Team-vs-team mode is an explicit fast-follow**, not this phase: a neutral
+zone, two **fresh, randomly-assigned teams per event** (not existing
+alliances/countries — keeps it balanced and open to anyone nearby, no
+pre-existing group required), majority-pixel-share-at-timer wins. Same engine,
+different win condition — build once vs-server is proven.
+
+## Phase 8 — Art Contests
+
+Players nominate a candidate region via the same bbox-draw picker
+Report/Embed already use, rate-limited per account (a handful a week, far
+below Report's 20/hour — much lower stakes). A new mod-visible **Contest**
+admin tab (same shape as Reports/Alliances) lists nominees for a mod to
+approve into a round, reusing the Reports tab's live server-side thumbnail
+rendering to preview each one.
+
+Voting requires a logged-in account, one vote each: a `contest_votes` table
+(`contest_id`, `user_id`, `nominee_id`) with a unique constraint enforces it —
+gates this whole phase on §5.1 accounts, already live.
+
+Reward is cosmetic only: a profile badge, and the winning region featured
+somewhere browsable. **Real gap, worth flagging now rather than discovering
+it mid-build**: "featured somewhere browsable" assumes a notable-art gallery
+surface, which was discussed in the original brainstorm but is not itself one
+of the agreed phases here — either scope a minimal one as part of this phase,
+or this reward has nowhere to live yet.
+
+## Phase 9 — Personal Dashboard
+
+Private view, own account only, behind login: heatmap of where you've
+painted, streak history (Phase 6), pixels-still-standing vs. overpainted
+ratio, cumulative contribution over time. All derivable from existing
+`pixel_events`/`user_stats` — no new tracking beyond what Phase 6 already
+adds.
+
+A public summary card at a shareable link keyed off `display_name` (already
+unique `CITEXT`): streak, cumulative total, country/alliance/faction, badges —
+a lighter cut of the same data, nothing the leaderboard doesn't already expose
+in some form. Gated on §5.1 accounts.
+
+## Phase 10 — Event History Log
+
+Because Phase 7's events roll back the canvas completely, this log is the
+**only permanent record an event ever happened** — worth building alongside
+Phase 7 rather than much later, even as its own phase. A page listing past
+events (and later, Phase 8 contests): date, zone, outcome, notable
+defenders/participants. Backed by a small `events` table (id, type, bbox,
+started_at, ended_at, outcome, top participants) written once per event
+resolution — the summary only, not the reverted pixels themselves.
+
+## Phase 11 — Postcards
+
+Lightest-scoped of this batch. A "share this view" action: pick a
+coordinate/bbox plus an optional caption, get back a static shareable image +
+link (`/p/:id`, mirrors the `/t/:id` template share flow). Reuses the existing
+tile renderer for a single-frame crop — no ffmpeg, no job queue, much cheaper
+than the timelapse export pipeline (§4.3). Open question before building:
+caption moderation — likely reuses the `template_reports` reporting pattern
+rather than inventing a new one.
+
+## Phase 12 — Cosmetic Supporter
+
+`users.supporter_tier` (nullable), granted manually via admin toggle to
+start — no payment processor wired yet; that's its own decision (Stripe
+one-time vs. subscription) if this gets scoped further. Perks: name
+colour/badge on the leaderboard and player panel, priority export queue
+position, one extra concurrent export slot. Deliberately **not** extra
+charges or paint speed — keeps the base economy's fairness untouched.
+
+## Phase 13 — Sponsored Region
+
+An org claims a bbox for a period → a landmark pin + a gallery listing (same
+gallery dependency flagged in Phase 8) + a small info panel on click. Goes
+through the same mod-review pattern as Alliances/Reports: a new admin tab to
+approve/reject/expire. Payment is off-platform (invoice) to start, same
+reasoning as Phase 12.
+
+## Phase 14 — Public read-only Stats API
+
+New `api_keys` table: `key_hash` (hashed, never stored plain — same shape as
+session/reset tokens), `user_id` (one active key per account; generating a
+new one revokes the old), `created_at`, `revoked_at`, request counters.
+Self-serve generation/revocation from account settings; auth via
+`Authorization: Bearer <key>`.
+
+Read-only endpoints only — paints/sec, country/alliance/faction standings,
+region pixel history via the existing `timelapse/build.ts` query — **no paint
+endpoint reachable this way, ever**, keeping the anti-bot boundary on the real
+paint path completely separate from this. Per-key rate limit (env-tunable,
+e.g. 60 req/min), reusing whatever mechanism the existing session
+rate-limiter already uses rather than building a second one. A paid
+higher-limit tier was floated in the original brainstorm but is not committed
+to — free, single-tier, per-account to start.
 
 ---
 

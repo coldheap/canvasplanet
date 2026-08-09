@@ -14,6 +14,8 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import {
+  DISCORD_STATE_COOKIE,
+  DISCORD_STATE_TTL_SECONDS,
   DISPLAY_NAME_MAX_LEN,
   DISPLAY_NAME_MIN_LEN,
   DISPLAY_NAME_PATTERN,
@@ -36,7 +38,8 @@ import { getOrCreateSession } from "../session/session.js";
 
 export interface AuthUser {
   id: number;
-  email: string;
+  /** Null for a Discord-only account with no verified email on file. */
+  email: string | null;
   displayName: string;
 }
 
@@ -135,7 +138,7 @@ async function issueUserSession(userId: number, reply: FastifyReply): Promise<vo
 export async function getAuthUser(req: FastifyRequest): Promise<AuthUser | null> {
   const token = req.cookies[USER_COOKIE];
   if (!token) return null;
-  const { rows } = await pool.query<{ id: number; email: string; display_name: string }>(
+  const { rows } = await pool.query<{ id: number; email: string | null; display_name: string }>(
     `SELECT u.id, u.email, u.display_name
        FROM user_sessions us
        JOIN users u ON u.id = us.user_id
@@ -146,7 +149,11 @@ export async function getAuthUser(req: FastifyRequest): Promise<AuthUser | null>
   return r ? { id: r.id, email: r.email, displayName: r.display_name } : null;
 }
 
-export async function getUserDTO(userId: number, email: string, displayName: string): Promise<UserDTO> {
+export async function getUserDTO(
+  userId: number,
+  email: string | null,
+  displayName: string,
+): Promise<UserDTO> {
   const { rows } = await pool.query<{ cumulative: number; held: number }>(
     `SELECT cumulative, held FROM user_stats WHERE user_id = $1`,
     [userId],
@@ -159,6 +166,80 @@ export async function getUserDTO(userId: number, email: string, displayName: str
     cumulative: s?.cumulative ?? 0,
     held: s?.held ?? 0,
   };
+}
+
+function sanitizeDisplayNameBase(raw: string): string {
+  const cleaned = raw.replace(/[^a-zA-Z0-9_. -]/g, "").trim().slice(0, DISPLAY_NAME_MAX_LEN);
+  return cleaned.length >= DISPLAY_NAME_MIN_LEN ? cleaned : "Player";
+}
+
+/**
+ * A Discord username can collide with an existing display name, or (once
+ * stripped of the unicode/emoji DISPLAY_NAME_PATTERN doesn't allow) become
+ * too short to use at all — unlike email/password signup, there is no form
+ * for the player to correct that on, so this disambiguates for them instead
+ * of failing the whole login.
+ */
+async function uniqueDisplayNameFrom(rawUsername: string): Promise<string> {
+  const base = sanitizeDisplayNameBase(rawUsername);
+  let candidate = base;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { rows } = await pool.query(`SELECT 1 FROM users WHERE display_name = $1`, [candidate]);
+    if (!rows[0]) return candidate;
+    const suffix = randomBytes(2).toString("hex"); // 4 hex chars
+    candidate = `${base.slice(0, DISPLAY_NAME_MAX_LEN - suffix.length - 1)}_${suffix}`;
+  }
+  return `Player_${randomBytes(4).toString("hex")}`;
+}
+
+export interface DiscordProfile {
+  id: string;
+  username: string;
+  email?: string | null;
+  verified?: boolean;
+}
+
+/**
+ * Three cases, in order: an account already linked to this Discord id (the
+ * normal repeat-login path); an existing email/password account whose
+ * address matches a *verified* Discord email (Discord already proved
+ * ownership, so this links rather than bouncing off the email UNIQUE
+ * constraint with a 409 that would strand the same person with no way
+ * forward); or nobody home, so a brand-new password-less account is created.
+ */
+export async function findOrCreateDiscordUser(profile: DiscordProfile): Promise<number> {
+  const { rows: byDiscord } = await pool.query<{ id: number }>(
+    `SELECT id FROM users WHERE discord_id = $1`,
+    [profile.id],
+  );
+  if (byDiscord[0]) return byDiscord[0].id;
+
+  const email = profile.email && profile.verified ? profile.email.trim().toLowerCase() : null;
+
+  if (email) {
+    const { rows: byEmail } = await pool.query<{ id: number }>(`SELECT id FROM users WHERE email = $1`, [
+      email,
+    ]);
+    if (byEmail[0]) {
+      await pool.query(
+        `UPDATE users SET discord_id = $2, email_verified_at = COALESCE(email_verified_at, now())
+          WHERE id = $1`,
+        [byEmail[0].id, profile.id],
+      );
+      return byEmail[0].id;
+    }
+  }
+
+  const displayName = await uniqueDisplayNameFrom(profile.username);
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO users (email, password_hash, display_name, discord_id, email_verified_at)
+     VALUES ($1, NULL, $2, $3, $4) RETURNING id`,
+    [email, displayName, profile.id, email ? new Date() : null],
+  );
+  const userId = rows[0]!.id;
+  await pool.query(`INSERT INTO user_stats (user_id) VALUES ($1)`, [userId]);
+  players.register(userId, displayName);
+  return userId;
 }
 
 export function registerAuthRoutes(app: FastifyInstance): void {
@@ -348,7 +429,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
 
     const { rows } = await pool.query<{
       id: number;
-      password_hash: string;
+      password_hash: string | null;
       display_name: string;
       email_verified_at: Date | null;
       disabled_at: Date | null;
@@ -360,7 +441,14 @@ export function registerAuthRoutes(app: FastifyInstance): void {
 
     // Always run a verify, even with no matching user — same reasoning as
     // staff.ts: response timing must not reveal which emails have accounts.
-    const ok = row ? await argon2.verify(row.password_hash, password) : (await argon2.hash(password || "x"), false);
+    // A Discord-only account has no password_hash at all (null, not a
+    // mismatch) — that must fail the same generic way, not throw inside
+    // argon2.verify, and it must not reveal "this account uses Discord"
+    // either (same enumeration-resistance the rest of this file follows).
+    const ok =
+      row && row.password_hash
+        ? await argon2.verify(row.password_hash, password)
+        : (await argon2.hash(password || "x"), false);
     if (!ok || !row) return reply.code(401).send({ error: "wrong email or password" });
     if (row.disabled_at) return reply.code(403).send({ error: "this account has been disabled" });
     if (!row.email_verified_at) {
@@ -378,6 +466,94 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     const user = await getUserDTO(row.id, email, row.display_name);
     return reply.send({ ok: true, user });
   });
+
+  // A plain browser navigation (an <a href>, not a fetch call) — Discord's
+  // own authorize screen is what the user actually interacts with next, so
+  // this just redirects straight there with a CSRF state token round-tripped
+  // through a short-lived cookie, the standard OAuth authorization-code shape.
+  app.get("/api/auth/discord", async (req, reply) => {
+    if (!env.discord.enabled) return reply.code(404).send();
+
+    const state = randomBytes(16).toString("base64url");
+    reply.setCookie(DISCORD_STATE_COOKIE, state, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.isProd,
+      path: "/",
+      maxAge: DISCORD_STATE_TTL_SECONDS,
+    });
+
+    const url = new URL("https://discord.com/api/oauth2/authorize");
+    url.searchParams.set("client_id", env.discord.clientId);
+    url.searchParams.set("redirect_uri", `${env.publicUrl}/api/auth/discord/callback`);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "identify email");
+    url.searchParams.set("state", state);
+    return reply.redirect(url.toString());
+  });
+
+  // Discord redirects the browser back here after the user approves (or
+  // denies) the request. Same "browser navigation, not JSON" shape as
+  // /api/auth/verify — this ends in a redirect with a query flag, not a
+  // response body.
+  app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
+    "/api/auth/discord/callback",
+    async (req, reply) => {
+      if (!env.discord.enabled) return reply.code(404).send();
+
+      const cookieState = req.cookies[DISCORD_STATE_COOKIE];
+      reply.clearCookie(DISCORD_STATE_COOKIE, { path: "/" });
+      const { code, state, error } = req.query;
+
+      if (error || !code || !state || !cookieState || state !== cookieState) {
+        return reply.redirect(`${env.publicUrl}/?discord_error=1`);
+      }
+
+      try {
+        const redirectUri = `${env.publicUrl}/api/auth/discord/callback`;
+        const tokenRes = await fetch("https://discord.com/api/oauth2/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: env.discord.clientId,
+            client_secret: env.discord.clientSecret,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: redirectUri,
+          }),
+        });
+        if (!tokenRes.ok) throw new Error(`token exchange failed: HTTP ${tokenRes.status}`);
+        const token = (await tokenRes.json()) as { access_token: string };
+
+        const meRes = await fetch("https://discord.com/api/users/@me", {
+          headers: { authorization: `Bearer ${token.access_token}` },
+        });
+        if (!meRes.ok) throw new Error(`user fetch failed: HTTP ${meRes.status}`);
+        const profile = (await meRes.json()) as DiscordProfile;
+
+        const userId = await findOrCreateDiscordUser(profile);
+
+        const { rows: disabledRows } = await pool.query<{ disabled_at: Date | null }>(
+          `SELECT disabled_at FROM users WHERE id = $1`,
+          [userId],
+        );
+        if (disabledRows[0]?.disabled_at) {
+          return reply.redirect(`${env.publicUrl}/?discord_error=1`);
+        }
+
+        await issueUserSession(userId, reply);
+        // Same as /api/auth/login: attach this browser's current anonymous
+        // session to the account, so paint attribution starts immediately.
+        const session = await getOrCreateSession(req, reply);
+        await pool.query(`UPDATE sessions SET user_id = $2 WHERE id = $1`, [session.id, userId]);
+
+        return reply.redirect(`${env.publicUrl}/?discord=1`);
+      } catch (err) {
+        req.log.error({ err }, "discord oauth failed");
+        return reply.redirect(`${env.publicUrl}/?discord_error=1`);
+      }
+    },
+  );
 
   app.post("/api/auth/logout", async (req, reply) => {
     const token = req.cookies[USER_COOKIE];

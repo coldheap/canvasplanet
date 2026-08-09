@@ -142,7 +142,9 @@ export interface AllianceDTO {
  *  BootstrapResponse — same "null means signed out" convention. */
 export interface UserDTO {
   id: number;
-  email: string;
+  /** Null for a Discord-only account that never provided (or verified) an
+   *  email through Discord — see routes/auth.ts's Discord callback. */
+  email: string | null;
   displayName: string;
   cumulative: number;
   held: number;
@@ -183,6 +185,10 @@ export interface BootstrapResponse {
   regions: Array<{ id: number; name: string; x0: number; y0: number; x1: number; y1: number }>;
   frozen: boolean;
   turnstileSitekey: string | null;
+  /** True only when DISCORD_CLIENT_ID/SECRET are configured — lets the
+   *  client hide the "Continue with Discord" button rather than offer a
+   *  flow that would 404 at the first hop. */
+  discordEnabled: boolean;
 }
 
 export interface PaintRequest {

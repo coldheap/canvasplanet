@@ -65,6 +65,14 @@ export function App() {
         showToast("That verification link is invalid or has expired.");
         params.delete("verify_error");
         history.replaceState(null, "", location.pathname + (params.size ? `?${params}` : ""));
+      } else if (params.has("discord")) {
+        showToast(boot.user ? `Welcome, ${boot.user.displayName}!` : "Signed in with Discord.");
+        params.delete("discord");
+        history.replaceState(null, "", location.pathname + (params.size ? `?${params}` : ""));
+      } else if (params.has("discord_error")) {
+        showToast("Could not sign in with Discord — try again.");
+        params.delete("discord_error");
+        history.replaceState(null, "", location.pathname + (params.size ? `?${params}` : ""));
       }
 
       // An emailed password-reset link — held in the store rather than left

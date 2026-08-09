@@ -75,7 +75,7 @@ export function UsersTab() {
                   {u.display_name}
                   {!u.email_verified_at && <em className="wc-hint"> (unverified)</em>}
                 </span>
-                <span className="wc-hint">{u.email}</span>
+                <span className="wc-hint">{u.email ?? "Discord only"}</span>
                 <span className="wc-role">{u.cumulative.toLocaleString()} painted</span>
                 <button
                   className={disabled ? "wc-mini" : "wc-mini-danger"}

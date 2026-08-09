@@ -7,7 +7,17 @@
  */
 
 import { useState } from "react";
-import { AlertOctagon, Check, KeyRound, LogIn, LogOut, Mail, UserCircle, UserPlus } from "lucide-react";
+import {
+  AlertOctagon,
+  Check,
+  KeyRound,
+  LogIn,
+  LogOut,
+  Mail,
+  MessageCircle,
+  UserCircle,
+  UserPlus,
+} from "lucide-react";
 import type { UserDTO } from "@worldcanvas/shared";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
@@ -51,7 +61,7 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
         Account
       </h2>
       <p className="wc-account-name">{user.displayName}</p>
-      <p className="wc-hint">{user.email}</p>
+      {user.email && <p className="wc-hint">{user.email}</p>}
       <p className="wc-account-stats">
         <span>{user.cumulative.toLocaleString()} painted</span>
         <span>{user.held.toLocaleString()} held</span>
@@ -138,6 +148,7 @@ function ResetPasswordForm({
 }
 
 function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
+  const discordEnabled = useStore((s) => s.discordEnabled);
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -328,6 +339,19 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
         {mode === "login" ? <LogIn size={15} /> : <UserPlus size={15} />}
         {mode === "login" ? "Sign in" : "Create account"}
       </button>
+
+      {discordEnabled && (
+        <>
+          <p className="wc-auth-divider">or</p>
+          {/* A plain navigation, not a fetch call — routes/auth.ts's
+              /api/auth/discord redirects straight to Discord's own
+              authorize screen. */}
+          <a className="wc-btn" href="/api/auth/discord">
+            <MessageCircle size={15} />
+            Continue with Discord
+          </a>
+        </>
+      )}
 
       {mode === "login" && (
         <button type="button" className="wc-link-btn" onClick={() => switchMode("forgot")}>

@@ -270,7 +270,8 @@ export interface AdminAlliance {
 
 export interface AdminUser {
   id: number;
-  email: string;
+  /** Null for a Discord-only account with no verified email on file. */
+  email: string | null;
   display_name: string;
   email_verified_at: string | null;
   disabled_at: string | null;

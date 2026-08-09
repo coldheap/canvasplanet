@@ -99,4 +99,14 @@ export const env = {
       return Boolean(process.env.TURNSTILE_SITEKEY && process.env.TURNSTILE_SECRET);
     },
   },
+
+  discord: {
+    clientId: process.env.DISCORD_CLIENT_ID ?? "",
+    clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
+    /** Blank credentials disable the route entirely (404) rather than
+     *  half-working — same shape as turnstile.enabled above. */
+    get enabled() {
+      return Boolean(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET);
+    },
+  },
 } as const;

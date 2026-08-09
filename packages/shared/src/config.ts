@@ -247,3 +247,10 @@ export const EMAIL_VERIFY_RESEND_COOLDOWN_MS = 60_000;
 export const PASSWORD_RESET_TTL_HOURS = 1;
 /** Minimum time between "request a reset" requests for one account. */
 export const PASSWORD_RESET_COOLDOWN_MS = 60_000;
+
+/** Short-lived CSRF cookie for the Discord OAuth redirect round trip — set on
+ *  `/api/auth/discord`, checked and cleared on `/api/auth/discord/callback`.
+ *  Not a login credential, so it does not need `USER_SESSION_TTL_DAYS`-scale
+ *  lifetime; the whole authorize→callback hop is one browser navigation. */
+export const DISCORD_STATE_COOKIE = "wc_discord_state";
+export const DISCORD_STATE_TTL_SECONDS = 600;

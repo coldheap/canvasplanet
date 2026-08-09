@@ -74,6 +74,9 @@ interface State {
   user: UserDTO | null;
   verified: boolean;
   turnstileSitekey: string | null;
+  /** Mirrors env.discord.enabled server-side — hides the "Continue with
+   *  Discord" button rather than offering a flow that would 404. */
+  discordEnabled: boolean;
 
   settings: Settings;
   panel:
@@ -159,6 +162,7 @@ export const useStore = create<State>((set) => ({
   user: null,
   verified: false,
   turnstileSitekey: null,
+  discordEnabled: false,
 
   settings: loadSettings(),
   panel: "none",
@@ -188,6 +192,7 @@ export const useStore = create<State>((set) => ({
       user: b.user,
       verified: b.verified,
       turnstileSitekey: b.turnstileSitekey,
+      discordEnabled: b.discordEnabled,
     }),
 
   setBank: (bank, nextAt) => set({ bank, nextAt }),

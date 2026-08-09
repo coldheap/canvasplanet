@@ -10,6 +10,7 @@ import { pool } from "../db/pool.js";
 import { leaderboard } from "../leaderboard/store.js";
 import { alliances } from "../alliances/store.js";
 import { players } from "../players/store.js";
+import { env } from "../env.js";
 import * as turnstile from "../security/turnstile.js";
 import { getOrCreateSession } from "../session/session.js";
 import { getProtectedRegions, isFrozen } from "../state/policy.js";
@@ -70,6 +71,7 @@ export function registerBootstrapRoutes(app: FastifyInstance): void {
       })),
       frozen: isFrozen(),
       turnstileSitekey: turnstile.sitekey(),
+      discordEnabled: env.discord.enabled,
     };
     return reply.send(body);
   });
