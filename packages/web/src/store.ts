@@ -29,6 +29,9 @@ export interface Settings {
   reduceMotion: "system" | "on" | "off";
   /** Paint-density overlay in place of colour — see canvas/heatLayer.ts. */
   heatmap: boolean;
+  /** OSM raster basemap (roads/labels/land) under the pixel canvas. Off by
+   *  default — the default view is the pixels themselves, unobscured. */
+  osmLayer: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   darkMode: false,
   reduceMotion: "system",
   heatmap: false,
+  osmLayer: false,
 };
 
 interface State {

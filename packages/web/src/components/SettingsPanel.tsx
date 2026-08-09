@@ -37,6 +37,11 @@ export function SettingsPanel() {
           on={settings.heatmap}
           set={(heatmap) => updateSettings({ heatmap })}
         />
+        <Toggle
+          label="Street map overlay (OpenStreetMap)"
+          on={settings.osmLayer}
+          set={(osmLayer) => updateSettings({ osmLayer })}
+        />
       </fieldset>
 
       <fieldset>

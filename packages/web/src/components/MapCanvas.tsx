@@ -1,14 +1,17 @@
 /**
  * The map, the canvas, and the click-to-paint interaction.
  *
- * Four stacked layers, bottom to top:
- *   1. OSM raster basemap
+ * Stacked layers, bottom to top:
+ *   1. OSM raster basemap — off by default (Settings → Canvas → Street map
+ *      overlay). The default view is the pixels themselves, unobscured.
  *   2. /tiles TileLayer — the authoritative canvas, up to ~2s stale
  *   3. the live-delta overlay canvas (see canvas/liveOverlay.ts)
  *   4. the grid + cursor highlight
  *
  * Layer 3 is what makes paint feel instant despite the debounced tile
- * worker. Layer 2 and layer 3 hand off to each other on `tileload`.
+ * worker. Layer 2 and layer 3 hand off to each other on `tileload`. Layer 1
+ * and layer 2 both carry an explicit zIndex so toggling the basemap on/off
+ * can never flip it on top of the pixel canvas.
  */
 
 import { useEffect, useRef } from "react";
@@ -90,9 +93,12 @@ export function MapCanvas({
     });
     mapRef.current = map;
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // Not added to the map here — toggled on by applyOsm() below, off by
+    // default. zIndex pins it under the canvas regardless of add/remove order.
+    const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: MAX_MAP_ZOOM,
-    }).addTo(map);
+      zIndex: 1,
+    });
 
     // The canvas. maxNativeZoom pins requests to z12 and lets Leaflet upscale
     // beyond it, so zooming in shows crisp big pixels instead of asking the
@@ -102,6 +108,7 @@ export function MapCanvas({
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-canvas-layer",
       keepBuffer: 4,
+      zIndex: 2,
     }).addTo(map);
 
     const overlay = new LiveOverlay(map);
@@ -149,6 +156,13 @@ export function MapCanvas({
       const on = useStore.getState().settings.heatmap;
       if (on && !map.hasLayer(heat)) heat.addTo(map);
       else if (!on && map.hasLayer(heat)) map.removeLayer(heat);
+    };
+
+    // ---- OSM basemap (optional, off by default) ----------------------------
+    const applyOsm = () => {
+      const on = useStore.getState().settings.osmLayer;
+      if (on && !map.hasLayer(osm)) osm.addTo(map);
+      else if (!on && map.hasLayer(osm)) map.removeLayer(osm);
     };
 
     // ---- corruption event zone (ROADMAP.md Phase 7) ------------------------
@@ -295,6 +309,7 @@ export function MapCanvas({
 
     applyGrid();
     applyHeat();
+    applyOsm();
     applyEventZone();
     emitViewport();
     const bbox = new BboxDraw(map);
@@ -306,6 +321,7 @@ export function MapCanvas({
     const unsubscribe = useStore.subscribe(() => {
       applyGrid();
       applyHeat();
+      applyOsm();
       applyEventZone();
     });
 

@@ -12,6 +12,10 @@
  * cannot be relied on to come back on subsequent requests (SameSite=Lax),
  * so this never tries. Live pixels arrive over the same WS hub everyone
  * else uses, just anonymously.
+ *
+ * `?osm=1` opts into the OSM street map basemap under the pixels; off by
+ * default, same as the main app (see MapCanvas.tsx's Settings → Canvas →
+ * Street map overlay toggle).
  */
 
 import { useEffect, useRef } from "react";
@@ -54,6 +58,9 @@ const bbox = parseBbox();
 const center = bbox
   ? { x: Math.round((bbox.x0 + bbox.x1) / 2), y: Math.round((bbox.y0 + bbox.y1) / 2) }
   : { x: DEFAULT_VIEW.x, y: DEFAULT_VIEW.y };
+// Off by default, same as the main app — the embed shows the pixels
+// themselves. `?osm=1` opts into the OSM street map underneath them.
+const showOsm = new URLSearchParams(location.search).get("osm") === "1";
 
 export function EmbedApp() {
   const ref = useRef<HTMLDivElement>(null);
@@ -80,9 +87,12 @@ export function EmbedApp() {
       ] as never, { padding: [16, 16] });
     }
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: MAX_MAP_ZOOM,
-    }).addTo(map);
+    if (showOsm) {
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: MAX_MAP_ZOOM,
+        zIndex: 1,
+      }).addTo(map);
+    }
 
     // maxNativeZoom pins requests to z12 and lets Leaflet upscale beyond it —
     // same reasoning as the main map (see MapCanvas.tsx).
@@ -91,6 +101,7 @@ export function EmbedApp() {
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-canvas-layer",
       keepBuffer: 4,
+      zIndex: 2,
     }).addTo(map);
 
     const overlay = new LiveOverlay(map);
