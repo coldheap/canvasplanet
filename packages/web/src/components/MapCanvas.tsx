@@ -90,6 +90,12 @@ export function MapCanvas({
       maxZoom: MAX_MAP_ZOOM,
       zoomControl: false,
       attributionControl: false,
+      // Raster zoom/fade animations temporarily resample the pixel canvas
+      // and make it look soft. Instant integer steps keep every canvas pixel
+      // aligned to the screen grid and let loaded parent tiles remain visible
+      // until their sharper children arrive.
+      zoomAnimation: false,
+      fadeAnimation: false,
       // Integer zoom only: the grid is defined at Z_PIXEL and fractional zoom
       // would land pixels on half-pixel boundaries.
       zoomSnap: 1,
@@ -111,6 +117,8 @@ export function MapCanvas({
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile",
+      updateWhenZooming: false,
+      keepBuffer: 1,
       zIndex: 0,
     }).addTo(map);
 
@@ -118,6 +126,8 @@ export function MapCanvas({
     // default. zIndex pins it under the canvas regardless of add/remove order.
     const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: MAX_MAP_ZOOM,
+      updateWhenZooming: false,
+      keepBuffer: 1,
       zIndex: 1,
     });
 
@@ -128,7 +138,13 @@ export function MapCanvas({
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile wc-canvas-layer",
-      keepBuffer: 4,
+      // A four-tile buffer could turn a 40-tile viewport into ~200 network
+      // requests at every zoom level. One ring is enough to hide pan edges
+      // without making visible tiles wait behind off-screen work.
+      keepBuffer: 1,
+      // flyTo can cross several integer levels. Fetch only its destination;
+      // the previous level is transformed as a placeholder during the trip.
+      updateWhenZooming: false,
       zIndex: 2,
     }).addTo(map);
 
@@ -141,7 +157,8 @@ export function MapCanvas({
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile wc-history-layer",
-      keepBuffer: 2,
+      keepBuffer: 1,
+      updateWhenZooming: false,
       zIndex: 2,
     });
     let renderedHistoryAt: number | null = null;
@@ -172,11 +189,11 @@ export function MapCanvas({
       // Aim at the pixel's centre, not its corner, or the target sits half a
       // pixel off at high zoom.
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
-      map.flyTo([target.lat, target.lng] as never, z, { duration: 1.2 });
+      map.flyTo([target.lat, target.lng] as never, z, { duration: 0.7 });
     };
 
     // ---- grid overlay ------------------------------------------------------
-    const grid = new GridLayer();
+    const grid = new GridLayer({ keepBuffer: 1, updateWhenZooming: false });
     const applyGrid = () => {
       const mode = useStore.getState().settings.grid;
       const on = mode === "on" || (mode === "auto" && map.getZoom() >= GRID_ZOOM);
@@ -494,7 +511,7 @@ const GridLayer = L.GridLayer.extend({
     ctx.stroke();
     return tile;
   },
-}) as unknown as new () => L.GridLayer;
+}) as unknown as new (options?: L.GridLayerOptions) => L.GridLayer;
 
 /** The URL hash is the single source of truth for map position, so "share
  *  this view" is a string copy and deep links work in both directions. */

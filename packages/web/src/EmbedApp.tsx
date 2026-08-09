@@ -77,6 +77,8 @@ export function EmbedApp() {
       zoomSnap: 1,
       worldCopyJump: true,
       attributionControl: false,
+      zoomAnimation: false,
+      fadeAnimation: false,
     });
 
     if (bbox) {
@@ -94,12 +96,16 @@ export function EmbedApp() {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile",
+      updateWhenZooming: false,
+      keepBuffer: 1,
       zIndex: 0,
     }).addTo(map);
 
     if (showOsm) {
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: MAX_MAP_ZOOM,
+        updateWhenZooming: false,
+        keepBuffer: 1,
         zIndex: 1,
       }).addTo(map);
     }
@@ -110,7 +116,8 @@ export function EmbedApp() {
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile wc-canvas-layer",
-      keepBuffer: 4,
+      keepBuffer: 1,
+      updateWhenZooming: false,
       zIndex: 2,
     }).addTo(map);
 

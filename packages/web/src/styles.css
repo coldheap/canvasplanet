@@ -120,9 +120,13 @@ select {
    browser scales its descendant tile images during overzoom. Keep both the
    painted canvas and land/ocean backdrop on nearest-neighbour sampling. */
 .wc-pixel-tile,
-.wc-pixel-tile img {
+.wc-pixel-tile img,
+.wc-heat-layer canvas {
+  /* The unprefixed declaration is supported by current browsers; the first
+     two cover older Firefox/Safari builds used by some embedded canvases. */
+  image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  image-rendering: pixelated;
+  image-rendering: pixelated !important;
 }
 
 /* ---- shared card chrome --------------------------------------------------- */

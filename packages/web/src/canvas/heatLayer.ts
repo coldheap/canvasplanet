@@ -75,7 +75,8 @@ export function createHeatLayer(): L.GridLayer {
   return new HeatGridLayer({
     maxNativeZoom: Z_PIXEL,
     className: "wc-heat-layer",
-    keepBuffer: 2,
+    keepBuffer: 1,
+    updateWhenZooming: false,
     opacity: 0.85,
   });
 }
