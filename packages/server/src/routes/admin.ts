@@ -16,7 +16,7 @@ import { revert, type RevertSelector } from "../admin/revert.js";
 import { stamp, type StampInput } from "../admin/stamp.js";
 import { events } from "../events/engine.js";
 import { geo } from "../geo/index.js";
-import { eventLoopLag, tileEncodeTime, tileQueryTime } from "../metrics.js";
+import { eventLoopLag, resetEventLoopLag, tileEncodeTime, tileQueryTime } from "../metrics.js";
 import { leaderboard } from "../leaderboard/store.js";
 import { alliances } from "../alliances/store.js";
 import * as scoring from "../security/score.js";
@@ -51,8 +51,14 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       ws: hub.stats(),
       // Event-loop lag is the metric that distinguishes "the database is
       // slow" from "something on this thread is blocking every request".
-      // Without it those look identical from the outside.
-      loop: eventLoopLag(),
+      // Without it those look identical from the outside. Reset after
+      // reading so each dashboard poll reflects the window since the last
+      // one, not an ever-growing average since process start.
+      loop: (() => {
+        const stats = eventLoopLag();
+        resetEventLoopLag();
+        return stats;
+      })(),
       tileTiming: { query: tileQueryTime.stats(), encode: tileEncodeTime.stats() },
       tiles: { queue: depth, ...cacheStats(), ...workerStats() },
       geo: geo.stats(),

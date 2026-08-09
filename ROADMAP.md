@@ -77,32 +77,52 @@ The tile worker renders both modes on every dirty tile, roughly doubling its
 per-tile cost. `HEATMAP_WORKER=false` turns that back off without a deploy —
 worth watching given §2.5 below.
 
-### 2.5 Paint latency: measure on real hardware first
+### 2.5 Paint latency: measured on real hardware (2026-08-09)
 
 Carried over from v1 (PLAN.md §12). After the economy was retuned to one
 charge per second, 50 concurrent clients sustain ~40 paints/s and p99 sits
 around the 200 ms target — sometimes under it, sometimes well over.
 
-**Do not start by building something.** `metrics.ts` is already in place and
-its numbers appear on the admin dashboard, so a single load run on the VPS
-(with the web dev server stopped) costs almost nothing and is worth more than
-any amount of reasoning on the dev box, whose numbers vary by an order of
-magnitude run to run.
+Run for real against `k6/paint-load.js` on the VPS, web dev server stopped:
+**p99 = 320 ms** on the successful-paint distribution (`paint_latency_ok`),
+above the 200 ms target, with zero overspend bugs and zero unexpected
+failures — the correctness invariants hold, only latency misses.
 
-Three candidate causes have been investigated and **all three ruled out**.
-Do not repeat this work without new evidence:
+Three candidate causes were investigated earlier and **all three ruled out**
+(do not repeat this work without new evidence):
 
-- **`country_stats` lock contention** — the original and most plausible-looking
-  suspect. `pg_stat_activity` sampling under load showed *zero* lock waits.
-- **PNG encoding blocking the event loop** — 6.7 ms mean and 28 ms max per
-  tile, with event-loop lag p99 at 24.8 ms. A tile worker thread would buy
-  far less than it appears to.
+- **`country_stats` lock contention** — `pg_stat_activity` sampling under
+  load showed *zero* lock waits.
+- **PNG encoding blocking the event loop** — 6.7 ms mean / 28 ms max per
+  tile.
 - **A large V8 heap deferring GC** — removing `--max-old-space-size` made the
   next run worse, i.e. no signal either way.
 
-What remains is a *rare* stall: event-loop lag max reached 862 ms while its
-own p99 was 24.8 ms. Fine almost always, occasionally awful. That shape is
-what to hunt on real hardware.
+**New evidence from this run, real bug found along the way**: the admin
+dashboard's event-loop-lag histogram (`metrics.ts`) claimed in its own
+comment to reset on every read, but `resetEventLoopLag()` was never actually
+called anywhere — `maxMs` was silently cumulative since process start, not a
+per-window figure. Fixed in `routes/admin.ts` (`GET /api/admin/stats` now
+resets after reading). With that fixed, a poll taken *immediately after
+server start* (before any load) already showed `maxMs` in the 1600–2200 ms
+range, while a poll taken for the actual 90 s, 50-VU load window that
+followed showed `meanMs: 13.76, p50Ms: 12.08, p99Ms: 32.64, maxMs: 84.08` —
+tame, not the source of the 862 ms-class stall previously seen.
+
+**Read: the rare large stall is not a paint-load-path problem** — it
+correlates with startup-time work, not sustained painting. The tile worker's
+own `lastDrain` log during that same load window showed a 256-tile backlog
+drain taking ~10.2 s; a similarly large drain right after boot (geo data
+load, initial dirty-tile backlog) is the leading suspect for where the
+860–2200 ms stalls actually come from. Next step if picked back up: poll
+`/api/admin/stats` immediately across a cold server restart (not mid-load)
+and correlate the spike against `tiles.lastDrain` / `geo` load timing
+specifically, rather than against paint throughput.
+
+The 320 ms p99 itself is still open — nothing above rules that out, it only
+narrows where the *rare max stall* comes from. The steady p50/p99 numbers
+above (12 ms / 33 ms) suggest the 320 ms tail is more likely ordinary queueing
+under 50-VU contention than a single blocking stall; not yet root-caused.
 
 ### 2.6 Small gaps — all done
 
