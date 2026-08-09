@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle } from "lucide-react";
+import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle } from "lucide-react";
 import {
   Z_PIXEL,
   WORLD_SIZE,
@@ -23,7 +23,7 @@ import { OverlayTool } from "./components/OverlayTool.js";
 import { ReportTool } from "./components/ReportTool.js";
 import { AccountPanel } from "./components/AccountPanel.js";
 import { EmbedTool } from "./components/EmbedTool.js";
-import { ActivityFeed } from "./components/ActivityFeed.js";
+import { ActivityPanel } from "./components/ActivityPanel.js";
 import { PixelInspector } from "./components/PixelInspector.js";
 import { CountryPage } from "./components/CountryPage.js";
 import { StatusPanel } from "./components/StatusPanel.js";
@@ -32,7 +32,7 @@ import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
 
 export function App() {
-  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event } =
+  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event, pps } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
@@ -121,14 +121,26 @@ export function App() {
           }
           if (touched) useStore.setState((s) => ({ templateTick: s.templateTick + 1 }));
         },
-        onPulse: (pps, recent) =>
-          // Keep a short rolling tail rather than replacing: the server sends
-          // only what happened in the last second, so on a quiet canvas the
-          // ticker would flick empty between paints.
+        onPulse: ({ pps, history = [], recent, active = [] }) => {
+          // Turn each one-second country sample into compact timeline groups;
+          // the richer minute-long totals and chart are server-owned.
+          const at = Date.now();
+          const eventCounts = new Map<number, number>();
+          for (const countryId of recent) {
+            eventCounts.set(countryId, (eventCounts.get(countryId) ?? 0) + 1);
+          }
           useStore.setState((s) => ({
             pps,
-            recentFlags: [...s.recentFlags, ...recent].slice(-10),
-          })),
+            pulseHistory: history,
+            activeCountries: active,
+            activityEvents: recent.length
+              ? [
+                  ...s.activityEvents,
+                  ...[...eventCounts].map(([countryId, count], index) => ({ id: at + index, countryId, count, at })),
+                ].slice(-40)
+              : s.activityEvents,
+          }));
+        },
         // A reconnecting client missed every paint made while it was gone.
         // Those live in the tile PNGs, not the stream, so refetching tiles is
         // what heals the gap — replaying the stream is not possible.
@@ -286,7 +298,7 @@ export function App() {
   if (!ready) return <div className="wc-boot">Loading the canvas…</div>;
 
   const toggle = (
-    p: "leaderboard" | "settings" | "overlay" | "timelapse" | "report" | "embed" | "account",
+    p: "activity" | "leaderboard" | "settings" | "overlay" | "timelapse" | "report" | "embed" | "account",
   ) => setPanel(panel === p ? "none" : p);
 
   return (
@@ -319,7 +331,6 @@ export function App() {
           />
         )}
         <div className="wc-topbar">
-          <ActivityFeed />
           <ChargeBar />
         </div>
       </div>
@@ -328,6 +339,16 @@ export function App() {
         <span className="wc-rail-brand">
           <MapPinned size={18} />
         </span>
+        <button
+          className="wc-rail-btn"
+          aria-pressed={panel === "activity"}
+          aria-label="Live activity"
+          title="Live activity"
+          onClick={() => toggle("activity")}
+        >
+          <Activity size={19} />
+          <span className={pps > 0 ? "wc-activity-indicator is-live" : "wc-activity-indicator"} aria-hidden />
+        </button>
         <button
           className="wc-rail-btn"
           aria-pressed={panel === "leaderboard"}
@@ -394,6 +415,7 @@ export function App() {
         </button>
       </nav>
 
+      {panel === "activity" && <ActivityPanel />}
       {panel === "leaderboard" && <LeaderboardPanel />}
       {panel === "overlay" && <OverlayTool handle={handle.current} />}
       {panel === "timelapse" && <TimelapsePanel handle={handle.current} />}

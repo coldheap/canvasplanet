@@ -58,8 +58,12 @@ interface State {
 
   /** Paints per second, from the pulse frame — drives the activity ticker. */
   pps: number;
-  /** Country ids of the most recent paints, newest last. */
-  recentFlags: number[];
+  /** Server-owned rolling minute of paints-per-second samples. */
+  pulseHistory: number[];
+  /** [countryId, paints] ranked over the rolling minute. */
+  activeCountries: Array<[number, number]>;
+  /** Short client-side timeline assembled from the one-second pulse frames. */
+  activityEvents: Array<{ id: number; countryId: number; count: number; at: number }>;
   world: number;
   leaderboard: LbRow[];
   countries: Map<number, CountryDTO>;
@@ -98,6 +102,7 @@ interface State {
   historyAt: number | null;
   panel:
     | "none"
+    | "activity"
     | "leaderboard"
     | "settings"
     | "admin"
@@ -163,7 +168,9 @@ export const useStore = create<State>((set) => ({
   hoverPixel: null,
 
   pps: 0,
-  recentFlags: [],
+  pulseHistory: [],
+  activeCountries: [],
+  activityEvents: [],
   world: 0,
   leaderboard: [],
   countries: new Map(),

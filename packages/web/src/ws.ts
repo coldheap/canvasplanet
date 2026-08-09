@@ -17,6 +17,7 @@ import {
   type EventStateDTO,
   type LbRow,
   type PixelTuple,
+  type SPulse,
   type ServerMessage,
   type UserLbRow,
   subKeysForBbox,
@@ -28,7 +29,7 @@ type Handlers = {
   onAllianceLeaderboard: (rows: AllianceLbRow[]) => void;
   onUserLeaderboard: (rows: UserLbRow[]) => void;
   onCharges: (bank: number, nextAt: number | null) => void;
-  onPulse: (pps: number, recent: number[]) => void;
+  onPulse: (pulse: SPulse) => void;
   onFreeze: (on: boolean) => void;
   onEvent: (event: EventStateDTO | null) => void;
   onChatMessage: (message: ChatMessageDTO) => void;
@@ -95,7 +96,7 @@ export class WsClient {
           this.handlers.onCharges?.(msg.bank, msg.nextAt);
           break;
         case "pulse":
-          this.handlers.onPulse?.(msg.pps, msg.recent);
+          this.handlers.onPulse?.(msg);
           break;
         case "freeze":
           this.handlers.onFreeze?.(msg.on);

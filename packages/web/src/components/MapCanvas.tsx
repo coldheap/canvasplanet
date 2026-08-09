@@ -345,6 +345,13 @@ export function MapCanvas({
     window.addEventListener("blur", onBlur);
 
     map.on("click", (e: L.LeafletMouseEvent) => {
+      // Clicking the map dismisses the activity panel without also spending
+      // a charge on the pixel underneath that dismissing click.
+      const state = useStore.getState();
+      if (state.panel === "activity") {
+        state.setPanel("none");
+        return;
+      }
       // While shift is held, painting happens on mousemove below — a click
       // here would double-paint the pixel the hover-stroke just did.
       if (shiftDown.current) return;

@@ -88,11 +88,15 @@ export interface SCharges {
   nextAt: number | null;
 }
 
-/** The activity ticker: paints/sec plus the countries of recent paints. */
+/** Live world activity, broadcast once per second. */
 export interface SPulse {
   t: "pulse";
   pps: number;
+  /** Rolling paints-per-second samples, oldest first (up to one minute). */
+  history: number[];
   recent: number[];
+  /** [countryId, paints] ranked over the same rolling minute. */
+  active: Array<[number, number]>;
 }
 
 export interface SFreeze {

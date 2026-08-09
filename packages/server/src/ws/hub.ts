@@ -39,6 +39,20 @@ interface Conn {
   degraded: boolean;
 }
 
+/** Merge the per-second country buckets into the ranked rolling-window view. */
+export function rankActiveCountries(
+  windows: ReadonlyArray<ReadonlyArray<readonly [number, number]>>,
+  limit = 8,
+): Array<[number, number]> {
+  const totals = new Map<number, number>();
+  for (const countries of windows) {
+    for (const [countryId, count] of countries) {
+      totals.set(countryId, (totals.get(countryId) ?? 0) + count);
+    }
+  }
+  return [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+}
+
 class Hub {
   private conns = new Set<Conn>();
   private byTile = new Map<string, Set<Conn>>();
@@ -52,6 +66,8 @@ class Hub {
   /** Rolling window for the paints-per-second readout. */
   private recentPaints: number[] = [];
   private recentCountries: number[] = [];
+  private pulseHistory: number[] = [];
+  private countryHistory: Array<Array<[number, number]>> = [];
 
   /** One or more tick sources, each polled every LB_TICK_MS — the country
    *  and alliance leaderboards are two independent dirty flags, so each
@@ -64,10 +80,20 @@ class Hub {
         const msg = onTick();
         if (msg) this.broadcast(msg);
       }
+      const pps = this.recentPaints.length;
+      this.pulseHistory = [...this.pulseHistory, pps].slice(-60);
+      const currentCountryCounts = new Map<number, number>();
+      for (const countryId of this.recentCountries) {
+        currentCountryCounts.set(countryId, (currentCountryCounts.get(countryId) ?? 0) + 1);
+      }
+      this.countryHistory = [...this.countryHistory, [...currentCountryCounts.entries()]].slice(-60);
+
       this.broadcast({
         t: "pulse",
-        pps: this.recentPaints.length,
+        pps,
+        history: this.pulseHistory,
         recent: this.recentCountries.slice(-12),
+        active: rankActiveCountries(this.countryHistory),
       });
       this.recentPaints = [];
       this.recentCountries = [];
