@@ -42,9 +42,8 @@ export function App() {
   }, []);
   const [hoverInfo, setHoverInfo] = useState<PixelInfo | null>(null);
   const [pinnedInfo, setPinnedInfo] = useState<PixelInfo | null>(null);
-  // Chat begins open on desktop and closed on compact/mobile layouts. This is
-  // session UI state: pressing X closes it until the user opens it again.
-  const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 641px)").matches);
+  // Chat stays out of the way until the player chooses to open it.
+  const [chatOpen, setChatOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const chatOpenRef = useRef(chatOpen);
   useEffect(() => { chatOpenRef.current = chatOpen; }, [chatOpen]);
@@ -341,8 +340,8 @@ export function App() {
         <button
           className="wc-rail-btn"
           aria-pressed={chatOpen}
-          aria-label={chatUnread > 0 ? `Global chat, ${chatUnread} unread` : "Global chat"}
-          title="Global chat"
+          aria-label={chatUnread > 0 ? `World chat, ${chatUnread} unread` : "World chat"}
+          title="World chat"
           onClick={() => {
             setChatOpen((open) => {
               const next = !open;

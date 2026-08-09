@@ -153,18 +153,9 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
   }
 
   return (
-    <aside className="wc-chat wc-chat-game wc-card" aria-label="Canvas chat">
+    <aside className="wc-chat wc-chat-compact wc-card" aria-label="World chat">
       <header className="wc-chat-head">
-        <span className="wc-chat-pixel-mark" aria-hidden="true">
-          <i /><i /><i /><i />
-        </span>
-        <div className="wc-chat-heading">
-          <span className="wc-chat-title-row">
-            <strong>Canvas chat</strong>
-            <span className="wc-chat-public">Public</span>
-          </span>
-          <small>Visible to everyone on this canvas</small>
-        </div>
+        <strong>World chat</strong>
         <button className="wc-chat-close" aria-label="Close chat" title="Close chat" onClick={onClose}>
           <X size={17} />
         </button>
@@ -180,11 +171,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
         {loading && chatMessages.length === 0 ? (
           <p className="wc-chat-empty"><LoaderCircle className="wc-spin" size={16} /> Loading chat…</p>
         ) : chatMessages.length === 0 ? (
-          <div className="wc-chat-empty">
-            <span className="wc-chat-empty-pixels" aria-hidden="true"><i /><i /><i /></span>
-            <strong>No messages yet</strong>
-            <span>Start the conversation.</span>
-          </div>
+          <p className="wc-chat-empty">No messages yet.</p>
         ) : (
           chatMessages.map((message) => (
             <article className={`wc-chat-message${message.deleted ? " is-deleted" : ""}`} key={message.id}>
@@ -284,7 +271,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
               rows={1}
               value={draft}
               aria-label="Chat message"
-              placeholder="Say something…"
+              placeholder="Type a message…"
               onChange={(event) => {
                 setDraft(event.target.value);
                 event.currentTarget.style.height = "auto";
