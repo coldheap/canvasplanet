@@ -48,6 +48,8 @@ export interface PaintInput {
 export type PaintOutcome =
   | {
       ok: true;
+      /** False when the requested colour already matches the pixel. */
+      changed: boolean;
       cost: number;
       bank: number;
       nextAt: number | null;
@@ -128,14 +130,36 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
     const prevAllianceId = prev ? prev.alliance_id : null;
     const prevUserId = prev ? prev.user_id : null;
 
-    const { cost } = paintCost({ currentColor: prevColor, newColor: color, terrain });
-
-    // ---- Phase 4: spend, unless staff --------------------------------------
     let bank = { charges: s.charges, updatedAt: s.charges_updated_at.getTime() };
     // The corruption event's reward (ROADMAP.md Phase 7) — a session that
     // defended a winning event regenerates faster until event_bonus_until.
     // Null for almost every session, so this is a no-op comparison for them.
     const regenMs = effectiveRegenMs(s.event_bonus_until?.getTime() ?? null, now);
+
+    // Reapplying the colour that is already present cannot change the canvas.
+    // Treat it as an idempotent success: no charge, history, counters, event
+    // credit, dirty tile, or broadcast.
+    if (prevColor === color) {
+      if (!staff) bank = regenerate(bank, now, CHARGE_MAX, regenMs);
+      return {
+        ok: true as const,
+        changed: false,
+        cost: 0,
+        bank: bank.charges,
+        nextAt: nextChargeAt(bank, now, regenMs),
+        countryId,
+        prevColor,
+        prevCountryId,
+        allianceId,
+        prevAllianceId,
+        userId,
+        prevUserId,
+      };
+    }
+
+    const { cost } = paintCost({ currentColor: prevColor, newColor: color, terrain });
+
+    // ---- Phase 4: spend, unless staff --------------------------------------
 
     if (!staff) {
       const spent = spend(bank, cost, now, CHARGE_MAX, regenMs);
@@ -314,6 +338,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
 
     return {
       ok: true as const,
+      changed: true,
       cost,
       bank: bank.charges,
       nextAt: nextChargeAt(bank, now, regenMs),

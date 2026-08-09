@@ -62,14 +62,16 @@ export function registerPaintRoutes(app: FastifyInstance): void {
     // Commit succeeded — now fan out. Order matters only in that the client
     // that painted should see its own pixel via the same path as everyone
     // else, so there is exactly one code path to get wrong.
-    hub.publishPaint(x, y, color, result.countryId);
-    leaderboard.applyPaint(result.countryId, result.prevCountryId);
-    alliances.applyPaint(result.allianceId, result.prevAllianceId);
-    players.applyPaint(result.userId, result.prevUserId);
-    // ROADMAP.md Phase 7 — a no-op unless this pixel landed inside an active
-    // corruption zone. Ordinary paint, own attribution; this only tallies it.
-    events.applyPaint(x, y, color, session.id);
-    score.record({ sessionId: session.id, x, y, at: Date.now() });
+    if (result.changed) {
+      hub.publishPaint(x, y, color, result.countryId);
+      leaderboard.applyPaint(result.countryId, result.prevCountryId);
+      alliances.applyPaint(result.allianceId, result.prevAllianceId);
+      players.applyPaint(result.userId, result.prevUserId);
+      // ROADMAP.md Phase 7 — a no-op unless this pixel landed inside an active
+      // corruption zone. Ordinary paint, own attribution; this only tallies it.
+      events.applyPaint(x, y, color, session.id);
+      score.record({ sessionId: session.id, x, y, at: Date.now() });
+    }
 
     return reply.send({
       ok: true,
