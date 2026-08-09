@@ -16,13 +16,16 @@
 import { readFile } from "node:fs/promises";
 import {
   INTERNATIONAL_WATERS_ID,
+  TILE_SIZE,
+  TILES_PER_AXIS,
   TOTAL_TILES,
   Terrain,
+  Z_PIXEL,
   pixelCenterLatLng,
   tileIdOf,
 } from "@worldcanvas/shared";
 import { env } from "../env.js";
-import { HEADER_BYTES, MAGIC, MIXED_COUNTRY, TerrainBits, unpack2Bit } from "./bake.js";
+import { HEADER_BYTES, MAGIC, MIXED_COUNTRY, TerrainBits, rasterizeTile, unpack2Bit } from "./bake.js";
 import type { PolygonIndex } from "./polygonIndex.js";
 
 export { MIXED_COUNTRY, TerrainBits };
@@ -102,6 +105,25 @@ class GeoIndex {
           : Terrain.Water;
 
     return { countryId, terrain };
+  }
+
+  /**
+   * Exact land/water pixels for one native canvas tile.
+   *
+   * Almost every tile is uniform, which the baked geo index answers in O(1)
+   * and the basemap renderer maps to one shared solid PNG. Only coastline
+   * tiles descend through the source polygons to resolve all 256x256 cells.
+   */
+  terrainTile(tx: number, ty: number): TerrainBits.Land | TerrainBits.Water | Uint8Array {
+    if (!this.loaded) return TerrainBits.Land;
+
+    const tile = tx * TILES_PER_AXIS + ty;
+    const bits = unpack2Bit(this.terrainBits, tile);
+    if (bits === TerrainBits.Land || bits === TerrainBits.Water) return bits;
+
+    return this.waterPolys
+      ? rasterizeTile(this.waterPolys, Z_PIXEL, tx, ty, TILE_SIZE)
+      : TerrainBits.Land;
   }
 
   private countryByPolygon(x: number, y: number): number {

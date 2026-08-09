@@ -113,10 +113,25 @@ export function MapCanvas({
 
     // Always on — see the file doc comment's layer 1. zIndex 0 pins it
     // under both the OSM overlay and the pixel canvas.
+    // Coarse world context appears immediately and remains as a fallback
+    // underneath the exact native-grid terrain layer added next.
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
       className: "wc-pixel-tile",
+      updateWhenZooming: false,
+      keepBuffer: 1,
+      zIndex: 0,
+    }).addTo(map);
+
+    // At painting zoom and closer, one basemap image pixel is exactly one
+    // canvas pixel. This removes the old z8 overzoom where each coastline
+    // sample covered a 16x16 block of independently paintable pixels.
+    L.tileLayer(`/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
+      minZoom: Z_PIXEL,
+      maxNativeZoom: Z_PIXEL,
+      maxZoom: MAX_MAP_ZOOM,
+      className: "wc-pixel-tile wc-native-basemap-layer",
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,

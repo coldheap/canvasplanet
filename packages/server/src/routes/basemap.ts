@@ -1,7 +1,8 @@
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
-import { BASEMAP_MAX_ZOOM } from "@worldcanvas/shared";
+import { BASEMAP_MAX_ZOOM, Z_PIXEL } from "@worldcanvas/shared";
 import type { FastifyInstance } from "fastify";
+import { renderPixelBasemapTile } from "../basemap/renderer.js";
 import { env } from "../env.js";
 
 /**
@@ -27,6 +28,35 @@ function validParams(z: number, x: number, y: number): boolean {
 }
 
 export function registerBasemapRoutes(app: FastifyInstance): void {
+  // Native terrain at painting zoom. Unlike the coarse pre-baked backdrop,
+  // every output cell here is one actual Worldcanvas pixel. Leaflet reuses
+  // these z12 tiles above z12, so no higher-resolution routes are needed.
+  app.get<{ Params: { z: string; x: string; y: string } }>(
+    `/basemap/z${Z_PIXEL}/:z/:x/:y.png`,
+    async (req, reply) => {
+      const z = Number(req.params.z);
+      const x = Number(req.params.x);
+      const y = Number(req.params.y);
+      const span = 2 ** Z_PIXEL;
+      if (
+        z !== Z_PIXEL ||
+        !Number.isInteger(x) ||
+        !Number.isInteger(y) ||
+        x < 0 ||
+        y < 0 ||
+        x >= span ||
+        y >= span
+      ) {
+        return reply.code(404).send();
+      }
+
+      return reply
+        .header("Content-Type", "image/png")
+        .header("Cache-Control", "public, max-age=86400, s-maxage=604800")
+        .send(renderPixelBasemapTile(x, y));
+    },
+  );
+
   app.get<{ Params: { z: string; x: string; y: string } }>(
     "/basemap/:z/:x/:y.png",
     async (req, reply) => {

@@ -101,6 +101,18 @@ export function EmbedApp() {
       zIndex: 0,
     }).addTo(map);
 
+    // Swap the coarse backdrop for one-terrain-cell-per-canvas-pixel detail
+    // at z12+, matching the interactive map exactly.
+    L.tileLayer(`/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
+      minZoom: Z_PIXEL,
+      maxNativeZoom: Z_PIXEL,
+      maxZoom: MAX_MAP_ZOOM,
+      className: "wc-pixel-tile wc-native-basemap-layer",
+      updateWhenZooming: false,
+      keepBuffer: 1,
+      zIndex: 0,
+    }).addTo(map);
+
     if (showOsm) {
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: MAX_MAP_ZOOM,
