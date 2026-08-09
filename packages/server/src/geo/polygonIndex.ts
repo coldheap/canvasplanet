@@ -31,6 +31,14 @@ interface Entry extends Rect {
 
 export class PolygonIndex {
   private tree = new RBush<Entry>();
+  // Buffered until the first query instead of inserted one-by-one. RBush's
+  // insert() is O(log n) per call; its load() bulk-packs the whole batch in
+  // one STR build, which is the difference between the ~1.7s synchronous
+  // stall loadSources() caused at boot (measured directly: see the §2.5
+  // ROADMAP follow-up) and a fraction of that. Deferred rather than eager so
+  // callers that only ever add-then-query (every call site today) pay for
+  // exactly one build.
+  private pending: Entry[] = [];
   readonly features: Feature[] = [];
 
   /**
@@ -44,8 +52,14 @@ export class PolygonIndex {
       if (!outer || outer.length < 4) continue;
       const feature: Feature = { id, poly, bbox: ringBbox(outer) };
       this.features.push(feature);
-      this.tree.insert({ ...feature.bbox, feature });
+      this.pending.push({ ...feature.bbox, feature });
     }
+  }
+
+  private ensureBuilt(): void {
+    if (this.pending.length === 0) return;
+    this.tree.load(this.pending);
+    this.pending = [];
   }
 
   get size(): number {
@@ -54,11 +68,13 @@ export class PolygonIndex {
 
   /** Features whose bbox overlaps the rectangle. Cheap pre-filter. */
   candidates(r: Rect): Feature[] {
+    this.ensureBuilt();
     return this.tree.search(r).map((e) => e.feature);
   }
 
   /** Which feature contains this point, or null. */
   lookup(lon: number, lat: number): number | null {
+    this.ensureBuilt();
     const hits = this.tree.search({ minX: lon, minY: lat, maxX: lon, maxY: lat });
     for (const { feature } of hits) {
       if (pointInPolygon(feature.poly, lon, lat)) return feature.id;
