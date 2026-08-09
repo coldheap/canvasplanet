@@ -1,0 +1,94 @@
+.wc-history-bar {
+  position: absolute;
+  z-index: 1100;
+  top: var(--wc-gap);
+  left: 50%;
+  width: min(560px, calc(100vw - 2 * var(--wc-gap)));
+  padding: 10px 12px;
+  transform: translateX(-50%);
+}
+
+.wc-history-heading,
+.wc-history-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wc-history-heading > svg {
+  color: var(--wc-accent);
+}
+
+.wc-history-heading time {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--wc-dim);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wc-history-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--wc-dim);
+}
+
+.wc-history-close:hover {
+  background: var(--wc-subtle);
+  color: var(--wc-text);
+}
+
+.wc-history-slider {
+  width: 100%;
+  margin: 8px 0 6px;
+  accent-color: var(--wc-accent);
+}
+
+.wc-history-fields span {
+  flex: 1;
+  color: var(--wc-dim);
+  font-size: 11px;
+}
+
+.wc-history-fields input {
+  min-width: 0;
+  border: 1px solid var(--wc-panel-border);
+  border-radius: 7px;
+  padding: 5px 7px;
+  background: var(--wc-panel);
+  color: var(--wc-text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.wc-history-live {
+  padding: 6px 9px;
+}
+
+/* Current-state tools would imply that painting or inspection applies to the
+   displayed past. Hide them for the duration of this read-only mode. */
+html.wc-history-mode .wc-palette,
+html.wc-history-mode .wc-inspector {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .wc-history-bar {
+    top: auto;
+    bottom: var(--wc-gap);
+  }
+
+  .wc-history-fields span {
+    display: none;
+  }
+
+  .wc-history-fields input {
+    flex: 1;
+  }
+}

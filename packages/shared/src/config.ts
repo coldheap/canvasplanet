@@ -133,6 +133,17 @@ export const TILE_WORKER_BATCH = 256;
 export const CF_PURGE_BATCH = 30;
 
 // ---------------------------------------------------------------------------
+// Interactive canvas history
+// ---------------------------------------------------------------------------
+
+/** Past states exposed by history mode. Keeping the window bounded makes a
+ *  public historical-tile request predictable even as pixel_events grows. */
+export const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60_000;
+/** Historical tile URLs are immutable within this bucket. It also prevents a
+ *  slider drag from creating an unbounded cache key for every millisecond. */
+export const HISTORY_BUCKET_MS = 5 * 60_000;
+
+// ---------------------------------------------------------------------------
 // Static land/ocean basemap (see geo/bake.ts's rasterizeTile)
 // ---------------------------------------------------------------------------
 

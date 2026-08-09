@@ -20,7 +20,7 @@
  * never flip it on top of the pixel canvas or under the land/ocean backdrop.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import {
   BASEMAP_MAX_ZOOM,
@@ -39,7 +39,9 @@ import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
+import { normalizeHistoryAt } from "../history.js";
 import { useStore } from "../store.js";
+import { HistoryMode } from "./HistoryMode.js";
 
 export interface MapHandle {
   map: L.Map;
@@ -70,6 +72,7 @@ export function MapCanvas({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const [zoom, setZoom] = useState<number>(DEFAULT_VIEW.z);
 
   // Effect callbacks are captured once on mount; route them through a ref so
   // the map is never torn down and rebuilt just because a handler changed.
@@ -129,6 +132,21 @@ export function MapCanvas({
       zIndex: 2,
     }).addTo(map);
 
+    // Past states are rendered directly from pixel_events. Only native z12
+    // tiles exist; Leaflet overzooms those for close inspection and leaves
+    // the layer empty below z12, where a historical request would otherwise
+    // cover an unbounded portion of the world.
+    const historyLayer = L.tileLayer("", {
+      minZoom: Z_PIXEL,
+      maxNativeZoom: Z_PIXEL,
+      maxZoom: MAX_MAP_ZOOM,
+      className: "wc-pixel-tile wc-history-layer",
+      keepBuffer: 2,
+      zIndex: 2,
+    });
+    let renderedHistoryAt: number | null = null;
+    let historyActive = false;
+
     const overlay = new LiveOverlay(map);
 
     // ---- tile <-> overlay handoff -----------------------------------------
@@ -171,7 +189,8 @@ export function MapCanvas({
     // live-paint overlay still read on top of it.
     const heat = createHeatLayer();
     const applyHeat = () => {
-      const on = useStore.getState().settings.heatmap;
+      const state = useStore.getState();
+      const on = state.settings.heatmap && state.historyAt === null;
       if (on && !map.hasLayer(heat)) heat.addTo(map);
       else if (!on && map.hasLayer(heat)) map.removeLayer(heat);
     };
@@ -183,6 +202,37 @@ export function MapCanvas({
       else if (!on && map.hasLayer(osm)) map.removeLayer(osm);
     };
 
+    // Swap the authoritative live layer for an immutable historical one.
+    // Live WS deltas continue accumulating underneath, so returning live is
+    // immediate and does not need a reconnect.
+    const applyHistory = () => {
+      const selected = useStore.getState().historyAt;
+      if (selected === null) {
+        if (!historyActive) return;
+        historyActive = false;
+        if (map.hasLayer(historyLayer)) map.removeLayer(historyLayer);
+        if (!map.hasLayer(canvasLayer)) canvasLayer.addTo(map);
+        overlay.setVisible(true);
+        template.setVisible(true);
+        canvasLayer.redraw();
+        return;
+      }
+
+      const at = normalizeHistoryAt(selected);
+      if (at !== renderedHistoryAt) {
+        renderedHistoryAt = at;
+        historyLayer.setUrl(`/api/history/tiles/${at}/{z}/{x}/{y}.png`, false);
+        historyLayer.redraw();
+      }
+      if (!historyActive) {
+        historyActive = true;
+        if (map.hasLayer(canvasLayer)) map.removeLayer(canvasLayer);
+        if (!map.hasLayer(historyLayer)) historyLayer.addTo(map);
+        overlay.setVisible(false);
+        template.setVisible(false);
+      }
+    };
+
     // ---- corruption event zone (ROADMAP.md Phase 7) ------------------------
     // A dedicated rectangle rather than reusing `bbox` (BboxDraw) below: that
     // instance is the shared picker for six other "draw an area" tools and
@@ -191,7 +241,8 @@ export function MapCanvas({
     let eventRect: L.Rectangle | null = null;
     let eventRectId: number | null = null;
     const applyEventZone = () => {
-      const ev = useStore.getState().event;
+      const state = useStore.getState();
+      const ev = state.historyAt === null ? state.event : null;
       if (!ev) {
         if (eventRect) {
           eventRect.remove();
@@ -230,6 +281,7 @@ export function MapCanvas({
     const lastHoverPixel = { current: null as { x: number; y: number } | null };
 
     const paintAt = (pixel: { x: number; y: number }) => {
+      if (useStore.getState().historyAt !== null) return;
       if (map.getZoom() < MIN_PAINT_ZOOM) return;
       const key = `${pixel.x},${pixel.y}`;
       if (key === lastPainted.current) return;
@@ -238,7 +290,36 @@ export function MapCanvas({
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+
+      if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        const state = useStore.getState();
+        bbox.cancel();
+        state.setPanel("none");
+        state.setHistoryAt(state.historyAt === null ? normalizeHistoryAt(Date.now() - 24 * 60 * 60_000) : null);
+        if (shiftDown.current) {
+          shiftDown.current = false;
+          lastPainted.current = null;
+          map.dragging.enable();
+        }
+        return;
+      }
+
+      if (!typing && e.key === "Escape" && useStore.getState().historyAt !== null) {
+        e.preventDefault();
+        useStore.getState().setHistoryAt(null);
+        return;
+      }
+
       if (e.key !== "Shift" || shiftDown.current) return;
+      if (useStore.getState().historyAt !== null) return;
       shiftDown.current = true;
       map.dragging.disable();
       // Paint under the cursor immediately, since a stationary mouse never
@@ -267,6 +348,7 @@ export function MapCanvas({
       // While shift is held, painting happens on mousemove below — a click
       // here would double-paint the pixel the hover-stroke just did.
       if (shiftDown.current) return;
+      if (useStore.getState().historyAt !== null) return;
       if (map.getZoom() < MIN_PAINT_ZOOM) return; // view-only below the paint zoom
       // A bbox drag (timelapse/revert/regions/stamp/report/embed all go
       // through pickBbox) disables map.dragging for its duration, so Leaflet
@@ -288,6 +370,10 @@ export function MapCanvas({
     });
 
     map.on("mousemove", (e: L.LeafletMouseEvent) => {
+      if (useStore.getState().historyAt !== null) {
+        lastHoverPixel.current = null;
+        return cb.current.onHover(null);
+      }
       if (map.getZoom() < MIN_PAINT_ZOOM) {
         lastHoverPixel.current = null;
         return cb.current.onHover(null);
@@ -306,6 +392,7 @@ export function MapCanvas({
     // a long press on touch, so this works on a phone without a second
     // gesture to teach.
     map.on("contextmenu", (e: L.LeafletMouseEvent) => {
+      if (useStore.getState().historyAt !== null) return;
       cb.current.onInspect(latLngToPixel({ lat: e.latlng.lat, lng: e.latlng.lng }));
     });
 
@@ -317,6 +404,7 @@ export function MapCanvas({
         { x0: Math.min(nw.x, se.x), y0: Math.min(nw.y, se.y), x1: Math.max(nw.x, se.x), y1: Math.max(nw.y, se.y) },
         map.getZoom(),
       );
+      setZoom(map.getZoom());
     };
 
     map.on("moveend zoomend", () => {
@@ -332,6 +420,7 @@ export function MapCanvas({
     emitViewport();
     const bbox = new BboxDraw(map);
     const template = new TemplateLayer(map);
+    applyHistory();
     cb.current.onReady({ map, overlay, refreshTiles, flyTo, bbox, template });
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
@@ -341,6 +430,7 @@ export function MapCanvas({
       applyHeat();
       applyOsm();
       applyEventZone();
+      applyHistory();
     });
 
     return () => {
@@ -358,7 +448,12 @@ export function MapCanvas({
     };
   }, []);
 
-  return <div ref={ref} className="wc-map" />;
+  return (
+    <>
+      <div ref={ref} className="wc-map" />
+      <HistoryMode zoom={zoom} />
+    </>
+  );
 }
 
 /**

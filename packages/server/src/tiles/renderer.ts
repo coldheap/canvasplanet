@@ -25,7 +25,7 @@
  */
 
 import { PNG } from "pngjs";
-import { PALETTE_RGB, TILES_PER_AXIS, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@worldcanvas/shared";
+import { ERASED, PALETTE_RGB, TILES_PER_AXIS, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@worldcanvas/shared";
 import { pool } from "../db/pool.js";
 import { peekTile } from "./cache.js";
 import { tileEncodeTime, tileQueryTime } from "../metrics.js";
@@ -74,6 +74,39 @@ async function renderColorLeaf(tx: number, ty: number): Promise<Buffer> {
     for (const row of rows) {
       const rgb = PALETTE_RGB[row.color];
       if (!rgb) continue; // palette shrank under us; skip rather than crash
+      const o = pixelIndexInTile(row.x, row.y) * 4;
+      png.data[o] = rgb[0];
+      png.data[o + 1] = rgb[1];
+      png.data[o + 2] = rgb[2];
+      png.data[o + 3] = 255;
+    }
+    return PNG.sync.write(png);
+  });
+}
+
+/** Render an immutable native tile as it existed at `at`. Historical tiles
+ *  deliberately have no lower-resolution pyramid: the interactive client
+ *  requests them only at Z_PIXEL and overzooms for close inspection. */
+export async function renderHistoryTile(tx: number, ty: number, at: number): Promise<Buffer> {
+  const { rows } = await tileQueryTime.measure(() =>
+    pool.query<{ x: number; y: number; color: number }>(
+      `SELECT DISTINCT ON (x, y) x, y, color
+         FROM pixel_events
+        WHERE (x >> 8) = $1 AND (y >> 8) = $2
+          AND created_at <= to_timestamp($3 / 1000.0)
+        ORDER BY x, y, created_at DESC, id DESC`,
+      [tx, ty, at],
+    ),
+  );
+  const visible = rows.filter((row) => row.color !== ERASED);
+  if (visible.length === 0) return EMPTY_TILE;
+
+  return tileEncodeTime.measureSync(() => {
+    const png = new PNG({ width: TILE_SIZE, height: TILE_SIZE });
+    png.data.fill(0);
+    for (const row of visible) {
+      const rgb = PALETTE_RGB[row.color];
+      if (!rgb) continue;
       const o = pixelIndexInTile(row.x, row.y) * 4;
       png.data[o] = rgb[0];
       png.data[o + 1] = rgb[1];

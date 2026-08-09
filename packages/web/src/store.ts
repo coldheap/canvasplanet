@@ -89,6 +89,8 @@ interface State {
   discordEnabled: boolean;
 
   settings: Settings;
+  /** Selected historical canvas timestamp, or null for the live canvas. */
+  historyAt: number | null;
   panel:
     | "none"
     | "leaderboard"
@@ -140,6 +142,7 @@ interface State {
   setEvent: (event: EventStateDTO | null) => void;
   setPendingResetToken: (token: string | null) => void;
   select: (color: number) => void;
+  setHistoryAt: (at: number | null) => void;
   setPanel: (panel: State["panel"]) => void;
   openCountryPage: (iso: string) => void;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -177,6 +180,7 @@ export const useStore = create<State>((set) => ({
   discordEnabled: false,
 
   settings: loadSettings(),
+  historyAt: null,
   panel: "none",
   openCountry: null,
   mapPicking: false,
@@ -218,6 +222,7 @@ export const useStore = create<State>((set) => ({
   setEvent: (event) => set({ event }),
   setPendingResetToken: (pendingResetToken) => set({ pendingResetToken }),
   select: (selectedColor) => set({ selectedColor }),
+  setHistoryAt: (historyAt) => set({ historyAt }),
   setPanel: (panel) => set({ panel }),
   openCountryPage: (openCountry) => set({ openCountry, panel: "country" }),
   updateSettings: (patch) =>

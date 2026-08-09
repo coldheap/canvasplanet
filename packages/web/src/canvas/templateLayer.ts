@@ -38,6 +38,7 @@ export class TemplateLayer {
   private actual: Uint8Array | null = null;
   private opacity = 0.5;
   private nextPixel: { x: number; y: number } | null = null;
+  private visible = true;
 
   constructor(private readonly map: L.Map) {
     this.canvas = L.DomUtil.create("canvas", "wc-template-layer") as HTMLCanvasElement;
@@ -74,6 +75,13 @@ export class TemplateLayer {
   setOpacity(value: number): void {
     this.opacity = value;
     this.schedule();
+  }
+
+  /** Hide current-state guidance while the map is showing a past state. */
+  setVisible(visible: boolean): void {
+    this.visible = visible;
+    this.canvas.style.visibility = visible ? "visible" : "hidden";
+    if (visible) this.schedule();
   }
 
   /** Current canvas state under the template, from /api/region. */
@@ -137,8 +145,8 @@ export class TemplateLayer {
     this.canvas.style.visibility = "hidden";
   };
   private show = (): void => {
-    this.canvas.style.visibility = "visible";
-    this.schedule();
+    this.canvas.style.visibility = this.visible ? "visible" : "hidden";
+    if (this.visible) this.schedule();
   };
   private onResize = (): void => {
     this.resize();

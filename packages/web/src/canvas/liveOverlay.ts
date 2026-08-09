@@ -36,6 +36,7 @@ export class LiveOverlay {
   private pending = new Map<number, PendingPixel>();
   private frame: number | null = null;
   private sweepTimer: number;
+  private visible = true;
 
   constructor(private readonly map: L.Map) {
     this.canvas = L.DomUtil.create("canvas", "wc-live-overlay") as HTMLCanvasElement;
@@ -89,6 +90,14 @@ export class LiveOverlay {
     this.schedule();
   }
 
+  /** History mode keeps receiving live deltas but must not display them over
+   *  the selected past state. */
+  setVisible(visible: boolean): void {
+    this.visible = visible;
+    this.canvas.style.visibility = visible ? "visible" : "hidden";
+    if (visible) this.schedule();
+  }
+
   /**
    * A tile's PNG just reloaded, so every pixel inside it that predates the
    * load is now baked into the tile underneath. Dropping them here is what
@@ -131,8 +140,8 @@ export class LiveOverlay {
   };
 
   private show = (): void => {
-    this.canvas.style.visibility = "visible";
-    this.schedule();
+    this.canvas.style.visibility = this.visible ? "visible" : "hidden";
+    if (this.visible) this.schedule();
   };
 
   private onResize = (): void => {
