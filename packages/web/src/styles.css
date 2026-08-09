@@ -1332,7 +1332,7 @@ html.wc-motion-reduce * {
 .wc-activity-head {
   display: grid;
   min-width: 0;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 14px;
@@ -1350,31 +1350,8 @@ html.wc-motion-reduce * {
 }
 .wc-activity-title-icon { width: 34px; height: 34px; }
 .wc-activity-head h2,
-.wc-activity-head p,
 .wc-activity-section h3 { margin: 0; }
 .wc-activity-head h2 { font-size: 15px; }
-.wc-activity-head > div { min-width: 0; }
-.wc-activity-head p {
-  overflow: hidden;
-  margin-top: 2px;
-  color: var(--wc-dim);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wc-live-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 7px;
-  border-radius: 999px;
-  background: var(--wc-subtle);
-  color: var(--wc-dim);
-  font-size: 10px;
-  font-weight: 700;
-}
-.wc-live-state.is-live { background: var(--wc-good-soft); color: var(--wc-good); }
-.wc-live-state.is-live svg { animation: wc-blink 1.6s ease-in-out infinite; }
 .wc-panel-icon-btn {
   display: grid;
   width: 30px;

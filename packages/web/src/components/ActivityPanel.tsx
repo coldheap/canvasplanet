@@ -7,7 +7,6 @@ import {
   List,
   MapPin,
   Paintbrush2,
-  Radio,
   Sparkles,
   TrendingUp,
   UserRound,
@@ -57,13 +56,7 @@ export function ActivityPanel() {
     <aside className="wc-activity-panel wc-card" aria-labelledby="activity-title">
       <header className="wc-activity-head">
         <span className="wc-activity-title-icon" aria-hidden><Activity size={18} /></span>
-        <div>
-          <h2 id="activity-title">Live activity</h2>
-          <p>What is happening across the canvas</p>
-        </div>
-        <span className={pps > 0 ? "wc-live-state is-live" : "wc-live-state"}>
-          <Radio size={12} /> {pps > 0 ? "Live" : "Quiet"}
-        </span>
+        <h2 id="activity-title">Live activity</h2>
         <button className="wc-panel-icon-btn" aria-label="Close activity" title="Close" onClick={() => setPanel("none")}>
           <X size={18} />
         </button>
