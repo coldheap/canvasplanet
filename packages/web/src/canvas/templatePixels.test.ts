@@ -1,6 +1,10 @@
-import { TRANSPARENT_INDEX } from "@worldcanvas/shared";
+import { TRANSPARENT_INDEX, WORLD_SIZE } from "@worldcanvas/shared";
 import { describe, expect, it } from "vitest";
-import { templateColorAt, type TemplatePlacement } from "./templatePixels.js";
+import {
+  centeredTemplateOrigin,
+  templateColorAt,
+  type TemplatePlacement,
+} from "./templatePixels.js";
 
 const placement: TemplatePlacement = {
   x: 10,
@@ -22,5 +26,22 @@ describe("templateColorAt", () => {
     expect(templateColorAt(placement, 9, 20)).toBeNull();
     expect(templateColorAt(placement, 12, 21)).toBeNull();
     expect(templateColorAt(null, 10, 20)).toBeNull();
+  });
+});
+
+describe("centeredTemplateOrigin", () => {
+  it("centres the template on the chosen map pixel", () => {
+    expect(centeredTemplateOrigin({ x: 1_000, y: 2_000 }, 200, 80)).toEqual({
+      x: 900,
+      y: 1_960,
+    });
+  });
+
+  it("keeps the whole template inside world bounds", () => {
+    expect(centeredTemplateOrigin({ x: 2, y: 3 }, 200, 80)).toEqual({ x: 0, y: 0 });
+    expect(centeredTemplateOrigin({ x: WORLD_SIZE, y: WORLD_SIZE }, 200, 80)).toEqual({
+      x: WORLD_SIZE - 200,
+      y: WORLD_SIZE - 80,
+    });
   });
 });

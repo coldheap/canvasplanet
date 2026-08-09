@@ -37,6 +37,9 @@ const GUIDE_RGB = PALETTE_RGB.map(([r, g, b]) => {
 export class TemplateLayer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  /** Cached unfinished-pixel image used when individual pixels are sub-screen. */
+  private preview: HTMLCanvasElement;
+  private previewCtx: CanvasRenderingContext2D;
   private frame: number | null = null;
 
   private placement: TemplatePlacement | null = null;
@@ -55,6 +58,8 @@ export class TemplateLayer {
     this.canvas.style.zIndex = "450";
     map.getPanes().overlayPane!.appendChild(this.canvas);
     this.ctx = this.canvas.getContext("2d")!;
+    this.preview = document.createElement("canvas");
+    this.previewCtx = this.preview.getContext("2d")!;
 
     this.resize();
     map.on("move", this.reposition);
@@ -75,6 +80,7 @@ export class TemplateLayer {
     this.placement = placement;
     this.actual = null;
     this.nextPixel = null;
+    this.rebuildPreview();
     this.schedule();
   }
 
@@ -94,6 +100,7 @@ export class TemplateLayer {
   setActual(actual: Uint8Array | null): void {
     this.actual = actual;
     this.recomputeNext();
+    this.rebuildPreview();
     this.schedule();
   }
 
@@ -105,7 +112,9 @@ export class TemplateLayer {
     // An erase means the pixel is unpainted again, not that it is now
     // colour 255 — which would otherwise read as "done" for a template
     // pixel that is genuinely still to do.
-    this.actual[(y - p.y) * p.w + (x - p.x)] = color === ERASED ? TRANSPARENT_INDEX : color;
+    const index = (y - p.y) * p.w + (x - p.x);
+    this.actual[index] = color === ERASED ? TRANSPARENT_INDEX : color;
+    this.updatePreviewPixel(index);
     this.recomputeNext();
     this.schedule();
     return true;
@@ -152,6 +161,48 @@ export class TemplateLayer {
     return templateColorAt(this.placement, x, y);
   }
 
+  private rebuildPreview(): void {
+    const p = this.placement;
+    if (!p) {
+      this.preview.width = 1;
+      this.preview.height = 1;
+      return;
+    }
+
+    this.preview.width = p.w;
+    this.preview.height = p.h;
+    const image = this.previewCtx.createImageData(p.w, p.h);
+    for (let i = 0; i < p.data.length; i++) {
+      const want = p.data[i]!;
+      if (want === TRANSPARENT_INDEX || (this.actual && this.actual[i] === want)) continue;
+      const rgb = GUIDE_RGB[want];
+      if (!rgb) continue;
+      const offset = i * 4;
+      image.data[offset] = rgb[0];
+      image.data[offset + 1] = rgb[1];
+      image.data[offset + 2] = rgb[2];
+      image.data[offset + 3] = 255;
+    }
+    this.previewCtx.putImageData(image, 0, 0);
+  }
+
+  private updatePreviewPixel(index: number): void {
+    const p = this.placement;
+    if (!p) return;
+    const x = index % p.w;
+    const y = Math.floor(index / p.w);
+    const want = p.data[index]!;
+    if (want === TRANSPARENT_INDEX || (this.actual && this.actual[index] === want)) {
+      this.previewCtx.clearRect(x, y, 1, 1);
+      return;
+    }
+    const rgb = GUIDE_RGB[want];
+    if (!rgb) return;
+    this.previewCtx.globalAlpha = 1;
+    this.previewCtx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    this.previewCtx.fillRect(x, y, 1, 1);
+  }
+
   private hide = (): void => {
     this.canvas.style.visibility = "hidden";
   };
@@ -196,47 +247,53 @@ export class TemplateLayer {
 
     const zoom = this.map.getZoom();
     const px = 2 ** (zoom - Z_PIXEL);
-    // Below one screen pixel per canvas pixel the ghost is unreadable and
-    // just muddies the map, so it hides itself rather than becoming noise.
-    if (px < 1) return;
 
     const origin = this.map.latLngToContainerPoint(
       pixelToLatLng({ x: p.x, y: p.y }) as never,
     );
 
-    for (let row = 0; row < p.h; row++) {
-      // Cull rows outside the viewport before touching their pixels.
-      const sy = origin.y + row * px;
-      if (sy + px < 0 || sy > size.y) continue;
-      for (let col = 0; col < p.w; col++) {
-        const want = p.data[row * p.w + col]!;
-        if (want === TRANSPARENT_INDEX) continue;
-        // Already correct on the canvas: do not ghost over it, so what is
-        // left to do is what you see.
-        if (this.actual && this.actual[row * p.w + col] === want) continue;
+    if (px < 4) {
+      // One cached blit keeps even multi-million-pixel templates visible and
+      // responsive while zoomed out. Nearest-neighbour scaling preserves the
+      // pixel-art silhouette instead of blurring it into the basemap.
+      this.ctx.globalAlpha = this.opacity;
+      this.ctx.imageSmoothingEnabled = false;
+      this.ctx.drawImage(this.preview, origin.x, origin.y, p.w * px, p.h * px);
+    } else {
+      for (let row = 0; row < p.h; row++) {
+        // Cull rows outside the viewport before touching their pixels.
+        const sy = origin.y + row * px;
+        if (sy + px < 0 || sy > size.y) continue;
+        for (let col = 0; col < p.w; col++) {
+          const want = p.data[row * p.w + col]!;
+          if (want === TRANSPARENT_INDEX) continue;
+          // Already correct on the canvas: do not ghost over it, so what is
+          // left to do is what you see.
+          if (this.actual && this.actual[row * p.w + col] === want) continue;
 
-        const sx = origin.x + col * px;
-        if (sx + px < 0 || sx > size.x) continue;
-        const rgb = px < 6 ? GUIDE_RGB[want] : PALETTE_RGB[want];
-        if (!rgb) continue;
-        this.ctx.globalAlpha = this.opacity;
-        this.ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-        this.ctx.fillRect(Math.floor(sx), Math.floor(sy), Math.ceil(px), Math.ceil(px));
+          const sx = origin.x + col * px;
+          if (sx + px < 0 || sx > size.x) continue;
+          const rgb = px < 6 ? GUIDE_RGB[want] : PALETTE_RGB[want];
+          if (!rgb) continue;
+          this.ctx.globalAlpha = this.opacity;
+          this.ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+          this.ctx.fillRect(Math.floor(sx), Math.floor(sy), Math.ceil(px), Math.ceil(px));
 
-        // At close zoom, a high-contrast centre marker makes unfinished
-        // pixels unmistakable. It disappears the instant the canvas matches
-        // the template, leaving the clean target colour behind.
-        if (px >= 6) {
-          const light = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-          const marker = Math.max(2, Math.min(5, Math.floor(px / 4)));
-          this.ctx.globalAlpha = Math.min(1, this.opacity + 0.1);
-          this.ctx.fillStyle = light > 145 ? "#111827" : "#ffffff";
-          this.ctx.fillRect(
-            Math.floor(sx + (px - marker) / 2),
-            Math.floor(sy + (px - marker) / 2),
-            marker,
-            marker,
-          );
+          // At close zoom, a high-contrast centre marker makes unfinished
+          // pixels unmistakable. It disappears the instant the canvas matches
+          // the template, leaving the clean target colour behind.
+          if (px >= 6) {
+            const light = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+            const marker = Math.max(2, Math.min(5, Math.floor(px / 4)));
+            this.ctx.globalAlpha = Math.min(1, this.opacity + 0.1);
+            this.ctx.fillStyle = light > 145 ? "#111827" : "#ffffff";
+            this.ctx.fillRect(
+              Math.floor(sx + (px - marker) / 2),
+              Math.floor(sy + (px - marker) / 2),
+              marker,
+              marker,
+            );
+          }
         }
       }
     }
@@ -244,7 +301,7 @@ export class TemplateLayer {
 
     // Outline the whole template so its edges are unambiguous.
     this.ctx.strokeStyle = "#2563eb";
-    this.ctx.lineWidth = 1;
+    this.ctx.lineWidth = px < 1 ? 2 : 1;
     this.ctx.strokeRect(
       Math.floor(origin.x) + 0.5,
       Math.floor(origin.y) + 0.5,

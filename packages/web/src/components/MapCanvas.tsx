@@ -38,6 +38,7 @@ import {
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
+import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
 import { useStore } from "../store.js";
@@ -50,8 +51,12 @@ export interface MapHandle {
   refreshTiles: () => void;
   /** Animate to a pixel coordinate. Used by country pages to fly to a hotspot. */
   flyTo: (x: number, y: number, z?: number) => void;
+  /** Frame a complete template in the usable part of the viewport. */
+  fitTemplate: (x: number, y: number, w: number, h: number) => void;
   /** Rectangle selection, for admin regions and revert-by-area. */
   bbox: BboxDraw;
+  /** Single-point selection for a template's centre anchor. */
+  point: PointPick;
   /** The template ghost, aligned to the pixel grid. */
   template: TemplateLayer;
 }
@@ -197,6 +202,19 @@ export function MapCanvas({
       // pixel off at high zoom.
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
       map.flyTo([target.lat, target.lng] as never, z, { duration: 0.7 });
+    };
+
+    const fitTemplate = (x: number, y: number, w: number, h: number) => {
+      const nw = pixelToLatLng({ x, y });
+      const se = pixelToLatLng({ x: x + w, y: y + h });
+      const desktop = map.getSize().x > 700;
+      map.fitBounds(L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]), {
+        animate: true,
+        duration: 0.6,
+        maxZoom: 16,
+        paddingTopLeft: L.point(desktop ? 420 : 24, 24),
+        paddingBottomRight: L.point(24, desktop ? 100 : 150),
+      });
     };
 
     // ---- grid overlay ------------------------------------------------------
@@ -459,9 +477,10 @@ export function MapCanvas({
     applyEventZone();
     emitViewport();
     const bbox = new BboxDraw(map);
+    const point = new PointPick(map);
     const template = new TemplateLayer(map);
     applyHistory();
-    cb.current.onReady({ map, overlay, refreshTiles, flyTo, bbox, template });
+    cb.current.onReady({ map, overlay, refreshTiles, flyTo, fitTemplate, bbox, point, template });
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
     // and the corruption zone changes on its own 1Hz WS push, not a map event.
@@ -481,6 +500,7 @@ export function MapCanvas({
       // Before map.remove(): a live selection has document-level listeners
       // and has disabled map dragging, neither of which map.remove() undoes.
       bbox.destroy();
+      point.destroy();
       template.destroy();
       overlay.destroy();
       map.remove();

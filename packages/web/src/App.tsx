@@ -285,7 +285,7 @@ export function App() {
           h: t.h,
           data: Uint8Array.from(atob(t.data), (ch) => ch.charCodeAt(0)),
         });
-        h.flyTo(t.x + Math.floor(t.w / 2), t.y + Math.floor(t.h / 2), 14);
+        h.fitTemplate(t.x, t.y, t.w, t.h);
         useStore.setState({ sharedTemplateId: t.id });
         return api.region({ x0: t.x, y0: t.y, x1: t.x + t.w - 1, y1: t.y + t.h - 1 });
       })

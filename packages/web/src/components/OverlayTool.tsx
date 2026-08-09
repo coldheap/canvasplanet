@@ -19,11 +19,9 @@ import {
   Image as ImageIcon,
   LayoutTemplate,
   Loader2,
-  Lock,
   MapPin,
   Share2,
   Trash2,
-  Unlock,
   X,
 } from "lucide-react";
 import {
@@ -34,7 +32,8 @@ import {
   quantizeToPalette,
 } from "@worldcanvas/shared";
 import { api } from "../api.js";
-import { pickBbox } from "../canvas/pickBbox.js";
+import { pickPoint } from "../canvas/pointPick.js";
+import { centeredTemplateOrigin } from "../canvas/templatePixels.js";
 import { useStore } from "../store.js";
 import type { MapHandle } from "./MapCanvas.js";
 
@@ -53,7 +52,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
   const [image, setImage] = useState<Loaded | null>(null);
   const [dither, setDither] = useState<DitherMode>("none");
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
-  const [locked, setLocked] = useState(false);
+  const [placing, setPlacing] = useState(false);
   const [opacity, setOpacity] = useState(0.85);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -139,13 +138,20 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
 
   // Clear the ghost when the panel unmounts, or it hangs over the map with no
   // visible way to get rid of it.
-  useEffect(() => () => handle?.template.set(null), [handle]);
+  useEffect(() => () => {
+    handle?.point.cancel();
+    handle?.template.set(null);
+  }, [handle]);
 
   async function place(): Promise<void> {
-    const b = await pickBbox(handle);
-    if (b) {
-      setAt({ x: b.x0, y: b.y0 });
-      setLocked(true);
+    if (!image) return;
+    setPlacing(true);
+    const center = await pickPoint(handle);
+    setPlacing(false);
+    if (center) {
+      const origin = centeredTemplateOrigin(center, image.w, image.h);
+      setAt(origin);
+      handle?.fitTemplate(origin.x, origin.y, image.w, image.h);
     }
   }
 
@@ -223,20 +229,14 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
           </label>
 
           <div className="wc-actions">
-            <button className="wc-btn" disabled={!handle || locked} onClick={() => void place()}>
+            <button className="wc-btn" disabled={!handle || placing} onClick={() => void place()}>
               <MapPin size={15} />
-              {at ? `${at.x}, ${at.y}` : "Place on map"}
+              {placing ? "Click template centre…" : at ? "Reposition" : "Place on map"}
             </button>
-            {at && (
-              <button
-                className="wc-btn"
-                title={locked ? "Unlock to move it" : "Lock in place"}
-                onClick={() => setLocked((l) => !l)}
-              >
-                {locked ? <Lock size={15} /> : <Unlock size={15} />}
-              </button>
-            )}
           </div>
+
+          {placing && <p className="wc-hint">Click once where the template centre should go. Press Esc to cancel.</p>}
+          {at && <p className="wc-hint">Top-left pixel: <code>{at.x}, {at.y}</code></p>}
 
           {at && (
             <>
@@ -290,7 +290,6 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
                   onClick={() => {
                     setImage(null);
                     setAt(null);
-                    setLocked(false);
                     setShareUrl(null);
                     handle?.template.set(null);
                   }}

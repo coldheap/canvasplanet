@@ -1,4 +1,4 @@
-import { TRANSPARENT_INDEX } from "@worldcanvas/shared";
+import { TRANSPARENT_INDEX, WORLD_SIZE } from "@worldcanvas/shared";
 
 export interface TemplatePlacement {
   x: number;
@@ -27,4 +27,16 @@ export function templateColorAt(
 
   const color = placement.data[(y - placement.y) * placement.w + (x - placement.x)];
   return color === undefined || color === TRANSPARENT_INDEX ? null : color;
+}
+
+/** Top-left origin that puts a template's centre on the picked world pixel. */
+export function centeredTemplateOrigin(
+  center: { x: number; y: number },
+  width: number,
+  height: number,
+): { x: number; y: number } {
+  return {
+    x: Math.max(0, Math.min(WORLD_SIZE - width, center.x - Math.floor(width / 2))),
+    y: Math.max(0, Math.min(WORLD_SIZE - height, center.y - Math.floor(height / 2))),
+  };
 }
