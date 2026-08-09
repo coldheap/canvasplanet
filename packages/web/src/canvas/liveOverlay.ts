@@ -8,17 +8,19 @@
  * user-facing latency.
  *
  * So: a transparent canvas above the tile layer holds every pixel received
- * over WebSocket since that pixel's tile was last rendered. When the tile's
- * PNG reloads, the pixels inside it are dropped from the overlay and the two
- * layers agree again. Net visible latency is the WebSocket round trip.
+ * over WebSocket since that pixel's tile was last rendered. Once those
+ * pixels have aged past the tile worker's normal render window, the overlay
+ * asks the Leaflet layer to reload. A pending pixel is removed only after the
+ * loaded PNG is inspected and shown to contain that exact colour.
  *
- * Pixels also expire on a safety TTL, so a tile that never reloads (offscreen,
- * cached hard, worker wedged) cannot leave the overlay permanently diverged
- * from the canvas underneath it.
+ * The image check is important: a time-to-live used to delete pixels after
+ * 15 seconds whether or not a fresh tile had arrived. A stale browser/edge
+ * tile then made paint disappear until a zoom fetched a newer image.
  */
 
 import L from "leaflet";
-import { ERASED, PALETTE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
+import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
+import { tilePixelMatches } from "./tilePixels.js";
 
 interface PendingPixel {
   x: number;
@@ -27,18 +29,24 @@ interface PendingPixel {
   at: number;
 }
 
-/** Longer than the tile worker interval plus a render, with margin. */
-const TTL_MS = 15_000;
+/** Give the debounced tile worker time to render before asking for the PNG. */
+const REFRESH_AFTER_MS = 5_000;
+/** A stale edge response or a busy worker should not cause a request storm. */
+const REFRESH_RETRY_MS = 5_000;
 
 export class LiveOverlay {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private pending = new Map<number, PendingPixel>();
   private frame: number | null = null;
-  private sweepTimer: number;
+  private refreshTimer: number;
+  private lastRefreshAt = 0;
   private visible = true;
 
-  constructor(private readonly map: L.Map) {
+  constructor(
+    private readonly map: L.Map,
+    private readonly refreshTiles: () => void,
+  ) {
     this.canvas = L.DomUtil.create("canvas", "wc-live-overlay") as HTMLCanvasElement;
     // Clicks must reach the map underneath — this layer is purely visual.
     this.canvas.style.pointerEvents = "none";
@@ -55,7 +63,7 @@ export class LiveOverlay {
     map.on("zoomstart", this.hide);
     map.on("zoomend", this.show);
 
-    this.sweepTimer = window.setInterval(() => this.sweep(), 5_000);
+    this.refreshTimer = window.setInterval(() => this.refreshStaleTiles(), 1_000);
   }
 
   destroy(): void {
@@ -63,7 +71,7 @@ export class LiveOverlay {
     this.map.off("resize zoomend", this.onResize);
     this.map.off("zoomstart", this.hide);
     this.map.off("zoomend", this.show);
-    window.clearInterval(this.sweepTimer);
+    window.clearInterval(this.refreshTimer);
     this.canvas.remove();
   }
 
@@ -99,23 +107,52 @@ export class LiveOverlay {
   }
 
   /**
-   * A tile's PNG just reloaded, so every pixel inside it that predates the
-   * load is now baked into the tile underneath. Dropping them here is what
-   * keeps the overlay small and stops it drifting out of sync.
+   * A native tile's PNG just loaded. Only drop pending pixels whose exact
+   * palette colour is present in that image. Merely receiving `tileload` is
+   * not proof of freshness: the browser or edge can legally return an older
+   * cached image while the dirty-tile worker is still catching up.
    */
-  clearTile(z: number, tx: number, ty: number, loadStartedAt: number): void {
+  confirmTile(z: number, tx: number, ty: number, tile: HTMLElement): void {
     if (z !== Z_PIXEL) return; // only the 1:1 level bakes individual pixels
-    const x0 = tx * 256;
-    const y0 = ty * 256;
-    let changed = false;
-    for (const [k, pixel] of this.pending) {
+    if (!(tile instanceof HTMLImageElement)) return;
+
+    const x0 = tx * TILE_SIZE;
+    const y0 = ty * TILE_SIZE;
+    const candidates: Array<[number, PendingPixel]> = [];
+    for (const entry of this.pending) {
+      const pixel = entry[1];
       if (
-        pixel.at <= loadStartedAt &&
         pixel.x >= x0 &&
-        pixel.x < x0 + 256 &&
+        pixel.x < x0 + TILE_SIZE &&
         pixel.y >= y0 &&
-        pixel.y < y0 + 256
+        pixel.y < y0 + TILE_SIZE
       ) {
+        candidates.push(entry);
+      }
+    }
+    // Most initial/navigation tile loads have no live pixels to hand off.
+    // Avoid decoding and reading back those images altogether.
+    if (candidates.length === 0) return;
+
+    const sample = document.createElement("canvas");
+    sample.width = TILE_SIZE;
+    sample.height = TILE_SIZE;
+    const ctx = sample.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    let rgba: Uint8ClampedArray;
+    try {
+      ctx.drawImage(tile, 0, 0, TILE_SIZE, TILE_SIZE);
+      rgba = ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data;
+    } catch {
+      // A deployment that serves tiles from another origin without CORS can
+      // taint the image. Keeping the overlay is safer than hiding valid paint.
+      return;
+    }
+
+    let changed = false;
+    for (const [k, pixel] of candidates) {
+      if (tilePixelMatches(rgba, pixel.x - x0, pixel.y - y0, pixel.color)) {
         this.pending.delete(k);
         changed = true;
       }
@@ -123,16 +160,24 @@ export class LiveOverlay {
     if (changed) this.schedule();
   }
 
-  private sweep = (): void => {
-    const cutoff = Date.now() - TTL_MS;
-    let changed = false;
-    for (const [k, pixel] of this.pending) {
-      if (pixel.at < cutoff) {
-        this.pending.delete(k);
-        changed = true;
-      }
-    }
-    if (changed) this.schedule();
+  private refreshStaleTiles = (): void => {
+    if (!this.visible || this.pending.size === 0) return;
+    // Lower zooms load downsampled parent tiles, which cannot prove the state
+    // of one native pixel. Keep drawing the overlay and wait until z12+.
+    if (this.map.getZoom() < Z_PIXEL) return;
+    const now = Date.now();
+    if (now - this.lastRefreshAt < REFRESH_RETRY_MS) return;
+
+    const size = this.map.getSize();
+    const staleVisible = [...this.pending.values()].some((pixel) => {
+      if (now - pixel.at < REFRESH_AFTER_MS) return false;
+      const p = this.map.latLngToContainerPoint(pixelToLatLng({ x: pixel.x, y: pixel.y }) as never);
+      return p.x >= 0 && p.y >= 0 && p.x <= size.x && p.y <= size.y;
+    });
+    if (!staleVisible) return;
+
+    this.lastRefreshAt = now;
+    this.refreshTiles();
   };
 
   private hide = (): void => {

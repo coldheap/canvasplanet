@@ -179,23 +179,15 @@ export function MapCanvas({
     let renderedHistoryAt: number | null = null;
     let historyActive = false;
 
-    const overlay = new LiveOverlay(map);
+    const overlay = new LiveOverlay(map, () => canvasLayer.redraw());
 
     // ---- tile <-> overlay handoff -----------------------------------------
-    // Record when each tile began loading, then on load drop the overlay
-    // pixels inside it that predate that moment. Using the START time is the
-    // point: a pixel painted while the PNG was in flight is NOT in that PNG,
-    // so it has to stay in the overlay.
-    const loadStarted = new Map<string, number>();
-    canvasLayer.on("tileloadstart", (e: L.TileEvent) => {
-      const c = e.coords;
-      loadStarted.set(`${c.z}/${c.x}/${c.y}`, Date.now());
-    });
+    // A tileload alone does not prove the image is current (the browser or
+    // edge may return a stale PNG), so the overlay verifies its pending
+    // colours against the decoded image before handing them off.
     canvasLayer.on("tileload", (e: L.TileEvent) => {
       const c = e.coords;
-      const k = `${c.z}/${c.x}/${c.y}`;
-      overlay.clearTile(c.z, c.x, c.y, loadStarted.get(k) ?? 0);
-      loadStarted.delete(k);
+      overlay.confirmTile(c.z, c.x, c.y, e.tile);
     });
 
     const refreshTiles = () => canvasLayer.redraw();

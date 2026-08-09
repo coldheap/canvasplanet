@@ -133,17 +133,10 @@ export function EmbedApp() {
       zIndex: 2,
     }).addTo(map);
 
-    const overlay = new LiveOverlay(map);
-    const loadStarted = new Map<string, number>();
-    canvasLayer.on("tileloadstart", (e: L.TileEvent) => {
-      const c = e.coords;
-      loadStarted.set(`${c.z}/${c.x}/${c.y}`, Date.now());
-    });
+    const overlay = new LiveOverlay(map, () => canvasLayer.redraw());
     canvasLayer.on("tileload", (e: L.TileEvent) => {
       const c = e.coords;
-      const k = `${c.z}/${c.x}/${c.y}`;
-      overlay.clearTile(c.z, c.x, c.y, loadStarted.get(k) ?? 0);
-      loadStarted.delete(k);
+      overlay.confirmTile(c.z, c.x, c.y, e.tile);
     });
 
     const ws = new WsClient(
