@@ -77,6 +77,11 @@ export function GlobeCanvas({
   cb.current = { onPaint, onHover, onInspect, onReady, onViewport, onUnavailable };
 
   useEffect(() => {
+    document.documentElement.classList.add("wc-globe-active");
+    return () => document.documentElement.classList.remove("wc-globe-active");
+  }, []);
+
+  useEffect(() => {
     if (!ref.current || mapRef.current) return;
     const state = useStore.getState();
     const historyAt = state.historyAt === null ? null : normalizeHistoryAt(state.historyAt);
