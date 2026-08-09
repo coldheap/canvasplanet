@@ -1,7 +1,7 @@
 .wc-history-bar {
   position: absolute;
   z-index: 1100;
-  top: var(--wc-gap);
+  top: calc(var(--wc-gap) + 44px);
   left: 50%;
   width: min(560px, calc(100vw - 2 * var(--wc-gap)));
   padding: 10px 12px;
