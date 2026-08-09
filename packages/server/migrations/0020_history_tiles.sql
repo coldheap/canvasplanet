@@ -4,7 +4,7 @@
 
 BEGIN;
 
-CREATE INDEX pixel_events_history_tile_idx
+CREATE INDEX IF NOT EXISTS pixel_events_history_tile_idx
   ON pixel_events ((x >> 8), (y >> 8), x, y, created_at DESC, id DESC);
 
 COMMIT;
