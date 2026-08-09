@@ -1,0 +1,111 @@
+/**
+ * Settings — the panel the Admin tab sits beside.
+ *
+ * "Notify when full" is the single strongest retention lever available
+ * without accounts: a browser notification 15 minutes after someone spends
+ * their bank is what brings them back.
+ */
+
+import { Settings as SettingsIcon, ShieldCheck, Link2, Radio } from "lucide-react";
+import { useStore } from "../store.js";
+
+export function SettingsPanel() {
+  const { settings, updateSettings, staff, setPanel } = useStore();
+
+  return (
+    <div className="wc-settings">
+      <h2 className="wc-panel-title">
+        <SettingsIcon size={16} />
+        Settings
+      </h2>
+
+      <fieldset>
+        <legend>Canvas</legend>
+        <label>
+          Grid lines
+          <select
+            value={settings.grid}
+            onChange={(e) => updateSettings({ grid: e.target.value as never })}
+          >
+            <option value="auto">Auto (zoom 14+)</option>
+            <option value="on">Always</option>
+            <option value="off">Never</option>
+          </select>
+        </label>
+        <Toggle
+          label="Heatmap (paint density)"
+          on={settings.heatmap}
+          set={(heatmap) => updateSettings({ heatmap })}
+        />
+      </fieldset>
+
+      <fieldset>
+        <legend>Charges</legend>
+        <Toggle label="Paint sound" on={settings.sound} set={(sound) => updateSettings({ sound })} />
+        <Toggle
+          label="Notify me when charges are full"
+          on={settings.notifyWhenFull}
+          set={async (notifyWhenFull) => {
+            // Ask only when switching it ON — an unprompted permission dialog
+            // on load is the fastest way to get permanently denied.
+            if (notifyWhenFull && Notification.permission === "default") {
+              await Notification.requestPermission();
+            }
+            updateSettings({ notifyWhenFull });
+          }}
+        />
+      </fieldset>
+
+      <fieldset>
+        <legend>Appearance</legend>
+        <Toggle label="Dark map" on={settings.darkMap} set={(darkMap) => updateSettings({ darkMap })} />
+        <label>
+          Reduce motion
+          <select
+            value={settings.reduceMotion}
+            onChange={(e) => updateSettings({ reduceMotion: e.target.value as never })}
+          >
+            <option value="system">Match system</option>
+            <option value="on">Always</option>
+            <option value="off">Never</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Share</legend>
+        <button className="wc-btn" onClick={() => void navigator.clipboard.writeText(location.href)}>
+          <Link2 size={15} />
+          Copy link to this view
+        </button>
+      </fieldset>
+
+      <button className="wc-btn" onClick={() => setPanel("status")}>
+        <Radio size={15} />
+        System status
+      </button>
+
+      <button className="wc-btn wc-admin-entry" onClick={() => setPanel("admin")}>
+        <ShieldCheck size={15} />
+        {staff ? `Admin (${staff.role})` : "Staff sign in"}
+      </button>
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  on,
+  set,
+}: {
+  label: string;
+  on: boolean;
+  set: (v: boolean) => void | Promise<void>;
+}) {
+  return (
+    <label className="wc-toggle">
+      <input type="checkbox" checked={on} onChange={(e) => void set(e.target.checked)} />
+      {label}
+    </label>
+  );
+}

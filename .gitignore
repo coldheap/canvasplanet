@@ -1,0 +1,22 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+
+# derived state — never commit, always rebuildable
+tilecache/
+pgdata/
+.pgdev/
+data/geo-index.bin
+exports/
+
+# database dumps — never commit; see scripts/backup.sh
+backups/
+
+# large source geodata: fetched by `pnpm geo:fetch`
+data/*.geojson
+data/*.zip
+
+.DS_Store
+coverage/

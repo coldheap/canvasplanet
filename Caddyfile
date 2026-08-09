@@ -1,0 +1,89 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	# ---- canvas tiles -------------------------------------------------
+	# The heaviest route by far. s-maxage lets Cloudflare hold these at the
+	# edge for a day; the tile worker purges explicitly when a tile changes,
+	# so a long edge TTL is safe. max-age=0 keeps browsers revalidating so a
+	# purge is picked up immediately.
+	handle /tiles/* {
+		header Cache-Control "public, max-age=0, s-maxage=86400"
+		reverse_proxy app:8080
+	}
+
+	# ---- websocket ----------------------------------------------------
+	handle /ws {
+		reverse_proxy app:8080
+	}
+
+	# ---- api ----------------------------------------------------------
+	handle /api/* {
+		header Cache-Control "no-store"
+		reverse_proxy app:8080
+	}
+
+	# ---- embeddable widget (ROADMAP.md §4.2) ---------------------------
+	# The one page on this domain that is SUPPOSED to sit inside someone
+	# else's <iframe> — everything else gets X-Frame-Options: DENY below,
+	# so this has to be carved out explicitly rather than left as a gap.
+	handle /embed.html {
+		header Cache-Control "no-cache"
+		header Content-Security-Policy "frame-ancestors *"
+		root * /srv/web
+		file_server
+	}
+
+	# ---- SPA ----------------------------------------------------------
+	handle {
+		root * /srv/web
+		# Hashed asset filenames are immutable; index.html never is.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header Cache-Control "no-cache"
+		# The interactive app (paint, admin, charges) has no reason to ever
+		# run inside someone else's frame — only /embed.html does. Denying
+		# framing here is what makes that carve-out a deliberate exception
+		# rather than an oversight elsewhere.
+		header X-Frame-Options "DENY"
+		header Content-Security-Policy "frame-ancestors 'none'"
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+# ---- status subdomain -------------------------------------------------
+# A separate host on purpose: if the main domain, its DNS, or the Cloudflare
+# proxy in front of it is the thing that's down, a status page living under
+# that same host goes down with it. This is a standalone static page plus
+# one proxied JSON route — it depends on nothing from the SPA build.
+#
+# Needs its own DNS record (status.{$DOMAIN} -> this box); Caddy handles the
+# certificate automatically once that resolves, same as the main block.
+status.{$DOMAIN} {
+	encode zstd gzip
+
+	handle /api/status {
+		header Cache-Control "no-store"
+		reverse_proxy app:8080
+	}
+
+	handle {
+		root * /srv/status
+		header Cache-Control "no-cache"
+		header X-Frame-Options "DENY"
+		header Content-Security-Policy "frame-ancestors 'none'"
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

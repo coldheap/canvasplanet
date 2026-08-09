@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Worldcanvas Status</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%230ca30c'/%3E%3C/svg%3E" />
+<!--
+  Deliberately one dependency-free file, served by Caddy directly from this
+  host's own filesystem rather than through the app or the SPA build. A
+  status page has to still work when something else is broken — the main
+  domain, its DNS, the Cloudflare proxy, or a bad SPA deploy — so it must
+  not depend on any of those. No CDN, no web font, no build step, no
+  framework.
+
+  Design: "Minimalism & Swiss Style" (dashboards, professional tools) over
+  the status-page product type's own reference ("Data-Dense + Trust &
+  Authority"); status/categorical colours are the dataviz skill's fixed,
+  pre-validated status palette (good/warning/critical), never re-themed.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --border: rgba(11, 11, 11, 0.10);
+    --good: #0ca30c;
+    --good-rgb: 12, 163, 12;
+    --warn: #fab219;
+    --warn-rgb: 250, 178, 25;
+    --bad: #d03b3b;
+    --bad-rgb: 208, 59, 59;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --border: rgba(255, 255, 255, 0.10);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 20px 72px;
+  }
+
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+
+  /* ---- header ---------------------------------------------------------- */
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .brand-mark { font-weight: 700; font-size: 17px; }
+  .brand-sub { color: var(--muted); font-size: 14px; }
+
+  /* ---- overall banner ---------------------------------------------------- */
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 28px;
+  }
+  .banner svg { flex: none; }
+  .banner-text { font-size: 16px; font-weight: 600; }
+  .banner-sub { font-size: 13px; color: var(--ink-2); font-weight: 400; margin-top: 1px; }
+  .banner.operational { background: rgba(var(--good-rgb), 0.08); border-color: rgba(var(--good-rgb), 0.35); }
+  .banner.degraded { background: rgba(var(--warn-rgb), 0.12); border-color: rgba(var(--warn-rgb), 0.4); }
+  .banner.down, .banner.unreachable { background: rgba(var(--bad-rgb), 0.10); border-color: rgba(var(--bad-rgb), 0.4); }
+
+  /* ---- KPI tiles ---------------------------------------------------------- */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 36px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .kpi-value {
+    font-size: 19px;
+    font-weight: 600;
+    font-variant-numeric: normal;
+  }
+  .kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  /* Never color the number itself for a warning — a colored mark beside the
+     text carries it instead (see dataviz skill: "text never wears the data
+     color"). */
+  .kpi.warn { border-color: rgba(var(--warn-rgb), 0.45); }
+  .kpi-warn-dot {
+    display: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--warn);
+    flex: none;
+  }
+  .kpi.warn .kpi-warn-dot { display: inline-block; }
+
+  /* ---- section heading + day-range presets -------------------------------- */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .range-presets { display: flex; gap: 4px; }
+  .range-presets button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 150ms, color 150ms, border-color 150ms;
+  }
+  .range-presets button:hover { background: var(--surface); color: var(--ink); }
+  .range-presets button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--page);
+    border-color: var(--ink);
+  }
+
+  /* ---- components + strip ------------------------------------------------- */
+  .components {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px 16px;
+    margin-bottom: 10px;
+  }
+  .component {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--grid);
+  }
+  .component:last-child { border-bottom: none; }
+  .component-icon { flex: none; }
+  .component-name { font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .component-state {
+    font-size: 12px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .component-head { display: flex; flex-direction: column; min-width: 132px; }
+  .strip {
+    display: flex;
+    gap: 2px;
+    flex: 1 1 auto;
+    height: 28px;
+    min-width: 0;
+  }
+  .day {
+    flex: 1 1 0;
+    min-width: 2px;
+    height: 100%;
+    border-radius: 3px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: var(--grid);
+    transition: opacity 150ms, transform 150ms;
+  }
+  .day.operational { background: var(--good); }
+  .day.degraded { background: var(--warn); }
+  .day.down { background: var(--bad); }
+  .day.nodata {
+    background: none;
+    border: 1px dashed var(--grid);
+    border-radius: 3px;
+  }
+  .day:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .day.hover { opacity: 0.72; transform: scaleY(1.12); }
+  @media (prefers-reduced-motion: reduce) {
+    .day { transition: opacity 150ms; }
+    .day.hover { transform: none; }
+  }
+  .strip-caption {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    padding: 0 16px 10px;
+  }
+
+  /* ---- legend -------------------------------------------------------------- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--ink-2);
+    margin: 4px 0 32px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .legend-swatch.nodata { background: none; border: 1px dashed var(--grid); }
+
+  /* ---- shared tooltip -------------------------------------------------------- */
+  #tooltip {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+    background: var(--ink);
+    color: var(--page);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 100ms;
+    max-width: 220px;
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip .t-date { font-weight: 600; margin-bottom: 4px; }
+  #tooltip .t-row { display: flex; align-items: center; gap: 6px; }
+  #tooltip .t-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  /* ---- footer -------------------------------------------------------------- */
+  footer {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--grid);
+    padding-top: 20px;
+  }
+  footer p { margin: 0 0 8px; }
+
+  @media (max-width: 640px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .component { flex-wrap: wrap; }
+    .component-head { min-width: 0; width: 100%; }
+    .strip { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <span class="brand-mark">Worldcanvas</span>
+    <span class="brand-sub">Status</span>
+  </div>
+
+  <div id="banner" class="banner" role="status" aria-live="polite">
+    <span id="banner-icon"></span>
+    <span>
+      <div id="banner-text" class="banner-text">Checking…</div>
+      <div id="banner-sub" class="banner-sub"></div>
+    </span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="section-head">
+    <span class="section-title">Components</span>
+    <div class="range-presets" id="ranges" role="group" aria-label="History range">
+      <button data-days="7" aria-pressed="false">7d</button>
+      <button data-days="30" aria-pressed="false">30d</button>
+      <button data-days="90" aria-pressed="true">90d</button>
+    </div>
+  </div>
+
+  <div class="components" id="components"></div>
+  <p class="strip-caption" id="strip-caption"></p>
+
+  <div class="legend" id="legend"></div>
+
+  <footer>
+    <p id="footer-note">
+      Sampled from inside the app every 5 minutes — a full process crash
+      writes no bad sample, so that kind of outage shows as a gap in the
+      history rather than red. For paging, point an external uptime monitor
+      at this page or at <code>/api/status</code>.
+    </p>
+    <p id="last-checked">Last checked —</p>
+  </footer>
+</main>
+
+<div id="tooltip" role="tooltip"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var COMPONENTS = [
+    { key: "canvas", name: "Canvas &amp; painting" },
+    { key: "realtime", name: "Realtime updates" },
+    { key: "database", name: "Database" },
+  ];
+
+  var STATE_LABEL = {
+    operational: "Operational",
+    degraded: "Degraded",
+    down: "Down",
+    nodata: "No data",
+  };
+
+  var BANNER_TEXT = {
+    operational: "All systems operational",
+    degraded: "Degraded performance",
+    down: "Major outage",
+  };
+
+  function icon(state, size) {
+    size = size || 18;
+    var color = "var(--" + (state === "operational" ? "good" : state === "degraded" ? "warn" : state === "down" ? "bad" : "muted") + ")";
+    var common = 'width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" style="color:' + color + '"';
+    if (state === "operational") {
+      return '<svg ' + common + '><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M7.5 12.5l3 3 6-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    if (state === "degraded") {
+      return '<svg ' + common + '><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M12 7v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.2" r="1.15" fill="currentColor"/></svg>';
+    }
+    if (state === "down" || state === "unreachable") {
+      return '<svg ' + common + '><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    }
+    return '<svg ' + common + '><circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/></svg>';
+  }
+
+  var tooltip = document.getElementById("tooltip");
+  var bannerEl = document.getElementById("banner");
+  var bannerIcon = document.getElementById("banner-icon");
+  var bannerText = document.getElementById("banner-text");
+  var bannerSub = document.getElementById("banner-sub");
+  var kpisEl = document.getElementById("kpis");
+  var componentsEl = document.getElementById("components");
+  var stripCaption = document.getElementById("strip-caption");
+  var legendEl = document.getElementById("legend");
+  var lastChecked = document.getElementById("last-checked");
+  var ranges = document.getElementById("ranges");
+
+  var selectedDays = 90;
+  var latestHistory = null; // { days, since, history }
+
+  function fmtUptime(seconds) {
+    var d = Math.floor(seconds / 86400);
+    var h = Math.floor((seconds % 86400) / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return d + "d " + h + "h";
+    if (h > 0) return h + "h " + m + "m";
+    return m + "m";
+  }
+
+  function kpi(value, label, warn) {
+    var el = document.createElement("div");
+    el.className = warn ? "kpi warn" : "kpi";
+    var v = document.createElement("div");
+    v.className = "kpi-value";
+    v.textContent = value;
+    var l = document.createElement("div");
+    l.className = "kpi-label";
+    var dot = document.createElement("span");
+    dot.className = "kpi-warn-dot";
+    var lt = document.createElement("span");
+    lt.textContent = label + (warn ? " — check" : "");
+    l.appendChild(dot);
+    l.appendChild(lt);
+    el.appendChild(v);
+    el.appendChild(l);
+    return el;
+  }
+
+  function renderBanner(s) {
+    var overall = s ? s.overall : "unreachable";
+    bannerEl.className = "banner " + overall;
+    bannerIcon.innerHTML = icon(overall === "unreachable" ? "down" : overall, 22);
+    bannerText.textContent = s ? BANNER_TEXT[overall] : "Could not reach the status endpoint";
+    var sub = "";
+    if (s && s.frozen) sub = "The canvas is temporarily frozen for painting.";
+    bannerSub.textContent = sub;
+  }
+
+  function renderKpis(s) {
+    kpisEl.innerHTML = "";
+    if (!s) return;
+    kpisEl.appendChild(kpi(String(s.paintsPerSec), "Paints / sec"));
+    kpisEl.appendChild(kpi(String(s.connectedClients), "Connected"));
+    kpisEl.appendChild(kpi(
+      s.tileQueueDepth >= 0 ? s.tileQueueDepth.toLocaleString() : "—",
+      "Tile queue",
+      s.tileQueueDepth > 5000,
+    ));
+    kpisEl.appendChild(kpi(s.worldTotal.toLocaleString(), "World total"));
+    kpisEl.appendChild(kpi(s.dbLatencyMs + "ms", "DB latency", !s.dbOk || s.dbLatencyMs > 200));
+    kpisEl.appendChild(kpi(fmtUptime(s.uptimeSeconds), "Process uptime"));
+  }
+
+  function renderLegend() {
+    legendEl.innerHTML = "";
+    ["operational", "degraded", "down", "nodata"].forEach(function (state) {
+      var item = document.createElement("span");
+      item.className = "legend-item";
+      var sw = document.createElement("span");
+      sw.className = "legend-swatch" + (state === "nodata" ? " nodata" : "");
+      if (state !== "nodata") sw.style.background = "var(--" + (state === "operational" ? "good" : state === "degraded" ? "warn" : "bad") + ")";
+      var lbl = document.createElement("span");
+      lbl.textContent = STATE_LABEL[state];
+      item.appendChild(sw);
+      item.appendChild(lbl);
+      legendEl.appendChild(item);
+    });
+  }
+
+  // Keyed refs into the built rows, so a 5s live poll can update the icon +
+  // state text in place without touching (and so without disturbing a
+  // mid-hover tooltip on) the 90-bar strips underneath.
+  var componentRowRefs = {};
+
+  /** Full rebuild — only when the history window itself changes (load or preset switch). */
+  function buildComponents(history) {
+    componentsEl.innerHTML = "";
+    componentRowRefs = {};
+    var days = history ? history.history : [];
+
+    COMPONENTS.forEach(function (c) {
+      var row = document.createElement("div");
+      row.className = "component";
+
+      var iconWrap = document.createElement("span");
+      iconWrap.className = "component-icon";
+      iconWrap.innerHTML = icon("nodata", 18);
+
+      var head = document.createElement("div");
+      head.className = "component-head";
+      var name = document.createElement("span");
+      name.className = "component-name";
+      name.innerHTML = c.name; // static, author-controlled markup only
+      var state = document.createElement("span");
+      state.className = "component-state";
+      state.textContent = "—";
+      head.appendChild(name);
+      head.appendChild(state);
+
+      var strip = document.createElement("div");
+      strip.className = "strip";
+      strip.setAttribute("role", "list");
+      strip.setAttribute("aria-label", c.name.replace("&amp;", "&") + " — daily history, oldest to newest");
+      days.forEach(function (d, i) {
+        var dState = d.components[c.key] || "nodata";
+        var bar = document.createElement("button");
+        bar.type = "button";
+        bar.className = "day " + dState;
+        bar.dataset.index = String(i);
+        bar.setAttribute("role", "listitem");
+        // A real, focusable equivalent to the hover tooltip — not just a
+        // decorative bar. Keyboard users tab through it exactly as a mouse
+        // user would hover it; the days preset (7d) is the escape hatch if
+        // 90 stops per row is more than wanted.
+        bar.setAttribute("aria-label", d.date + ": " + (STATE_LABEL[dState] || "No data"));
+        strip.appendChild(bar);
+      });
+
+      row.appendChild(iconWrap);
+      row.appendChild(head);
+      row.appendChild(strip);
+      componentsEl.appendChild(row);
+
+      componentRowRefs[c.key] = { iconEl: iconWrap, stateEl: state };
+    });
+
+    if (days.length > 0) {
+      stripCaption.innerHTML = "";
+      var since = document.createElement("span");
+      since.textContent = days.length + "-day history";
+      var today = document.createElement("span");
+      today.textContent = "Today";
+      stripCaption.appendChild(since);
+      stripCaption.appendChild(today);
+    } else {
+      stripCaption.textContent = "";
+    }
+
+    updateLiveComponents(latestSnapshot ? latestSnapshot.components : null);
+  }
+
+  /** Cheap update — every 5s poll. Touches only the icon + state text. */
+  function updateLiveComponents(liveComponents) {
+    COMPONENTS.forEach(function (c) {
+      var refs = componentRowRefs[c.key];
+      if (!refs) return;
+      var live = liveComponents ? liveComponents[c.key] : "nodata";
+      refs.iconEl.innerHTML = icon(live, 18);
+      refs.stateEl.textContent = STATE_LABEL[live] || "No data";
+    });
+  }
+
+  // ---- shared cross-component tooltip + hover-sync ------------------------
+  componentsEl.addEventListener("pointerover", onStripHover);
+  componentsEl.addEventListener("focusin", onStripHover);
+  componentsEl.addEventListener("pointerout", onStripLeave);
+  componentsEl.addEventListener("focusout", onStripLeave);
+  componentsEl.addEventListener("pointermove", positionTooltip);
+
+  function onStripHover(e) {
+    var bar = e.target.closest(".day");
+    if (!bar) return;
+    var index = Number(bar.dataset.index);
+    highlightIndex(index);
+    showTooltip(index, e);
+  }
+  function onStripLeave(e) {
+    if (e.relatedTarget && componentsEl.contains(e.relatedTarget)) return;
+    highlightIndex(-1);
+    hideTooltip();
+  }
+  function highlightIndex(index) {
+    var bars = componentsEl.querySelectorAll(".day");
+    for (var i = 0; i < bars.length; i++) {
+      bars[i].classList.toggle("hover", Number(bars[i].dataset.index) === index && index >= 0);
+    }
+  }
+  function showTooltip(index, e) {
+    if (!latestHistory) return;
+    var day = latestHistory.history[index];
+    if (!day) return;
+
+    tooltip.innerHTML = "";
+    var dateEl = document.createElement("div");
+    dateEl.className = "t-date";
+    dateEl.textContent = day.date;
+    tooltip.appendChild(dateEl);
+
+    if (day.overall === "nodata") {
+      var row = document.createElement("div");
+      row.className = "t-row";
+      row.textContent = "No data recorded";
+      tooltip.appendChild(row);
+    } else {
+      COMPONENTS.forEach(function (c) {
+        var state = day.components[c.key];
+        var row = document.createElement("div");
+        row.className = "t-row";
+        var dot = document.createElement("span");
+        dot.className = "t-dot";
+        dot.style.background = "var(--" + (state === "operational" ? "good" : state === "degraded" ? "warn" : state === "down" ? "bad" : "muted") + ")";
+        var label = document.createElement("span");
+        label.textContent = c.name.replace("&amp;", "&") + ": " + (STATE_LABEL[state] || "No data");
+        row.appendChild(dot);
+        row.appendChild(label);
+        tooltip.appendChild(row);
+      });
+      if (day.uptimeRatio !== null) {
+        var uptime = document.createElement("div");
+        uptime.className = "t-row";
+        uptime.style.marginTop = "4px";
+        uptime.style.opacity = "0.8";
+        uptime.textContent = Math.round(day.uptimeRatio * 100) + "% of samples ok (" + day.samples + " checks)";
+        tooltip.appendChild(uptime);
+      }
+    }
+
+    tooltip.classList.add("visible");
+    positionTooltip(e);
+  }
+  function hideTooltip() {
+    tooltip.classList.remove("visible");
+  }
+  function positionTooltip(e) {
+    if (!tooltip.classList.contains("visible")) return;
+    var x = e.clientX !== undefined ? e.clientX : (e.target.getBoundingClientRect ? e.target.getBoundingClientRect().left : 0);
+    var y = e.clientY !== undefined ? e.clientY : (e.target.getBoundingClientRect ? e.target.getBoundingClientRect().top : 0);
+    var pad = 14;
+    var left = Math.min(x + pad, window.innerWidth - tooltip.offsetWidth - pad);
+    var top = Math.min(y + pad, window.innerHeight - tooltip.offsetHeight - pad);
+    tooltip.style.left = Math.max(pad, left) + "px";
+    tooltip.style.top = Math.max(pad, top) + "px";
+  }
+
+  // ---- range presets --------------------------------------------------------
+  ranges.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-days]");
+    if (!btn) return;
+    selectedDays = Number(btn.dataset.days);
+    Array.prototype.forEach.call(ranges.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", String(b === btn));
+    });
+    loadHistory();
+  });
+
+  // ---- data loading -----------------------------------------------------
+  var latestSnapshot = null;
+
+  function loadStatus() {
+    fetch("/api/status", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        latestSnapshot = s;
+        renderBanner(s);
+        renderKpis(s);
+        updateLiveComponents(s.components);
+        lastChecked.textContent = "Last checked " + new Date(s.time).toLocaleTimeString();
+      })
+      .catch(function () {
+        renderBanner(null);
+        lastChecked.textContent = "Could not reach /api/status";
+      });
+  }
+
+  function loadHistory() {
+    fetch("/api/status/history?days=" + selectedDays, { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (h) {
+        latestHistory = h;
+        buildComponents(h);
+      })
+      .catch(function () { /* the live section still works without history */ });
+  }
+
+  renderLegend();
+  buildComponents(null);
+  loadStatus();
+  loadHistory();
+  setInterval(loadStatus, 5000);
+})();
+</script>
+</body>
+</html>

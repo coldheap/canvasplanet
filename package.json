@@ -1,0 +1,31 @@
+{
+  "name": "worldcanvas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./packages/*\" dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "verify": "pnpm --filter @worldcanvas/server verify",
+    "db:migrate": "pnpm --filter @worldcanvas/server db:migrate",
+    "db:partitions": "pnpm --filter @worldcanvas/server db:partitions",
+    "geo:fetch": "pnpm --filter @worldcanvas/server geo:fetch",
+    "geo:bake": "pnpm --filter @worldcanvas/server geo:bake",
+    "seed:landmark": "pnpm --filter @worldcanvas/server seed:landmark",
+    "staff:create": "pnpm --filter @worldcanvas/server staff:create",
+    "alert:watch": "pnpm --filter @worldcanvas/server alert:watch",
+    "mail:dev": "pnpm --filter @worldcanvas/server mail:dev",
+    "backup": "bash scripts/backup.sh",
+    "backup:restore": "bash scripts/restore.sh",
+    "load": "k6 run k6/paint-load.js",
+    "load:abuse": "k6 run k6/abuse.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

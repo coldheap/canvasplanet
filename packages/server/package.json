@@ -1,0 +1,52 @@
+{
+  "name": "@worldcanvas/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "verify": "node verify/run.mjs",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:partitions": "tsx scripts/ensure-partitions.ts",
+    "geo:fetch": "tsx scripts/fetch-geodata.ts",
+    "geo:bake": "tsx scripts/bake-geo.ts",
+    "seed:landmark": "tsx scripts/seed-landmark.ts",
+    "staff:create": "tsx scripts/create-staff.ts",
+    "alert:watch": "tsx scripts/alert-watch.ts",
+    "mail:dev": "maildev --smtp 1025 --web 1080"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^10.0.1",
+    "@fastify/static": "^8.0.2",
+    "@fastify/websocket": "^11.0.1",
+    "@worldcanvas/shared": "workspace:*",
+    "adm-zip": "^0.6.0",
+    "argon2": "^0.41.1",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.1.0",
+    "nodemailer": "^9.0.5",
+    "pg": "^8.13.1",
+    "pngjs": "^7.0.0",
+    "rbush": "^4.0.1",
+    "shapefile": "^0.6.6",
+    "undici": "^6.20.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^22.9.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.11.10",
+    "@types/pngjs": "^6.0.5",
+    "@types/rbush": "^4.0.0",
+    "@types/ws": "^8.5.13",
+    "maildev": "3.0.0-rc.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
