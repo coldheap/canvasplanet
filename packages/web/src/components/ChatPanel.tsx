@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Flag, LoaderCircle, Send, Shield, Trash2, X } from "lucide-react";
+import { Flag, LoaderCircle, Send, Shield, Trash2, UserRound, X } from "lucide-react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
 import "./ChatPanel.css";
@@ -299,8 +299,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
   );
 }
 
-/** Small self-contained avatar renderer. Chat supports the avatar table when
- * installed, while still working as an independent Git commit with initials. */
+/** Small self-contained avatar renderer for chat messages. */
 export function ChatAvatar({
   userId,
   name,
@@ -319,7 +318,9 @@ export function ChatAvatar({
     <span className="wc-chat-avatar" style={{ width: size, height: size, fontSize: Math.max(10, size * 0.42) }} aria-hidden="true">
       {src && !failed ? (
         <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-      ) : name.slice(0, 1).toUpperCase()}
+      ) : (
+        <UserRound size={Math.max(12, Math.round(size * 0.58))} strokeWidth={2} aria-hidden="true" />
+      )}
     </span>
   );
 }
