@@ -1,0 +1,113 @@
+.wc-chat-game {
+  border-radius: 5px;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--wc-text) 18%, transparent),
+    var(--wc-shadow);
+}
+
+.wc-chat-game .wc-chat-head {
+  min-height: 58px;
+  padding: 10px 10px 10px 12px;
+  border-bottom-width: 2px;
+}
+
+.wc-chat-pixel-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  grid-template-columns: repeat(2, 6px);
+  grid-template-rows: repeat(2, 6px);
+  place-content: center;
+  gap: 2px;
+  border: 2px solid var(--wc-text);
+  background: var(--wc-accent);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--wc-text) 25%, transparent);
+}
+
+.wc-chat-pixel-mark i {
+  display: block;
+  background: var(--wc-accent-ink);
+}
+
+.wc-chat-pixel-mark i:nth-child(2),
+.wc-chat-pixel-mark i:nth-child(3) {
+  opacity: 0.5;
+}
+
+.wc-chat-game .wc-chat-heading {
+  gap: 2px;
+}
+
+.wc-chat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.wc-chat-game .wc-chat-head strong {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.wc-chat-public {
+  padding: 2px 5px;
+  border: 1px solid var(--wc-panel-border);
+  border-radius: 2px;
+  background: var(--wc-subtle);
+  color: var(--wc-dim);
+  font: 700 8px/1.1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wc-chat-game .wc-chat-head small {
+  margin: 0;
+  font-size: 10px;
+}
+
+.wc-chat-game .wc-chat-close,
+.wc-chat-game .wc-chat-send,
+.wc-chat-game .wc-chat-input-wrap textarea {
+  border-radius: 3px;
+}
+
+.wc-chat-game .wc-chat-list {
+  padding: 9px 8px;
+  background-image: linear-gradient(var(--wc-scrim-weak) 1px, transparent 1px);
+  background-size: 100% 24px;
+}
+
+.wc-chat-game .wc-chat-empty {
+  flex-direction: column;
+  gap: 5px;
+  text-align: center;
+}
+
+.wc-chat-game .wc-chat-empty strong {
+  color: var(--wc-text);
+  font-size: 12px;
+}
+
+.wc-chat-game .wc-chat-empty > span:last-child {
+  font-size: 11px;
+}
+
+.wc-chat-empty-pixels {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.wc-chat-empty-pixels i {
+  width: 6px;
+  height: 6px;
+  background: var(--wc-accent);
+}
+
+.wc-chat-empty-pixels i:nth-child(2) { opacity: 0.65; }
+.wc-chat-empty-pixels i:nth-child(3) { opacity: 0.35; }
+
+.wc-chat-game .wc-chat-compose {
+  border-top-width: 2px;
+}

@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Flag, LoaderCircle, MessageCircle, Send, Shield, Trash2, X } from "lucide-react";
+import { Flag, LoaderCircle, Send, Shield, Trash2, X } from "lucide-react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
+import "./ChatPanel.css";
 
 function errorMessage(error: unknown, fallback: string): string {
   const body = (error as { body?: { error?: string } })?.body;
@@ -152,12 +153,17 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
   }
 
   return (
-    <aside className="wc-chat wc-card" aria-label="Global chat">
+    <aside className="wc-chat wc-chat-game wc-card" aria-label="Canvas chat">
       <header className="wc-chat-head">
-        <span className="wc-chat-live" aria-hidden="true" />
-        <div>
-          <strong>Global chat</strong>
-          <small>Everyone · one room</small>
+        <span className="wc-chat-pixel-mark" aria-hidden="true">
+          <i /><i /><i /><i />
+        </span>
+        <div className="wc-chat-heading">
+          <span className="wc-chat-title-row">
+            <strong>Canvas chat</strong>
+            <span className="wc-chat-public">Public</span>
+          </span>
+          <small>Visible to everyone on this canvas</small>
         </div>
         <button className="wc-chat-close" aria-label="Close chat" title="Close chat" onClick={onClose}>
           <X size={17} />
@@ -174,7 +180,11 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
         {loading && chatMessages.length === 0 ? (
           <p className="wc-chat-empty"><LoaderCircle className="wc-spin" size={16} /> Loading chat…</p>
         ) : chatMessages.length === 0 ? (
-          <p className="wc-chat-empty"><MessageCircle size={18} /> Be the first to say hello.</p>
+          <div className="wc-chat-empty">
+            <span className="wc-chat-empty-pixels" aria-hidden="true"><i /><i /><i /></span>
+            <strong>No messages yet</strong>
+            <span>Start the conversation.</span>
+          </div>
         ) : (
           chatMessages.map((message) => (
             <article className={`wc-chat-message${message.deleted ? " is-deleted" : ""}`} key={message.id}>
@@ -274,7 +284,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
               rows={1}
               value={draft}
               aria-label="Chat message"
-              placeholder={`Message as ${user.displayName}`}
+              placeholder="Say something…"
               onChange={(event) => {
                 setDraft(event.target.value);
                 event.currentTarget.style.height = "auto";
