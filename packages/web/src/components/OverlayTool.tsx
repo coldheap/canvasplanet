@@ -154,8 +154,8 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
     setBusy(true);
     setError(null);
     try {
-      // Chunked, because String.fromCharCode(...) on a 262,144-element array
-      // blows the argument limit and throws.
+      // Chunked, because String.fromCharCode(...) on a large image array can
+      // exceed the browser's argument limit and throw.
       let binary = "";
       for (let i = 0; i < image.data.length; i += 8192) {
         binary += String.fromCharCode(...image.data.subarray(i, i + 8192));

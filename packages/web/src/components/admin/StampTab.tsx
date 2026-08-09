@@ -12,7 +12,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, Check, Image as ImageIcon, Stamp } from "lucide-react";
-import { PALETTE, TEMPLATE_MAX_DIM, nearestPaletteIndex } from "@worldcanvas/shared";
+import { ADMIN_STAMP_MAX_DIM, PALETTE, nearestPaletteIndex } from "@worldcanvas/shared";
 import { api, type StampResult } from "../../api.js";
 import { pickBbox } from "../../canvas/pickBbox.js";
 import type { MapHandle } from "../MapCanvas.js";
@@ -34,8 +34,8 @@ export function StampTab({ handle }: { handle: MapHandle | null }) {
     setPreview(null);
     try {
       const bitmap = await createImageBitmap(file);
-      if (bitmap.width > TEMPLATE_MAX_DIM || bitmap.height > TEMPLATE_MAX_DIM) {
-        setError(`Image must be at most ${TEMPLATE_MAX_DIM}×${TEMPLATE_MAX_DIM} pixels.`);
+      if (bitmap.width > ADMIN_STAMP_MAX_DIM || bitmap.height > ADMIN_STAMP_MAX_DIM) {
+        setError(`Image must be at most ${ADMIN_STAMP_MAX_DIM}×${ADMIN_STAMP_MAX_DIM} pixels.`);
         return;
       }
       setImage({ ...quantize(bitmap), url: URL.createObjectURL(file) });

@@ -169,7 +169,11 @@ export const STATUS_HISTORY_MAX_DAYS = STATUS_HISTORY_RETENTION_DAYS;
 // Templates / timelapse
 // ---------------------------------------------------------------------------
 
-export const TEMPLATE_MAX_DIM = 512;
+// A 4096px cap supports large desktop artwork while keeping one region read
+// bounded to 16 MiB of palette-index data before base64 encoding.
+export const TEMPLATE_MAX_DIM = 4096;
+/** Admin stamps retain their smaller cap because they write in one operation. */
+export const ADMIN_STAMP_MAX_DIM = 512;
 // Timelapse playback/export can handle larger regions than image templates.
 // Keep this bounded to avoid unreasonably large history queries and frame buffers.
 export const TIMELAPSE_MAX_DIM = 4096;

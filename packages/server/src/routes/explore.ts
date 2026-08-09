@@ -97,7 +97,8 @@ export function registerExploreRoutes(app: FastifyInstance): void {
    * Every painted colour in a rectangle, as one byte per pixel.
    *
    * The template overlay needs to know which of its pixels are already done,
-   * which is up to 262,144 lookups. Doing that as individual /api/pixel calls
+   * which can cover up to TEMPLATE_MAX_DIM² lookups. Doing that as individual
+   * /api/pixel calls
    * would be absurd, and reading it back out of the rendered tiles means
    * matching RGB to palette indices and inheriting whatever the tile worker
    * has not caught up on yet. One capped query returning raw indices is both
