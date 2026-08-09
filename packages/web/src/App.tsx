@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
 import {
   ERASED,
+  MIN_MAP_ZOOM,
   Z_PIXEL,
   WORLD_SIZE,
   type PaintError,
   type PaintResponse,
   type PixelInfo,
   paintCost,
+  pixelToLatLng,
 } from "@worldcanvas/shared";
 import { api } from "./api.js";
 import { WsClient } from "./ws.js";
@@ -15,6 +17,7 @@ import { solveTurnstile } from "./turnstile.js";
 import { useStore } from "./store.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
+import type { GlobeHandle, GlobeView } from "./components/GlobeCanvas.js";
 import { PalettePanel } from "./components/Palette.js";
 import { ChargeBar } from "./components/ChargeBar.js";
 import { EventBanner } from "./components/EventBanner.js";
@@ -33,10 +36,16 @@ import { TimelapsePanel } from "./components/TimelapsePanel.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
 
+// MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
+// initial bundle and fetch it only after the player asks for the globe.
+const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
+
 export function App() {
   const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event, pps } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
+  const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
+  const [globeStart, setGlobeStart] = useState<GlobeView>(readGlobeStart);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const toastId = useRef(0);
   const showToast = useCallback((text: string) => {
@@ -52,11 +61,45 @@ export function App() {
 
   const ws = useRef<WsClient | null>(null);
   const handle = useRef<MapHandle | null>(null);
+  const globeHandle = useRef<GlobeHandle | null>(null);
+  const flatZoom = useRef<number | null>(null);
   /** Pixel info cache, so hovering back over a pixel costs nothing. */
   const pixelCache = useRef(new Map<number, PixelInfo>());
   /** Colours learned from pixel info, live frames, and optimistic paints. */
   const paintColors = useRef(new PaintColorTracker());
   const hoverTimer = useRef<number | null>(null);
+
+  const switchToGlobe = useCallback(() => {
+    const map = handle.current?.map;
+    if (map) {
+      const center = map.getCenter();
+      flatZoom.current = map.getZoom();
+      // Enter the mode at a recognisably global scale. MapLibre deliberately
+      // becomes flat at painting zoom so staying at z12 would make the toggle
+      // appear to have done nothing.
+      setGlobeStart({ lat: center.lat, lng: center.lng, z: Math.min(map.getZoom(), 2.25) });
+    }
+    setViewMode("globe");
+    saveViewMode("globe");
+  }, []);
+
+  const switchToMap = useCallback(() => {
+    const view = globeHandle.current?.getView();
+    globeHandle.current = null;
+    if (view && handle.current) {
+      handle.current.map.setView([view.lat, view.lng], Math.max(MIN_MAP_ZOOM, flatZoom.current ?? Math.round(view.z)), {
+        animate: false,
+      });
+    }
+    setViewMode("map");
+    saveViewMode("map");
+  }, []);
+
+  // Rectangle and point selection use Leaflet-owned interaction handles.
+  // Bring those tools back to their editor as soon as selection begins.
+  useEffect(() => {
+    if (mapPicking && viewMode === "globe") switchToMap();
+  }, [mapPicking, switchToMap, viewMode]);
 
   // ---- boot ---------------------------------------------------------------
   useEffect(() => {
@@ -116,6 +159,7 @@ export function App() {
         onChatUpdate: (message) => useStore.getState().mergeChatMessages([message]),
         onPixels: (pixels) => {
           handle.current?.overlay.add(pixels);
+          globeHandle.current?.applyPixels(pixels);
           // Keep the template's notion of the canvas current from the same
           // stream, so its progress counter tracks other people's paints as
           // well as your own without re-reading the region.
@@ -326,12 +370,32 @@ export function App() {
   return (
     <div className="wc-app">
       <MapCanvas
+        active={viewMode === "map"}
+        inactiveZoom={zoom}
         onPaint={onPaint}
         onHover={onHover}
         onInspect={onInspect}
         onReady={onReady}
         onViewport={onViewport}
       />
+      {viewMode === "globe" && (
+        <Suspense fallback={<div className="wc-globe-view wc-boot">Loading the globe…</div>}>
+          <GlobeCanvas
+            initialView={globeStart}
+            onPaint={onPaint}
+            onHover={onHover}
+            onInspect={onInspect}
+            onReady={(globe) => {
+              globeHandle.current = globe;
+            }}
+            onViewport={onViewport}
+            onUnavailable={() => {
+              showToast("3D globe view needs WebGL. Switched back to the map.");
+              switchToMap();
+            }}
+          />
+        </Suspense>
+      )}
 
       <div className="wc-hud">
         {frozen && (
@@ -344,7 +408,7 @@ export function App() {
           <EventBanner
             event={event}
             onLocate={() =>
-              handle.current?.flyTo(
+              (viewMode === "globe" ? globeHandle.current : handle.current)?.flyTo(
                 Math.round((event.bbox.x0 + event.bbox.x1) / 2),
                 Math.round((event.bbox.y0 + event.bbox.y1) / 2),
                 15,
@@ -361,6 +425,15 @@ export function App() {
         <span className="wc-rail-brand">
           <MapPinned size={18} />
         </span>
+        <button
+          className="wc-rail-btn"
+          aria-pressed={viewMode === "globe"}
+          aria-label={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
+          title={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
+          onClick={viewMode === "globe" ? switchToMap : switchToGlobe}
+        >
+          {viewMode === "globe" ? <MapIcon size={19} /> : <Globe2 size={19} />}
+        </button>
         <button
           className="wc-rail-btn"
           aria-pressed={panel === "activity"}
@@ -508,7 +581,7 @@ export function App() {
             {panel === "country" && openCountry && (
               <CountryPage
                 iso={openCountry}
-                onFlyTo={(x, y) => handle.current?.flyTo(x, y)}
+                onFlyTo={(x, y) => (viewMode === "globe" ? globeHandle.current : handle.current)?.flyTo(x, y)}
               />
             )}
           </div>
@@ -541,4 +614,38 @@ function costOf(info: PixelInfo): { cost: number; reason: string } {
     newColor: selectedColor,
     terrain: info.terrain,
   });
+}
+
+function readViewMode(): "map" | "globe" {
+  // Shared template placement is an editor workflow; opening one should not
+  // hide its ghost behind a remembered exploration preference.
+  if (/^\/t\/[0-9a-f-]{36}$/i.test(location.pathname)) return "map";
+  if (new URLSearchParams(location.search).get("view") === "globe") return "globe";
+  try {
+    return localStorage.getItem("wc-view-mode") === "globe" ? "globe" : "map";
+  } catch {
+    return "map";
+  }
+}
+
+function saveViewMode(mode: "map" | "globe"): void {
+  try {
+    localStorage.setItem("wc-view-mode", mode);
+  } catch {
+    // Storage can be disabled without making the view toggle unusable.
+  }
+}
+
+function readGlobeStart(): GlobeView {
+  const match = /^#(\d+)\/(\d+)\/(\d+)$/.exec(location.hash);
+  if (match) {
+    const z = Number(match[1]);
+    const x = Number(match[2]);
+    const y = Number(match[3]);
+    if (z >= 0 && z <= 18 && x >= 0 && y >= 0 && x < WORLD_SIZE && y < WORLD_SIZE) {
+      const center = pixelToLatLng({ x, y });
+      return { ...center, z };
+    }
+  }
+  return { lat: 0, lng: 0, z: 1.5 };
 }

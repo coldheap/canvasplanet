@@ -62,12 +62,17 @@ export interface MapHandle {
 }
 
 export function MapCanvas({
+  active = true,
+  inactiveZoom,
   onPaint,
   onHover,
   onInspect,
   onReady,
   onViewport,
 }: {
+  active?: boolean;
+  /** Zoom reported by another active renderer while this map is hidden. */
+  inactiveZoom?: number;
   onPaint: (x: number, y: number) => void;
   onHover: (pixel: { x: number; y: number } | null) => void;
   /** Right-click / long-press: pin the inspector on a pixel. */
@@ -81,8 +86,8 @@ export function MapCanvas({
 
   // Effect callbacks are captured once on mount; route them through a ref so
   // the map is never torn down and rebuilt just because a handler changed.
-  const cb = useRef({ onPaint, onHover, onInspect, onReady, onViewport });
-  cb.current = { onPaint, onHover, onInspect, onReady, onViewport };
+  const cb = useRef({ active, onPaint, onHover, onInspect, onReady, onViewport });
+  cb.current = { active, onPaint, onHover, onInspect, onReady, onViewport };
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -367,7 +372,7 @@ export function MapCanvas({
         return;
       }
 
-      if (e.key !== "Shift" || shiftDown.current) return;
+      if (!cb.current.active || e.key !== "Shift" || shiftDown.current) return;
       if (useStore.getState().historyAt !== null) return;
       shiftDown.current = true;
       map.dragging.disable();
@@ -510,8 +515,8 @@ export function MapCanvas({
 
   return (
     <>
-      <div ref={ref} className="wc-map" />
-      <HistoryMode zoom={zoom} />
+      <div ref={ref} className={active ? "wc-map" : "wc-map wc-map-inactive"} />
+      <HistoryMode zoom={!active && inactiveZoom !== undefined ? inactiveZoom : zoom} />
     </>
   );
 }
