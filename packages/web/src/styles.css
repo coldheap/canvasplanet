@@ -116,11 +116,11 @@ select {
   background: var(--wc-bg);
 }
 
-/* Pixel art must never be smoothed — the browser's default bilinear
-   upscaling turns a crisp pixel into a blur past the native paint zoom. */
-.wc-canvas-layer img {
-  image-rendering: pixelated;
+/* Leaflet puts TileLayer's className on the <img> itself. Keep both the
+   painted canvas and land/ocean backdrop sharp when they are overzoomed. */
+img.wc-pixel-tile {
   image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 /* ---- shared card chrome --------------------------------------------------- */

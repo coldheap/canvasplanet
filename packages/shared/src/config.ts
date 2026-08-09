@@ -17,24 +17,21 @@ export const SITE_URL = "worldcanvas.live";
 // The grid
 // ---------------------------------------------------------------------------
 
-/** Web Mercator zoom whose native pixel grid *is* the canvas. Shrunk from 12
- *  to 8 on 2026-08-09 — see the "shrink the world" migration/reset — which
- *  also happens to make BASEMAP_MAX_ZOOM (below) land exactly on this value,
- *  so the land/ocean backdrop is pixel-perfect with zero overzoom. */
-export const Z_PIXEL = 8;
+/** Web Mercator zoom whose native pixel grid *is* the canvas. */
+export const Z_PIXEL = 12;
 export const TILE_SIZE = 256;
 
-/** Pixels per axis: 256 * 2^8 = 65,536. */
+/** Pixels per axis: 256 * 2^12 = 1,048,576. */
 export const WORLD_SIZE = TILE_SIZE * 2 ** Z_PIXEL;
 
-/** Tiles per axis at Z_PIXEL: 256. */
+/** Tiles per axis at Z_PIXEL: 4096. */
 export const TILES_PER_AXIS = 2 ** Z_PIXEL;
 
-/** Total z8 tiles: 65,536. Sized so the geo index fits in memory. */
+/** Total z12 tiles: 16,777,216. Sized so the geo index fits in memory. */
 export const TOTAL_TILES = TILES_PER_AXIS ** 2;
 
 /** Metres per pixel at the equator. Informational — derived, not used in math. */
-export const METRES_PER_PIXEL_EQUATOR = 40075016.686 / WORLD_SIZE; // ≈ 611.5
+export const METRES_PER_PIXEL_EQUATOR = 40075016.686 / WORLD_SIZE; // ≈ 38.2185
 
 /** Mercator's latitude limit. Beyond this y would run to infinity. */
 export const MAX_LATITUDE = 85.05112877980659;
@@ -44,18 +41,15 @@ export const MAX_LATITUDE = 85.05112877980659;
 // ---------------------------------------------------------------------------
 
 /** Below this, painting is disabled — a click could not resolve one pixel. */
-export const MIN_PAINT_ZOOM = Z_PIXEL; // 8
+export const MIN_PAINT_ZOOM = Z_PIXEL; // 12
 export const MAX_MAP_ZOOM = 18;
 export const MIN_MAP_ZOOM = 2;
 /** Auto-show pixel gridlines at and above this zoom. */
-export const GRID_ZOOM = 10; // Z_PIXEL + 2
+export const GRID_ZOOM = 14; // Z_PIXEL + 2
 /** Below this the client sends no tile subscription and gets no pixel stream. */
-export const MIN_STREAM_ZOOM = 6; // Z_PIXEL - 2
-/** Zoom level at which WS subscriptions are keyed (1 tile = 1024×1024 pixels,
- *  same formula as always — TILE_SIZE * 2^(Z_PIXEL - SUB_ZOOM) — just a
- *  bigger real-world distance per subscription tile now that a pixel is
- *  ~611m instead of ~38m). Kept equal to MIN_STREAM_ZOOM, as before. */
-export const SUB_ZOOM = 6; // Z_PIXEL - 2
+export const MIN_STREAM_ZOOM = 10; // Z_PIXEL - 2
+/** Zoom level at which WS subscriptions are keyed (1 tile = 1024×1024 pixels). */
+export const SUB_ZOOM = 10; // Z_PIXEL - 2
 
 // ---------------------------------------------------------------------------
 // Economy
@@ -102,16 +96,16 @@ export const PAINT_BOUNDS: { x0: number; y0: number; x1: number; y1: number } | 
 // ---------------------------------------------------------------------------
 
 /** Null Island (0°, 0°) is the exact centre of the grid. */
-export const GRID_CENTER = WORLD_SIZE / 2; // 32,768
+export const GRID_CENTER = WORLD_SIZE / 2; // 524,288
 
 export const LANDMARK = {
   name: "landmark",
   width: 256,
   height: 128,
-  x0: GRID_CENTER - 128, // 32,640
-  y0: GRID_CENTER - 64, //  32,704
-  x1: GRID_CENTER + 127, // 32,895
-  y1: GRID_CENTER + 63, //  32,831
+  x0: GRID_CENTER - 128, // 524,160
+  y0: GRID_CENTER - 64, //  524,224
+  x1: GRID_CENTER + 127, // 524,415
+  y1: GRID_CENTER + 63, //  524,351
 } as const;
 
 /** Where the map opens when there is no URL hash. */
@@ -142,17 +136,11 @@ export const CF_PURGE_BATCH = 30;
 // Static land/ocean basemap (see geo/bake.ts's rasterizeTile)
 // ---------------------------------------------------------------------------
 
-/** Highest zoom the land/ocean backdrop is pre-baked to; Leaflet upscales
- *  beyond it, the same trick the pixel canvas layer uses past Z_PIXEL — the
- *  overzoom factor (and visible blockiness) at the paint-eligible zoom
- *  (Z_PIXEL) is 2^(Z_PIXEL - BASEMAP_MAX_ZOOM). This now equals Z_PIXEL
- *  exactly (8), which is intentional, not a coincidence to "fix" later:
- *  after Z_PIXEL shrank from 12 to 8 (see the grid-size comment above), the
- *  backdrop's existing native resolution lines up with the new pixel grid
- *  for a 2^0 = 1x overzoom factor — genuinely pixel-perfect at the paint
- *  boundary, not just "close enough". Only this deepest level is rasterised
- *  the expensive way (see scripts/bake-basemap.ts); every shallower level is
- *  derived from it by a cheap box-filter downsample. */
+/** Highest zoom the land/ocean backdrop is pre-baked to. It is deliberately
+ *  lower-resolution than the paint grid: baking all 16.7 million z12
+ *  basemap tiles is impractical. The client overzooms these tiles with
+ *  nearest-neighbour sampling, while the optional OSM layer supplies
+ *  detailed roads and labels. */
 export const BASEMAP_MAX_ZOOM = 8;
 
 // ---------------------------------------------------------------------------

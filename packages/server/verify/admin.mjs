@@ -61,8 +61,8 @@ check("bootstrap reports staff session", boot.staff?.role === "admin", JSON.stri
 
 // ---- stamp ----------------------------------------------------------------
 // A 4x4 block well away from anything else, one pixel left transparent.
-const SX = 52000 + Math.floor(Math.random() * 1000);
-const SY = 52000;
+const SX = 900000 + Math.floor(Math.random() * 1000);
+const SY = 900000;
 const data = Array.from({ length: 16 }, (_, i) => (i === 5 ? 255 : 20));
 
 // Everything from here belongs to this run only. pixel_events is
@@ -91,7 +91,7 @@ check("stamp rejects oversized area", tooBig.status === 422, `HTTP ${tooBig.stat
 
 // Protected regions must hold even against an admin stamp.
 const onLandmark = await api("/api/admin/stamp", "POST", {
-  x: 32768, y: 32768, w: 2, h: 2, data: [4, 4, 4, 4], preview: true,
+  x: 524288, y: 524288, w: 2, h: 2, data: [4, 4, 4, 4], preview: true,
 });
 check(
   "stamp will not overwrite a protected region",

@@ -9,13 +9,8 @@
  *     cached, because coastal tiles people actually paint on are a small,
  *     very hot set.
  *
- * The "uniform tiles are the overwhelming majority" premise held at
- * The previous Z_PIXEL=12 grid used ~9.8 km tiles; at Z_PIXEL=8 each tile is
- * coarser, so MIXED tiles are resolved against polygon geometry per pixel.
- * but is a much weaker assumption since Z_PIXEL shrank to 8 (one tile ≈
- * 156km) — MIXED tiles, and therefore the polygon fallback below, are hit
- * far more often now. Accepted trade-off, not a bug — see the "shrink the
- * world" migration/reset for the full reasoning.
+ * At z12 a native tile is roughly 9.8 km across at the equator, so the
+ * uniform-tile fast path covers the great majority of the world.
  */
 
 import { readFile } from "node:fs/promises";

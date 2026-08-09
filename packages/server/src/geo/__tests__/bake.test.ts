@@ -128,8 +128,8 @@ describe("bake — full pipeline on synthetic geometry", () => {
     expect(buf.byteLength).toBe(
       HEADER_BYTES + result.countries.byteLength + result.terrain.byteLength,
     );
-    // The shrunken z8 index should remain comfortably below one MiB.
-    expect(buf.byteLength).toBeLessThan(200_000);
+    // The full z12 index is ~38 MB; keep it below the 45 MB budget.
+    expect(buf.byteLength / 1e6).toBeLessThan(45);
   });
 });
 
@@ -213,6 +213,6 @@ describe("PolygonIndex", () => {
 
 describe("Z_PIXEL invariant", () => {
   it("the bake leaf level is the pixel grid level", () => {
-    expect(Z_PIXEL).toBe(8);
+    expect(Z_PIXEL).toBe(12);
   });
 });

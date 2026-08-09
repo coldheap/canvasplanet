@@ -26,7 +26,7 @@ function validParams(z: number, x: number, y: number): boolean {
 
 export function registerTileRoutes(app: FastifyInstance): void {
   app.get<{ Params: { z: string; x: string; y: string } }>(
-    "/tiles/:z/:x/:y.png",
+    `/tiles/z${Z_PIXEL}/:z/:x/:y.png`,
     async (req, reply) => {
       const z = Number(req.params.z);
       const x = Number(req.params.x);
@@ -46,7 +46,7 @@ export function registerTileRoutes(app: FastifyInstance): void {
   // mode. A separate path rather than a query param keeps it cacheable by
   // Cloudflare and any browser cache on its own URL.
   app.get<{ Params: { z: string; x: string; y: string } }>(
-    "/tiles/heat/:z/:x/:y.png",
+    `/tiles/z${Z_PIXEL}/heat/:z/:x/:y.png`,
     async (req, reply) => {
       const z = Number(req.params.z);
       const x = Number(req.params.x);

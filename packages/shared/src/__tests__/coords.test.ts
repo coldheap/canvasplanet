@@ -24,14 +24,14 @@ import {
 } from "../coords.js";
 
 describe("grid constants", () => {
-  it("is 65,536 pixels per axis at z8", () => {
-    expect(WORLD_SIZE).toBe(65_536);
-    expect(TILES_PER_AXIS).toBe(256);
-    expect(TOTAL_TILES).toBe(65_536);
+  it("is 1,048,576 pixels per axis at z12", () => {
+    expect(WORLD_SIZE).toBe(1_048_576);
+    expect(TILES_PER_AXIS).toBe(4096);
+    expect(TOTAL_TILES).toBe(16_777_216);
   });
 
-  it("is ~611.5 m/pixel at the equator", () => {
-    expect(METRES_PER_PIXEL_EQUATOR).toBeCloseTo(611.496, 3);
+  it("is ~38.22 m/pixel at the equator", () => {
+    expect(METRES_PER_PIXEL_EQUATOR).toBeCloseTo(38.2185, 3);
   });
 });
 

@@ -19,8 +19,8 @@ const stamp = Date.now();
 const EMAIL = `verify-accounts-${stamp}@example.com`;
 const PASSWORD = "correcthorsebattery";
 const DISPLAY_NAME = `VerifyRun${stamp % 100000}`;
-const X = 50000 + Math.floor(Math.random() * 200);
-const Y = 50000 + Math.floor(Math.random() * 200);
+const X = 900000 + Math.floor(Math.random() * 200);
+const Y = 900000 + Math.floor(Math.random() * 200);
 
 let failures = 0;
 const check = (label, ok, detail = "") => {

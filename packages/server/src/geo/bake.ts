@@ -1,16 +1,10 @@
 /**
  * Builds the per-tile country and terrain index.
  *
- * Why per-TILE and not per-pixel: even at the current (shrunk, see
- * config.ts's Z_PIXEL comment) grid of 65,536^2 ≈ 4.3e9 pixels, one byte per
- * pixel is still 4.3 GB — too much to hold in memory as a flat array. A
- * Z_PIXEL tile is now ~156 km across at the equator (was ~9.8 km before the
- * shrink), so the "the world is overwhelmingly uniform at 256-pixel
- * granularity" premise this design leans on is much weaker than it used to
- * be — MIXED tiles (coastlines, land borders) are a meaningfully larger
- * share than the ~1-2% this was originally tuned for, with a
- * correspondingly heavier vector-fallback load at runtime. Accepted
- * trade-off — see the "shrink the world" migration/reset for the reasoning.
+ * Why per-TILE and not per-pixel: the grid is 1,048,576² ≈ 1.1e12 pixels.
+ * One byte per pixel would exceed a terabyte, while one country/terrain
+ * entry per 256×256 native tile fits in roughly 38 MB. Most z12 tiles are
+ * geographically uniform; only coastlines and borders need vector fallback.
  *
  * The descent is a quadtree from z0. A node with no candidate polygons, or
  * one that lies wholly inside a single polygon, fills its entire subtree

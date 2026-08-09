@@ -11,8 +11,8 @@ import WebSocket from "ws";
 const BASE = "http://127.0.0.1:8080";
 const COLOR = 20;
 // Fresh pixels each run so the cost stays 1 and the assertions stay stable.
-const X = 44000 + Math.floor(Math.random() * 200);
-const Y = 44000 + Math.floor(Math.random() * 200);
+const X = 700000 + Math.floor(Math.random() * 200);
+const Y = 700000 + Math.floor(Math.random() * 200);
 
 const cookieOf = (res) => (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -46,11 +46,11 @@ async function watcher(cookie, tiles) {
   return { ws, frames };
 }
 
-// SUB_ZOOM is 6, so the shift from pixel space is 8-6+8 = 10.
-const subKey = `6/${X >> 10}/${Y >> 10}`;
+// SUB_ZOOM is 10, so the shift from pixel space is 12-10+8 = 10.
+const subKey = `10/${X >> 10}/${Y >> 10}`;
 const onTile = await watcher(cookieB, [subKey]);
-const elsewhere = await watcher(cookieB, ["6/0/0"]);
-console.log(`B watching ${subKey}; second client watching 6/0/0`);
+const elsewhere = await watcher(cookieB, ["10/0/0"]);
+console.log(`B watching ${subKey}; second client watching 10/0/0`);
 
 check(
   "initial charges frame delivered on connect",

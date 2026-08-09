@@ -11,19 +11,23 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { Z_PIXEL } from "@worldcanvas/shared";
 import { env } from "../env.js";
 import { EMPTY_TILE, renderTile, type TileMode } from "./renderer.js";
 
 const LRU_MAX = 500;
 const lru = new Map<string, Buffer>();
+/** A grid-size change gives every coordinate a different geographic meaning.
+ *  Namespace derived files so an old z8 tile can never be served as z12. */
+const GRID_CACHE_DIR = `grid-z${Z_PIXEL}`;
 
 const keyOf = (z: number, x: number, y: number, mode: TileMode) => `${mode}/${z}/${x}/${y}`;
-// "color" keeps the original unprefixed layout — no reason to move every
-// existing cached tile on disk just because a second mode now exists.
+// Colour is the default inside the grid namespace; alternate render modes
+// get their own subdirectory.
 const pathOf = (z: number, x: number, y: number, mode: TileMode) =>
   mode === "color"
-    ? join(env.tileCacheDir, String(z), String(x), `${y}.png`)
-    : join(env.tileCacheDir, mode, String(z), String(x), `${y}.png`);
+    ? join(env.tileCacheDir, GRID_CACHE_DIR, String(z), String(x), `${y}.png`)
+    : join(env.tileCacheDir, GRID_CACHE_DIR, mode, String(z), String(x), `${y}.png`);
 
 function touch(key: string, buf: Buffer): Buffer {
   lru.delete(key);
@@ -100,8 +104,9 @@ export function evict(z: number, x: number, y: number, mode: TileMode = "color")
   lru.delete(keyOf(z, x, y, mode));
 }
 
-export function tileUrl(z: number, x: number, y: number): string {
-  return `${env.publicUrl}/tiles/${z}/${x}/${y}.png`;
+export function tileUrl(z: number, x: number, y: number, mode: TileMode = "color"): string {
+  const modePath = mode === "heat" ? "heat/" : "";
+  return `${env.publicUrl}/tiles/z${Z_PIXEL}/${modePath}${z}/${x}/${y}.png`;
 }
 
 export function cacheStats() {

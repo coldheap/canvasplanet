@@ -9,8 +9,8 @@ import { finish } from "./finish.mjs";
 const BASE = "http://127.0.0.1:8080";
 const cookieOf = (r) => (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 
-// Web Mercator z8: 256 tiles * 256 = 65,536 pixels per axis.
-const WORLD = 65536;
+// Web Mercator z12: 4096 tiles * 256 = 1,048,576 pixels per axis.
+const WORLD = 1048576;
 const lngToX = (lng) => Math.floor(((lng + 180) / 360) * WORLD);
 const latToY = (lat) => {
   const r = (lat * Math.PI) / 180;

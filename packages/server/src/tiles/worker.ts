@@ -112,7 +112,7 @@ async function drain(): Promise<void> {
           const heatBuf = await renderTile(z, x, y, "heat");
           await writeTile(z, x, y, heatBuf, "heat");
           evict(z, x, y, "heat");
-          urls.push(tileUrl(z, x, y).replace("/tiles/", "/tiles/heat/"));
+          urls.push(tileUrl(z, x, y, "heat"));
         }
 
         if (z > 0) parents.set(`${z - 1}/${x >> 1}/${y >> 1}`, { z: z - 1, x: x >> 1, y: y >> 1 });

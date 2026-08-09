@@ -22,8 +22,8 @@ const stamp = Date.now();
 const EMAIL = `verify-streaks-${stamp}@example.com`;
 const PASSWORD = "correcthorsebattery";
 const DISPLAY_NAME = `StreakRun${stamp % 100000}`;
-const X = 46000 + Math.floor(Math.random() * 200);
-const Y = 46000 + Math.floor(Math.random() * 200);
+const X = 910000 + Math.floor(Math.random() * 200);
+const Y = 910000 + Math.floor(Math.random() * 200);
 
 let failures = 0;
 const check = (label, ok, detail = "") => {

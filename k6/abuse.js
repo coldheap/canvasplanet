@@ -43,10 +43,9 @@ export default function () {
   jar.clear(BASE);
   http.get(`${BASE}/api/bootstrap`);
 
-  // Range sized for the current 65,536px world (Z_PIXEL=8) — roughly the
-  // same 19%-29% span of the grid this used before the world shrank.
-  const x = 12500 + Math.floor(Math.random() * 6250);
-  const y = 12500 + Math.floor(Math.random() * 6250);
+  // Quiet z12 band, away from the protected landmark.
+  const x = 200000 + Math.floor(Math.random() * 100000);
+  const y = 200000 + Math.floor(Math.random() * 100000);
 
   // Try to burn the whole fresh bank immediately — the exploit this defends.
   for (let i = 0; i < 30; i++) {

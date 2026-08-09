@@ -107,6 +107,7 @@ export function MapCanvas({
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
+      className: "wc-pixel-tile",
       zIndex: 0,
     }).addTo(map);
 
@@ -120,10 +121,10 @@ export function MapCanvas({
     // The canvas. maxNativeZoom pins requests to Z_PIXEL and lets Leaflet upscale
     // beyond it, so zooming in shows crisp big pixels instead of asking the
     // server for tiles that do not exist.
-    const canvasLayer = L.tileLayer("/tiles/{z}/{x}/{y}.png", {
+    const canvasLayer = L.tileLayer(`/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-canvas-layer",
+      className: "wc-pixel-tile wc-canvas-layer",
       keepBuffer: 4,
       zIndex: 2,
     }).addTo(map);

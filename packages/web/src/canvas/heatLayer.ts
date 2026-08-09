@@ -65,7 +65,7 @@ const HeatGridLayer = L.GridLayer.extend({
       done(null, canvas);
     };
     img.onerror = () => done(null, canvas); // blank tile beats a broken one
-    img.src = `/tiles/heat/${Math.min(coords.z, Z_PIXEL)}/${coords.x}/${coords.y}.png`;
+    img.src = `/tiles/z${Z_PIXEL}/heat/${Math.min(coords.z, Z_PIXEL)}/${coords.x}/${coords.y}.png`;
 
     return canvas;
   },

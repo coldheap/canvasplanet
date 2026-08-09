@@ -82,8 +82,8 @@ export function inWorld(x: number, y: number): boolean {
 /**
  * Packed Z_PIXEL tile id, matching the `tile_id` generated column in
  * Postgres. Keep these two definitions in lockstep — the DB expression is
- * `(x >> 8) * TILES_PER_AXIS + (y >> 8)` (currently `(x >> 8) * 256 + (y >>
- * 8)`, see migrations/0016_shrink_world.sql).
+ * `(x >> 8) * TILES_PER_AXIS + (y >> 8)` (currently `(x >> 8) * 4096 + (y
+ * >> 8)`, see migrations/0018_restore_z12_world.sql).
  */
 export function tileIdOf(x: number, y: number): number {
   return (x >> 8) * TILES_PER_AXIS + (y >> 8);
