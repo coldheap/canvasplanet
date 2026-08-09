@@ -170,7 +170,9 @@ export const STATUS_HISTORY_MAX_DAYS = STATUS_HISTORY_RETENTION_DAYS;
 // ---------------------------------------------------------------------------
 
 export const TEMPLATE_MAX_DIM = 512;
-export const TIMELAPSE_MAX_DIM = 512;
+// Timelapse playback/export can handle larger regions than image templates.
+// Keep this bounded to avoid unreasonably large history queries and frame buffers.
+export const TIMELAPSE_MAX_DIM = 4096;
 export const TIMELAPSE_MAX_FRAMES = 200;
 export const TIMELAPSE_MAX_EVENTS = 50_000;
 

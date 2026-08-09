@@ -8,8 +8,8 @@
  * would starve the paint path on a single box).
  *
  * Scrubbing backwards rebuilds from the base state rather than trying to
- * invert deltas: at 512x512 with 200 frames that is a few milliseconds, and
- * inverting would need the previous colour of every pixel in every frame.
+ * invert deltas, which would need the previous colour of every pixel in every
+ * frame.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -71,6 +71,15 @@ export function TimelapsePanel({ handle }: { handle: MapHandle | null }) {
   const stateAt = useRef(-1);
   /** Terrain per pixel, so unpainted cells draw as sea/land instead of transparent. */
   const terrain = useRef<Uint8Array>(new Uint8Array(0));
+
+  // The picker owns an imperative Leaflet rectangle, so remove it when this
+  // panel closes. This also cancels a selection that is still in progress.
+  useEffect(() => {
+    return () => {
+      handle?.bbox.cancel();
+      handle?.bbox.clear();
+    };
+  }, [handle]);
 
   const width = bbox ? bbox.x1 - bbox.x0 + 1 : 0;
   const height = bbox ? bbox.y1 - bbox.y0 + 1 : 0;

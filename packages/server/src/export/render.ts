@@ -6,7 +6,7 @@
  *
  * A generator, not an array: export/queue.ts pulls one frame at a time and
  * pipes it straight to ffmpeg's stdin, so this never holds more than one
- * frame (at most 512*512*4 bytes) in memory regardless of frame count.
+ * frame in memory regardless of frame count.
  */
 import { DEFAULT_TERRAIN_COLOR, PALETTE_RGB, type Terrain, type TimelapseResponse } from "@worldcanvas/shared";
 
