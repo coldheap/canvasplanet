@@ -124,6 +124,58 @@ narrows where the *rare max stall* comes from. The steady p50/p99 numbers
 above (12 ms / 33 ms) suggest the 320 ms tail is more likely ordinary queueing
 under 50-VU contention than a single blocking stall; not yet root-caused.
 
+**2026-08-09 follow-up, both open threads picked back up — one closed, one
+root-caused for real:**
+
+*Boot-time stall*: confirmed directly (a standalone script driving the real
+`loadSources()`/`geo.load()` code in isolation, not the live server) that
+parsing the 26 MB countries + 63 MB water GeoJSON and building `PolygonIndex`
+blocks the event loop for ~1.1–1.7 s at boot — same order of magnitude as the
+1600–2200 ms `maxMs` seen above, and it happens *before* `app.listen()`, so it
+never touches a real request. ~93% of that time is `JSON.parse` itself, not
+the R-tree; `PolygonIndex.add()` was still switched from one `tree.insert()`
+per polygon to a single deferred `tree.load()` bulk build (real ~15–20%
+win, zero call-site changes, 18/18 tests pass) since it was free money, but
+the GeoJSON parse is the actual bulk of it and was left alone — one-time,
+pre-`listen()`, invisible to players, not worth the complexity of a
+worker-thread offload or a second baked cache format for that payoff.
+
+*The 320 ms p99*: root-caused, and it was a load-test artifact, not a server
+bug — but a real bug all the same, just in `k6/paint-load.js`. Reproduced on
+an isolated instance (scratch Postgres DB, server on a spare port, never
+touching the shared dev DB or the live canvas) with `pg_stat_activity`
+sampled every 300 ms through the run: 151 samples caught a backend in a
+`Lock transactionid` / `Lock tuple` wait, **every single one on the same
+statement** — the paint transaction's big write CTE. The `country_stats`
+row is the reason: the load test's "spread VUs across the world" coordinate
+formula spreads across *tiles* but not *countries*, and international waters
+is one country_id covering ~70% of the globe like any other — checked
+directly, 37 of the script's 50 fixed VU coordinates landed there. Every one
+of those 37 VUs serialized on that single row's lock for the back half of
+its transaction (from the `country_stats` upsert through `COMMIT`), which is
+exactly the mechanism the original three-candidates pass checked for and
+ruled out (*"pg_stat_activity sampling under load showed zero lock
+waits"*) — it just didn't hold for this exact script.
+
+Fixed in `k6/paint-load.js`: `setup()` now resolves each VU's coordinate
+through the real `/api/pixel/:x/:y` lookup and retries until no country has
+more than `MAX_VUS_PER_COUNTRY` (3) VUs on it, so the test measures spread-out
+concurrent play instead of an artificial worst-case pileup on one row. Rerun
+after the fix, same 50 VUs/60 s: p99 290 ms (still above the 200 ms target,
+now measuring something real) and — the clearer signal — **max latency
+dropped from 2.86 s to 460 ms**, a 6x drop in the worst outlier from removing
+one artificial lock chokepoint. `country_stats` contention is also a latent
+*real* risk worth keeping in mind (a popular event or contested border could
+genuinely concentrate many concurrent painters on one country) even though
+this specific 320 ms number was test-artifact-driven — not addressed here,
+scope was measuring correctly, not hardening the transaction.
+
+Next step if picked back up: rerun with the fixed script on the real VPS
+hardware to see whether 290 ms/460 ms-class numbers replicate outside this
+dev box (which showed high run-to-run variance — 196/447/759 ms across three
+back-to-back trials under different conditions — so treat single-trial
+numbers here as directional, not final).
+
 ### 2.6 Small gaps — all done
 
 Turnstile 428 flow, `favicon.svg`, and revert's erase broadcast were closed

@@ -53,10 +53,42 @@ export const options = {
   },
 };
 
+// Cap how many VUs are allowed to land in the same country. Below this, a
+// "spread across the world" coordinate formula still funnels most VUs into
+// International Waters (~70% of the globe is ocean, and it is one country_id
+// like any other) — every one of them then serializes on that single
+// country_stats row for the back half of its transaction, same as the
+// single-tile contention this file already spreads VUs to avoid. Confirmed
+// with a real isolated load run (scratch DB, separate port): the original
+// formula put 37 of 50 VUs in International Waters and pg_stat_activity
+// showed real Lock waits on the paint CTE the whole run — a measurement
+// artifact of this script, not a server bug.
+const MAX_VUS_PER_COUNTRY = 3;
+
 export function setup() {
   const res = http.get(`${BASE}/api/bootstrap`);
   check(res, { "bootstrap ok": (r) => r.status === 200 });
-  return { max: res.json("max"), regenMs: res.json("regenMs") };
+
+  // One coordinate per VU, resolved against the real geo index (not
+  // guessed) so the cap above is enforced on the country the server will
+  // actually attribute the paint to.
+  const countryCounts = {};
+  const coords = [];
+  for (let vu = 1; vu <= 50; vu++) {
+    let x, y, countryId;
+    for (let tries = 0; tries < 40; tries++) {
+      const seed = vu + tries * 977;
+      x = 100000 + ((seed * 7919) % 800000);
+      y = 100000 + ((seed * 104729) % 800000);
+      const px = http.get(`${BASE}/api/pixel/${x}/${y}`);
+      countryId = px.json("countryId");
+      if ((countryCounts[countryId] ?? 0) < MAX_VUS_PER_COUNTRY) break;
+    }
+    countryCounts[countryId] = (countryCounts[countryId] ?? 0) + 1;
+    coords.push({ x, y });
+  }
+
+  return { max: res.json("max"), regenMs: res.json("regenMs"), coords };
 }
 
 export default function (config) {
@@ -97,10 +129,10 @@ export default function (config) {
   const everAllowed = () =>
     startBank + Math.floor((Date.now() - sessionStart) / REGEN_MS) + 1;
 
-  // Spread VUs across the world so they do not contend on one tile — that
+  // Spread VUs across the world so they do not contend on one tile, or (see
+  // MAX_VUS_PER_COUNTRY above) pile up on one country_stats row — either one
   // would measure lock contention, not throughput.
-  const baseX = 100000 + ((__VU * 7919) % 800000);
-  const baseY = 100000 + ((__VU * 104729) % 800000);
+  const { x: baseX, y: baseY } = config.coords[__VU - 1];
 
   for (let i = 0; i < 60; i++) {
     const res = http.post(
