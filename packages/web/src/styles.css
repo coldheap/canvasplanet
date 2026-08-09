@@ -116,9 +116,11 @@ select {
   background: var(--wc-bg);
 }
 
-/* Leaflet puts TileLayer's className on the <img> itself. Keep both the
-   painted canvas and land/ocean backdrop sharp when they are overzoomed. */
-img.wc-pixel-tile {
+/* Leaflet puts GridLayer's className on the layer container, while the
+   browser scales its descendant tile images during overzoom. Keep both the
+   painted canvas and land/ocean backdrop on nearest-neighbour sampling. */
+.wc-pixel-tile,
+.wc-pixel-tile img {
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
