@@ -48,10 +48,13 @@ import {
   type ServerMessage,
 } from "@worldcanvas/shared";
 import { revert } from "../admin/revert.js";
+import { alliances } from "../alliances/store.js";
 import { pool, tx } from "../db/pool.js";
 import { env } from "../env.js";
 import { geo } from "../geo/index.js";
 import { leaderboard } from "../leaderboard/store.js";
+import { incrementCumulative, transferHeld } from "../paint/ownership.js";
+import { players } from "../players/store.js";
 import { getProtectedRegions, isFrozen } from "../state/policy.js";
 import { hub } from "../ws/hub.js";
 import { ActiveEventState } from "./state.js";
@@ -276,8 +279,13 @@ class EventEngine {
       const { countryId } = geo.lookup(x, y);
 
       const prevRow = await tx(async (c) => {
-        const prev = await c.query<{ color: number; country_id: number }>(
-          `SELECT color, country_id FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
+        const prev = await c.query<{
+          color: number;
+          country_id: number;
+          alliance_id: number | null;
+          user_id: number | null;
+        }>(
+          `SELECT color, country_id, alliance_id, user_id FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
           [x, y],
         );
         const prevRow = prev.rows[0] ?? null;
@@ -296,20 +304,12 @@ class EventEngine {
            VALUES ($1, $2, $3, $4, $5, 0, $6)`,
           [x, y, ev.botColor, prevRow?.color ?? null, countryId, ev.batchId],
         );
-        await c.query(
-          `INSERT INTO country_stats (country_id, cumulative, held)
-           VALUES ($1, 1, CASE WHEN $2::boolean THEN 0 ELSE 1 END)
-           ON CONFLICT (country_id) DO UPDATE
-             SET cumulative = country_stats.cumulative + 1,
-                 held = country_stats.held + CASE WHEN $2::boolean THEN 0 ELSE 1 END`,
-          [countryId, prevRow?.country_id === countryId],
-        );
-        if (prevRow && prevRow.country_id !== countryId) {
-          await c.query(
-            `UPDATE country_stats SET held = GREATEST(0, held - 1) WHERE country_id = $1`,
-            [prevRow.country_id],
-          );
-        }
+        const previousOwner = prevRow
+          ? { countryId: prevRow.country_id, allianceId: prevRow.alliance_id, userId: prevRow.user_id }
+          : null;
+        const nextOwner = { countryId, allianceId: null, userId: null };
+        await transferHeld(c, previousOwner, nextOwner);
+        await incrementCumulative(c, nextOwner);
         const chain = tileAncestry(x, y);
         await c.query(
           `INSERT INTO tile_dirty (z, x, y)
@@ -323,6 +323,8 @@ class EventEngine {
 
       hub.publishPaint(x, y, ev.botColor, countryId);
       leaderboard.applyPaint(countryId, prevRow?.country_id ?? null);
+      alliances.applyPaint(null, prevRow?.alliance_id ?? null);
+      players.applyPaint(null, prevRow?.user_id ?? null);
       ev.notePaint(x, y, ev.botColor, null);
     }
   }

@@ -36,7 +36,8 @@
  * re-run without repeating a 30-minute rasterize.
  */
 
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { PNG } from "pngjs";
 import { BASEMAP_MAX_ZOOM } from "@worldcanvas/shared";
@@ -45,6 +46,16 @@ import { TerrainBits, rasterizeTile } from "../src/geo/bake.js";
 import { WATER_FILE, buildWaterIndex, loadGeoJson, waterPresent } from "../src/geo/source.js";
 
 const CONCURRENCY = 64;
+
+/** Optional process-level sharding for the expensive leaf pass. Each shard
+ * owns disjoint x columns, while already-written files are skipped so an
+ * interrupted bake resumes instead of starting over. Run one ordinary pass
+ * after all shards finish; it sees a complete leaf level and derives parents. */
+const SHARD_COUNT = Math.max(1, Number.parseInt(process.env.BASEMAP_SHARD_COUNT ?? "1", 10));
+const SHARD_INDEX = Number.parseInt(process.env.BASEMAP_SHARD_INDEX ?? "0", 10);
+if (!Number.isInteger(SHARD_INDEX) || SHARD_INDEX < 0 || SHARD_INDEX >= SHARD_COUNT) {
+  throw new Error(`BASEMAP_SHARD_INDEX must be between 0 and ${SHARD_COUNT - 1}`);
+}
 
 const TILE_PX = 256;
 /** Matches the OSM "standard" style's usual land/ocean read closely enough
@@ -81,6 +92,14 @@ function tilePath(z: number, x: number, y: number): string {
   return join(env.basemapDir, String(z), String(x), `${y}.png`);
 }
 
+/** A killed write can leave a zero-byte filename behind. Resume logic must
+ * not mistake that for a finished tile. A valid PNG is always larger than
+ * its eight-byte signature; decodeTile remains the final integrity check. */
+function tileLooksComplete(z: number, x: number, y: number): boolean {
+  const path = tilePath(z, x, y);
+  return existsSync(path) && statSync(path).size > 8;
+}
+
 /** Runs `items` through `work` with at most CONCURRENCY in flight — a plain
  *  pool rather than chunked Promise.all batches, so one slow tile can't
  *  stall the whole batch behind it while the rest of the pool sits idle. */
@@ -93,19 +112,6 @@ async function runPool<T>(items: T[], work: (item: T, index: number) => Promise<
     }
   });
   await Promise.all(workers);
-}
-
-async function countExistingTiles(z: number): Promise<number> {
-  try {
-    const xDirs = await readdir(join(env.basemapDir, String(z)));
-    let n = 0;
-    for (const x of xDirs) {
-      n += (await readdir(join(env.basemapDir, String(z), x))).length;
-    }
-    return n;
-  } catch {
-    return 0;
-  }
 }
 
 async function writeTile(z: number, x: number, y: number, mask: Uint8Array): Promise<void> {
@@ -164,37 +170,54 @@ async function main(): Promise<void> {
   const span = 2 ** z;
   const total = span * span;
 
-  const already = await countExistingTiles(z);
-  if (already === total) {
+  const coords: Array<[number, number]> = [];
+  for (let tx = SHARD_INDEX; tx < span; tx += SHARD_COUNT) {
+    for (let ty = 0; ty < span; ty++) {
+      if (!tileLooksComplete(z, tx, ty)) coords.push([tx, ty]);
+    }
+  }
+
+  if (coords.length === 0) {
     console.log(`[basemap] z${z} already fully baked (${total} tiles) — skipping the rasterize pass`);
   } else {
-    const coords: Array<[number, number]> = [];
-    for (let tx = 0; tx < span; tx++) for (let ty = 0; ty < span; ty++) coords.push([tx, ty]);
-
     let done = 0;
-    const progressEvery = Math.max(1, Math.round(total / 40));
+    const shardTotal = coords.length;
+    const progressEvery = Math.max(1, Math.round(shardTotal / 20));
     await runPool(coords, async ([tx, ty]) => {
       const mask = rasterizeTile(waterIdx, z, tx, ty, TILE_PX);
       await writeTile(z, tx, ty, mask);
       done++;
-      if (done % progressEvery === 0 || done === total) {
+      if (done % progressEvery === 0 || done === shardTotal) {
         const secs = (Date.now() - started) / 1000;
         const rate = done / secs;
-        const etaSecs = (total - done) / rate;
+        const etaSecs = (shardTotal - done) / rate;
         console.log(
-          `[basemap] z${z}: ${done}/${total} (${((done / total) * 100).toFixed(0)}%), ` +
+          `[basemap] z${z} shard ${SHARD_INDEX + 1}/${SHARD_COUNT}: ${done}/${shardTotal} (${((done / shardTotal) * 100).toFixed(0)}%), ` +
             `${secs.toFixed(0)}s elapsed, ~${etaSecs.toFixed(0)}s left`,
         );
       }
     });
-    console.log(`[basemap] z${z} done (${total} tiles, the only expensive level)`);
+    console.log(`[basemap] z${z} shard ${SHARD_INDEX + 1}/${SHARD_COUNT} done (${shardTotal} tiles written)`);
   }
+
+  // Shards only produce the native leaf level. A final unsharded run verifies
+  // that all leaves exist, skips rasterisation, and derives z7..z0 exactly once.
+  if (SHARD_COUNT > 1) return;
 
   // ---- cheap passes: derive every shallower zoom from the one below -----
   for (let pz = z - 1; pz >= 0; pz--) {
     const pspan = 2 ** pz;
     const coords: Array<[number, number]> = [];
-    for (let tx = 0; tx < pspan; tx++) for (let ty = 0; ty < pspan; ty++) coords.push([tx, ty]);
+    for (let tx = 0; tx < pspan; tx++) {
+      for (let ty = 0; ty < pspan; ty++) {
+        if (!tileLooksComplete(pz, tx, ty)) coords.push([tx, ty]);
+      }
+    }
+
+    if (coords.length === 0) {
+      console.log(`[basemap] z${pz} already complete (${pspan * pspan} tiles) — skipping`);
+      continue;
+    }
 
     await runPool(coords, async ([tx, ty]) => {
       await writeTile(pz, tx, ty, await deriveParent(pz, tx, ty));

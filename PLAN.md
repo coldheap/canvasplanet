@@ -16,7 +16,7 @@ original MVP prompt, the reason is noted.
 
 | # | Decision | Value |
 |---|---|---|
-| 1 | Pixel grid | Web Mercator **zoom 12** — 1,048,576 × 1,048,576 pixels, **38.22 m/px** at the equator |
+| 1 | Pixel grid | Web Mercator **zoom 8** — 65,536 × 65,536 pixels, **~611.5 m/px** at the equator (shrunk from zoom 12 on 2026-08-09, see the "shrink the world" migration/reset) |
 | 2 | Cooldown | **Charge bank**: +1 per 30s, cap 30, spendable in bursts |
 | 3 | New session | Starts with a **full bank of 30** |
 | 4 | History | `pixels` (current state) **+ append-only `pixel_events`** |
@@ -29,8 +29,8 @@ original MVP prompt, the reason is noted.
 | 11 | Terrain rule | Water-family color on land, or land-family color on sea, = violation |
 | 12 | Palette | **32 colors, 5 tagged water**, other 27 land |
 | 13 | Geo data | **NE 1:10m admin_0** for country, **OSM water polygons** for terrain |
-| 14 | WS fan-out | **Viewport subscriptions** (z10 tiles) + global leaderboard tick |
-| 15 | Paint zoom | **z12 and in only**; below that, view-only with a hint |
+| 14 | WS fan-out | **Viewport subscriptions** (z6 tiles) + global leaderboard tick |
+| 15 | Paint zoom | **z8 and in only**; below that, view-only with a hint |
 | 16 | First view | **Seeded protected landmark at Null Island** (0°, 0°) |
 | 17 | Protection | **DB-backed protected regions**, admin-editable live |
 | 18 | Hosting | **Single VPS, Docker Compose, Cloudflare in front** |
@@ -67,12 +67,12 @@ The single most important thing to get right, because it is the only decision
 that can retroactively corrupt stored data.
 
 ```
-Z_PIXEL   = 12
+Z_PIXEL   = 8
 TILE_SIZE = 256
-WORLD     = TILE_SIZE * 2^Z_PIXEL = 1,048,576 pixels per axis
+WORLD     = TILE_SIZE * 2^Z_PIXEL = 65,536 pixels per axis
 ```
 
-Web Mercator, identical to Leaflet's `CRS.EPSG3857` at z12:
+Web Mercator, identical to Leaflet's `CRS.EPSG3857` at z8:
 
 ```
 x = floor( (lon + 180) / 360 * WORLD )
@@ -81,12 +81,12 @@ y = floor( (1 - ln(tan(lat_r) + sec(lat_r)) / PI) / 2 * WORLD )
 
 Properties that follow, and that the tests assert:
 
-- `(0°, 0°)` → **`(524288, 524288)`** — the exact centre of the grid.
-- Equator resolution: `40,075,016.686 m / 1,048,576` = **38.2185 m/pixel**.
+- `(0°, 0°)` → **`(32768, 32768)`** — the exact centre of the grid.
+- Equator resolution: `40,075,016.686 m / 65,536` = **611.5 m/pixel**.
 - Valid latitude range is clamped to ±85.05112878° (Mercator limit).
-- A z12 **tile** maps 1:1 onto a 256×256 block of pixels:
+- A z8 **tile** maps 1:1 onto a 256×256 block of pixels:
   `tile(tx, ty)` covers `x ∈ [tx·256, tx·256+255]`, same for y.
-- `tileId = (x >> 8) * 4096 + (y >> 8)` — a single `BIGINT` usable as a
+- `tileId = (x >> 8) * 256 + (y >> 8)` — a single `BIGINT` usable as a
   clustering key and a WS subscription key.
 
 Coordinates are stored as plain `INT`. Never store lat/lng — it is derived.
@@ -160,7 +160,7 @@ PostgreSQL 16. Full DDL lives in
 CREATE TABLE pixels (
   x            INTEGER  NOT NULL,
   y            INTEGER  NOT NULL,
-  tile_id      BIGINT   GENERATED ALWAYS AS ((x >> 8) * 4096 + (y >> 8)) STORED,
+  tile_id      BIGINT   GENERATED ALWAYS AS ((x >> 8) * 256 + (y >> 8)) STORED,
   color        SMALLINT NOT NULL,
   country_id   SMALLINT NOT NULL REFERENCES countries(id),
   session_id   BIGINT,
@@ -173,7 +173,7 @@ CREATE INDEX pixels_tile_idx ON pixels (tile_id) INCLUDE (x, y, color);
 ```
 
 The `tile_id` index is what makes tile rendering a single index range scan
-instead of a 2D bbox scan. Every z12 tile render is exactly one query.
+instead of a 2D bbox scan. Every z8 tile render is exactly one query.
 
 Sparse by design: unpainted pixels have no row. At 100M painted pixels this
 table is roughly 6 GB including indexes.
@@ -366,16 +366,17 @@ The water set is EPSG:3857, so `geo:fetch` reprojects it to lon/lat on the
 way through — all the geometry in `shared` works in degrees.
 
 The *simplified* water set is deliberate: the full-detail one is 861 MB, and
-at 38 m per pixel we classify 9.8 km tiles, so full detail costs two orders of
-magnitude more download and memory to resolve features below a single pixel.
-It is still far more accurate than Natural Earth's coastlines, which was the
-whole reason for using OSM here.
+at 611 m per pixel we classify 156 km tiles (was 9.8 km before Z_PIXEL shrank
+to 8 — see the "shrink the world" migration/reset), so full detail costs two
+orders of magnitude more download and memory to resolve features below a
+single pixel. It is still far more accurate than Natural Earth's coastlines,
+which was the whole reason for using OSM here.
 
-Output — `data/geo-index.bin`, ~38 MB, for all 16,777,216 z12 tiles:
+Output — `data/geo-index.bin`, well under 1 MB, for all 65,536 z8 tiles:
 
 ```
-countries : Uint16Array(16_777_216)   // country id, or 0xFFFF = MIXED   (33.5 MB)
-terrain   : Uint8Array(4_194_304)     // 2 bits/tile: 0=water 1=land 2=MIXED (4.2 MB)
+countries : Uint16Array(65_536)   // country id, or 0xFFFF = MIXED   (128 KB)
+terrain   : Uint8Array(16_384)    // 2 bits/tile: 0=water 1=land 2=MIXED (16 KB)
 ```
 
 A tile is uniform if all four of its corners *and* its bbox fall wholly inside
@@ -386,7 +387,7 @@ one polygon — checked with an rbush R-tree over the source geometry.
 ```
 lookup(x, y) -> { countryId, terrain }
 
-  tile = (x >> 8) * 4096 + (y >> 8)
+  tile = (x >> 8) * 256 + (y >> 8)
 
   countryId = countries[tile]
   if (countryId === MIXED) countryId = pointInPolygon(lon, lat, countryTree)
@@ -402,25 +403,27 @@ polygons) and OSM simplified water polygons (14,367 polygons):
 
 | | |
 |---|---|
-| Index size | **37.7 MB** (as budgeted) |
-| Bake time | **~4.5 min**, 5.3M quadtree nodes visited |
-| Uniform land | 40.34% |
-| Uniform water | 51.32% |
-| **MIXED terrain** | **8.34%** |
-| MIXED country | 1.41% |
+| Index size | **147 KB** |
+| Bake time | **~5.3 sec**, 81,098 quadtree nodes visited |
+| Uniform land | 36.57% |
+| Uniform water | 0.00% |
+| **MIXED terrain** | **63.43%** |
+| MIXED country | 13.15% |
 
-**8.34% is well above the 1–2% originally assumed**, because simplified OSM
-coastline geometry is far more fragmented than a naive estimate suggests.
+**63.43% is well above the 1–2% originally assumed**, because the z8 native
+tiles now span roughly 156 km and simplified OSM coastline geometry is
+fragmented.
 That has one important consequence:
 
 `tileMask` must resolve terrain **per pixel, not per tile**. Rasterising a
 whole 256×256 tile on first touch costs 65,536 point-in-polygon queries —
-seconds of latency on a request budgeted in milliseconds — and at 8.34% that
+seconds of latency on a request budgeted in milliseconds — and at 63.43% that
 is a common path, not a rare one. So each pixel is computed once and memoised
 into a per-tile byte array (`0` unknown, `1` land, `2` water), allocated only
 for tiles somebody actually paints on. One PIP per new pixel, free thereafter.
 
-Cost: ~38 MB resident, O(1) for ~91% of paints, one PIP for the rest.
+Cost: ~147 KB resident, O(1) for ~37% of terrain lookups, one memoised PIP for
+the rest. Country lookup remains O(1) for ~87% of paints.
 
 ---
 
@@ -428,10 +431,10 @@ Cost: ~38 MB resident, O(1) for ~91% of paints, one PIP for the rest.
 
 ### Rendering
 
-- **z12** — `SELECT x, y, color FROM pixels WHERE tile_id = $1`, blit into a
+- **z8** — `SELECT x, y, color FROM pixels WHERE tile_id = $1`, blit into a
   256×256 RGBA buffer using the palette, encode PNG. Unpainted pixels stay
   fully transparent so the OSM basemap shows through.
-- **z0–z11** — build by **mipmap downsample from the four child tiles**,
+- **z0–z7** — build by **mipmap downsample from the four child tiles**,
   averaging RGBA *including alpha*. A parent whose children are mostly empty
   comes out mostly transparent, which reads correctly as "sparse" when zoomed
   out. Children are rendered recursively if missing.
@@ -505,20 +508,20 @@ bottleneck and debuggability is worth more.
 ### Client → server
 
 ```jsonc
-{ "t": "sub", "tiles": ["10/512/511", "10/513/511"] }  // z10 tiles in viewport
+{ "t": "sub", "tiles": ["6/32/31", "6/33/31"] }  // z6 tiles in viewport
 { "t": "ping" }
 ```
 
-Subscriptions are at **z10** granularity — one z10 tile covers 4×4 z12 tiles
-(1024×1024 pixels), so a 1080p viewport at z12 spans about 2×2 of them. Below
-z10 the client sends no subscription and receives no per-pixel stream; it
+Subscriptions are at **z6** granularity — one z6 tile covers 4×4 z8 tiles
+(1024×1024 pixels), so a 1080p viewport at z8 spans about 2×2 of them. Below
+z6 the client sends no subscription and receives no per-pixel stream; it
 could not resolve individual pixels anyway.
 
 ### Server → client
 
 ```jsonc
 // batched every 100ms, only for subscribed tiles
-{ "t": "px", "p": [[524288, 524288, 14], [524289, 524288, 3]] }
+{ "t": "px", "p": [[32768, 32768, 14], [32769, 32768, 3]] }
 
 // every 1s, to everyone, deltas only
 { "t": "lb", "world": 4182993, "rows": [[81, 412003, 88120], ...] }
@@ -704,7 +707,7 @@ Vite + React 18 + Leaflet, no framework beyond that.
                        /tiles TileLayer, live-delta overlay canvas,
                        grid overlay, cursor pixel highlight
 <PalettePanel>         32 swatches, water family visually grouped,
-                       collapses to "Zoom in to paint" below z12
+                       collapses to "Zoom in to paint" below z8
 <ChargeBar>            bank / 30, next-charge countdown, cost preview
                        under the cursor ("this pixel costs 2")
 <LeaderboardPanel>     world total, [All-time | Held] toggle, top 10,
@@ -735,7 +738,7 @@ restore the bank, and toast the reason. The server is always right.
 
 ### URL state
 
-`#12/524288/524288` drives and reflects map position, so "share this view"
+`#8/32768/32768` drives and reflects map position, so "share this view"
 is a string copy and deep links work.
 
 ### Template overlay + converter
@@ -790,10 +793,10 @@ anything is widened.
 migration runner, health check. *Done when `pnpm dev` serves an empty map.*
 
 **M1 — Thin slice.** `coords.ts` + tests, `pixels` table, `POST /api/paint`
-with no economy, z12 tile render (no cache), WS broadcast to all, click to
+with no economy, z8 tile render (no cache), WS broadcast to all, click to
 paint. *Done when two browsers see each other's pixel within 1s.*
 
-**M2 — Tiles for real.** Full z0–z12 pyramid, mipmap parents, disk cache,
+**M2 — Tiles for real.** Full z0–z8 pyramid, mipmap parents, disk cache,
 dirty queue + debounced worker, CF purge, live-delta overlay. *Done when the
 whole world renders at z3 and zooming is smooth.*
 
@@ -826,7 +829,7 @@ persistence check. *Done when §12 is fully ticked.*
 - [ ] New pixels appear for every other connected client within ~1s
 - [ ] Leaderboard updates live, both modes, without leaving the map view
 - [ ] Painted pixels survive a server restart *and* a full tile-cache wipe
-- [ ] Painting is blocked below z12 and inside protected regions
+- [ ] Painting is blocked below z8 and inside protected regions
 - [ ] The landmark renders at Null Island and cannot be painted over
 - [ ] Ocean paints attribute to International Waters and appear on the board
 - [ ] Turnstile fires exactly once per session, on the first paint
@@ -919,7 +922,7 @@ exactly-30-then-429 and the full cost table.
 **That did not settle the p99, and the measurements here cannot settle it
 either.** Across runs on this development box the max ranged from 221 ms to
 2.24 s with everything else identical, because Vite, Postgres, the tile
-worker and a 38 MB in-memory geo index all share it. Median and p90 improved;
+worker and an in-memory geo index all share it. Median and p90 improved;
 the tail is dominated by noise.
 
 Two things to do before treating this as a real number:
@@ -981,7 +984,7 @@ each VU its own simulated address moved it to 29% success and 122 ms p99.
    and white outlines at sea cost 2. If that proves annoying in practice,
    promote greys to a neutral family — one edit in `palette.ts`.
 2. **Landmark size.** 256×128 is sized for the pixel font. Confirm legibility
-   at z12 on a phone before seeding, since re-seeding after launch means
+   at z8 on a phone before seeding, since re-seeding after launch means
    overwriting whatever grew around it.
 3. **`PAINT_BOUNDS`.** Ships as `null` (worldwide). If day-one activity looks
    too sparse at 38 m/px, scoping to a region is a one-line config change —

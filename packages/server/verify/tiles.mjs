@@ -22,8 +22,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cookieOf = (res) => (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 
 // Somewhere quiet, fresh each run so the pixel is ours and unpainted.
-const X = 600000 + Math.floor(Math.random() * 200);
-const Y = 600000 + Math.floor(Math.random() * 200);
+const X = 40000 + Math.floor(Math.random() * 200);
+const Y = 40000 + Math.floor(Math.random() * 200);
 const tx = X >> 8;
 const ty = Y >> 8;
 
@@ -40,10 +40,10 @@ if (paint.status !== 200) process.exit(1);
 // The tile worker debounces; give it a beat to re-render and purge.
 await sleep(3500);
 
-const res = await fetch(`${BASE}/tiles/12/${tx}/${ty}.png?cachebust=${Date.now()}`);
+const res = await fetch(`${BASE}/tiles/8/${tx}/${ty}.png?cachebust=${Date.now()}`);
 check("tile served as a PNG", res.headers.get("content-type") === "image/png");
 const png = PNG.sync.read(Buffer.from(await res.arrayBuffer()));
-console.log(`tile 12/${tx}/${ty}  ${png.width}x${png.height}  pixel (${X},${Y})`);
+console.log(`tile 8/${tx}/${ty}  ${png.width}x${png.height}  pixel (${X},${Y})`);
 
 check("tile is 256x256", png.width === 256 && png.height === 256);
 
@@ -59,7 +59,7 @@ check("neighbouring pixel is transparent", png.data[n + 3] === 0, `alpha=${png.d
 
 // The parent is built by mipmap downsample, not re-queried, so a non-empty
 // child must produce a non-empty parent.
-const p = await fetch(`${BASE}/tiles/11/${tx >> 1}/${ty >> 1}.png?cachebust=${Date.now()}`);
+const p = await fetch(`${BASE}/tiles/7/${tx >> 1}/${ty >> 1}.png?cachebust=${Date.now()}`);
 const pp = PNG.sync.read(Buffer.from(await p.arrayBuffer()));
 let opaque = 0;
 for (let i = 3; i < pp.data.length; i += 4) if (pp.data[i] > 0) opaque++;

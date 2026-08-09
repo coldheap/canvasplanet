@@ -117,7 +117,7 @@ select {
 }
 
 /* Pixel art must never be smoothed — the browser's default bilinear
-   upscaling turns a crisp pixel into a blur the moment you zoom past z12. */
+   upscaling turns a crisp pixel into a blur past the native paint zoom. */
 .wc-canvas-layer img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;

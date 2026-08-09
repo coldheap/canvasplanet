@@ -55,7 +55,11 @@ export function registerExportRoutes(app: FastifyInstance): void {
     const to = b.to ? Number(b.to) : Date.now();
     const from = b.from ? Number(b.from) : to - 7 * 24 * 3600_000;
     if (!(from < to)) return reply.code(400).send({ error: "from must be before to" });
-    const frames = Math.max(1, Math.min(Number(b.frames ?? 100), TIMELAPSE_MAX_FRAMES));
+    const requestedFrames = Number(b.frames ?? 100);
+    if (!Number.isInteger(requestedFrames) || requestedFrames < 1) {
+      return reply.code(400).send({ error: "frames must be a positive integer" });
+    }
+    const frames = Math.min(requestedFrames, TIMELAPSE_MAX_FRAMES);
 
     const format = b.format === "mp4" ? "mp4" : "gif";
     if (!(EXPORT_FORMATS as readonly string[]).includes(format)) {

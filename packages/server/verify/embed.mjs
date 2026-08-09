@@ -62,9 +62,9 @@ try {
 check("read-only socket connects with no cookie", true);
 
 // It must subscribe and receive public canvas data, or the widget is blank.
-const X = 730000 + Math.floor(Math.random() * 500);
-const Y = 730000;
-ro.ws.send(JSON.stringify({ t: "sub", tiles: [`10/${X >> 10}/${Y >> 10}`] }));
+const X = 50000 + Math.floor(Math.random() * 500);
+const Y = 49000;
+ro.ws.send(JSON.stringify({ t: "sub", tiles: [`6/${X >> 10}/${Y >> 10}`] }));
 await sleep(300);
 
 const boot = await fetch(`${BASE}/api/bootstrap`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LANDMARK, WORLD_SIZE } from "../config.js";
+import { GRID_CENTER, LANDMARK, MIN_PAINT_ZOOM, WORLD_SIZE } from "../config.js";
 import { bboxArea, bboxContains, bboxOverlaps, canPaintAtZoom, findProtecting, inPaintBounds } from "../gating.js";
 import type { Region } from "../gating.js";
 
@@ -19,24 +19,24 @@ describe("paint bounds", () => {
 
 describe("the landmark", () => {
   it("is centred on Null Island and is 256x128", () => {
-    expect(LANDMARK.x0).toBe(524160);
-    expect(LANDMARK.y0).toBe(524224);
-    expect(LANDMARK.x1).toBe(524415);
-    expect(LANDMARK.y1).toBe(524351);
+    expect(LANDMARK.x0).toBe(GRID_CENTER - 128);
+    expect(LANDMARK.y0).toBe(GRID_CENTER - 64);
+    expect(LANDMARK.x1).toBe(GRID_CENTER + 127);
+    expect(LANDMARK.y1).toBe(GRID_CENTER + 63);
     expect(bboxArea(LANDMARK)).toBe(256 * 128);
   });
 
   it("contains the exact centre pixel", () => {
-    expect(bboxContains(LANDMARK, 524288, 524288)).toBe(true);
+    expect(bboxContains(LANDMARK, GRID_CENTER, GRID_CENTER)).toBe(true);
   });
 
   it("protects its interior and nothing outside it", () => {
     const regions: Region[] = [{ id: 1, ...LANDMARK }];
-    expect(findProtecting(regions, 524288, 524288)?.name).toBe("landmark");
-    expect(findProtecting(regions, LANDMARK.x0 - 1, 524288)).toBeNull();
-    expect(findProtecting(regions, LANDMARK.x1 + 1, 524288)).toBeNull();
-    expect(findProtecting(regions, 524288, LANDMARK.y0 - 1)).toBeNull();
-    expect(findProtecting(regions, 524288, LANDMARK.y1 + 1)).toBeNull();
+    expect(findProtecting(regions, GRID_CENTER, GRID_CENTER)?.name).toBe("landmark");
+    expect(findProtecting(regions, LANDMARK.x0 - 1, GRID_CENTER)).toBeNull();
+    expect(findProtecting(regions, LANDMARK.x1 + 1, GRID_CENTER)).toBeNull();
+    expect(findProtecting(regions, GRID_CENTER, LANDMARK.y0 - 1)).toBeNull();
+    expect(findProtecting(regions, GRID_CENTER, LANDMARK.y1 + 1)).toBeNull();
   });
 });
 
@@ -53,9 +53,9 @@ describe("bbox helpers", () => {
 });
 
 describe("zoom gate", () => {
-  it("unlocks painting only at z12 and above", () => {
-    expect(canPaintAtZoom(11)).toBe(false);
-    expect(canPaintAtZoom(12)).toBe(true);
+  it("unlocks painting only at MIN_PAINT_ZOOM and above", () => {
+    expect(canPaintAtZoom(MIN_PAINT_ZOOM - 1)).toBe(false);
+    expect(canPaintAtZoom(MIN_PAINT_ZOOM)).toBe(true);
     expect(canPaintAtZoom(18)).toBe(true);
   });
 });

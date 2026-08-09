@@ -10,7 +10,7 @@
  *   pnpm seed:landmark -- --force # overwrite an existing one
  *
  * Re-seeding after launch overwrites whatever grew around it, so confirm the
- * pixel text is legible at z12 on a phone BEFORE the first seed.
+ * pixel text is legible at the native paint zoom on a phone BEFORE the first seed.
  */
 
 import {

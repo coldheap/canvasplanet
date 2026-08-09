@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle } from "lucide-react";
 import {
   Z_PIXEL,
+  WORLD_SIZE,
   type PaintError,
   type PaintResponse,
   type PixelInfo,
@@ -137,7 +138,7 @@ export function App() {
   }, [hydrate, setBank, setLeaderboard]);
 
   // ---- hover: fetch the pixel for the inspector and the paint-cost guess ----
-  // Terrain is server-side only (the geo index is 38 MB), so neither can be
+  // Terrain is server-side only, so neither can be
   // computed client-side without asking. Debounced and cached, this is one
   // small request per hover-settle.
   const onHover = useCallback((pixel: { x: number; y: number } | null) => {
@@ -148,7 +149,7 @@ export function App() {
       return;
     }
 
-    const k = pixel.x * 1_048_576 + pixel.y;
+    const k = pixel.x * WORLD_SIZE + pixel.y;
     const cached = pixelCache.current.get(k);
     if (cached) {
       setHoverInfo(cached);
@@ -172,7 +173,7 @@ export function App() {
     // deliberate "tell me about this one", and the cached copy may predate
     // someone else painting over it.
     void api.pixel(pixel.x, pixel.y).then((info) => {
-      pixelCache.current.set(pixel.x * 1_048_576 + pixel.y, info);
+      pixelCache.current.set(pixel.x * WORLD_SIZE + pixel.y, info);
       setPinnedInfo(info);
     });
   }, []);
@@ -185,7 +186,7 @@ export function App() {
    */
   const onPaint = useCallback(async (x: number, y: number) => {
     const { selectedColor, bank } = useStore.getState();
-    const k = x * 1_048_576 + y;
+    const k = x * WORLD_SIZE + y;
 
     // Best guess at the cost so the bank does not visibly jump when the
     // response lands. Falls back to 1 for a pixel we have not inspected.

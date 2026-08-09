@@ -48,8 +48,8 @@ async function pollUntilDone(id, timeoutMs = 30_000) {
 
 // ---- session A: GIF, cache hit, rate limit ---------------------------------
 const cookieA = await newSession();
-const AX0 = 640000 + Math.floor(Math.random() * 5000);
-const AY0 = 640000;
+const AX0 = 53000 + Math.floor(Math.random() * 1000);
+const AY0 = 53000;
 await paintStrip(cookieA, AX0, AY0, 4);
 
 const from = Date.now() - 5_000;
@@ -116,8 +116,8 @@ check("inverted time range refused", backwards.status === 400, `HTTP ${backwards
 
 // ---- session B: MP4, odd dimensions (stresses the yuv420p pad filter) -----
 const cookieB = await newSession();
-const BX0 = 645000 + Math.floor(Math.random() * 5000);
-const BY0 = 645000;
+const BX0 = 55000 + Math.floor(Math.random() * 1000);
+const BY0 = 55000;
 // 3x1 — both dimensions odd, exactly what forces the pad filter's ceil(iw/2)*2.
 await paintStrip(cookieB, BX0, BY0, 3);
 

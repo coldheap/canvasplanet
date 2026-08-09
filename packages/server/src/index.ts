@@ -11,7 +11,6 @@ import cookie from "@fastify/cookie";
 import websocket from "@fastify/websocket";
 import {
   CHARGE_MAX,
-  type ClientMessage,
   effectiveRegenMs,
   msUntilNextCharge,
   regenerate,
@@ -45,6 +44,7 @@ import { loadPolicy } from "./state/policy.js";
 import { startExportWorker, stopExportWorker } from "./export/queue.js";
 import { startTileWorker, stopTileWorker } from "./tiles/worker.js";
 import { hub } from "./ws/hub.js";
+import { parseClientMessage } from "./ws/protocol.js";
 
 async function main(): Promise<void> {
   const app = Fastify({
@@ -119,10 +119,9 @@ async function main(): Promise<void> {
     const queued: string[] = [];
 
     const handle = (text: string): void => {
-      let msg: ClientMessage;
-      try {
-        msg = JSON.parse(text);
-      } catch {
+      const msg = parseClientMessage(text);
+      if (!msg) {
+        socket.close(1008, "invalid message");
         return;
       }
       if (msg.t === "sub" && conn) hub.subscribe(conn, msg.tiles);

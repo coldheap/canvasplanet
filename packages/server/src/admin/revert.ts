@@ -26,7 +26,7 @@
 import { randomUUID } from "node:crypto";
 import { ERASED, tileAncestry } from "@worldcanvas/shared";
 import { tx } from "../db/pool.js";
-import { leaderboard } from "../leaderboard/store.js";
+import { reloadOwnershipStores, transferHeld, type PixelOwnership } from "../paint/ownership.js";
 import { hub } from "../ws/hub.js";
 
 export interface RevertSelector {
@@ -66,7 +66,7 @@ export async function revert(sel: RevertSelector, staffId: number | null): Promi
   }
   const clause = where.join(" AND ");
 
-  return tx(async (c) => {
+  const outcome = await tx(async (c) => {
     // DISTINCT ON with ORDER BY id ASC gives the oldest matching event per
     // pixel — i.e. the state immediately before this incident began.
     const { rows } = await c.query<{
@@ -74,54 +74,130 @@ export async function revert(sel: RevertSelector, staffId: number | null): Promi
       y: number;
       prev_color: number | null;
       country_id: number;
+      restore_country_id: number | null;
+      restore_alliance_id: number | null;
+      restore_user_id: number | null;
+      restore_session_id: number | null;
+      restore_staff_id: number | null;
     }>(
-      `SELECT DISTINCT ON (x, y) x, y, prev_color, country_id
-         FROM pixel_events
-        WHERE ${clause}
-        ORDER BY x, y, id ASC`,
+      `WITH targets AS (
+         SELECT DISTINCT ON (x, y) id, x, y, prev_color, country_id
+           FROM pixel_events
+          WHERE ${clause}
+          ORDER BY x, y, id ASC
+       )
+       SELECT t.x, t.y, t.prev_color, t.country_id,
+              prior.country_id AS restore_country_id,
+              prior.alliance_id AS restore_alliance_id,
+              prior.user_id AS restore_user_id,
+              prior.session_id AS restore_session_id,
+              prior.staff_id AS restore_staff_id
+         FROM targets t
+         LEFT JOIN LATERAL (
+           SELECT country_id, alliance_id, user_id, session_id, staff_id
+             FROM pixel_events p
+            WHERE p.x = t.x AND p.y = t.y AND p.id < t.id
+            ORDER BY p.id DESC
+            LIMIT 1
+         ) prior ON true`,
       params,
     );
 
     if (sel.preview) {
-      return { affected: rows.length, batchId: null, preview: true };
+      return {
+        result: { affected: rows.length, batchId: null, preview: true } satisfies RevertResult,
+        publishes: [] as Array<{ x: number; y: number; color: number; countryId: number }>,
+      };
     }
 
     const batchId = randomUUID();
+    const publishes: Array<{ x: number; y: number; color: number; countryId: number }> = [];
 
     for (const r of rows) {
+      const current = await c.query<{
+        color: number;
+        country_id: number;
+        alliance_id: number | null;
+        user_id: number | null;
+      }>(
+        `SELECT color, country_id, alliance_id, user_id
+           FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
+        [r.x, r.y],
+      );
+      const currentRow = current.rows[0] ?? null;
+      const currentOwner: PixelOwnership | null = currentRow
+        ? {
+            countryId: currentRow.country_id,
+            allianceId: currentRow.alliance_id,
+            userId: currentRow.user_id,
+          }
+        : null;
+      const restoreCountryId = r.restore_country_id ?? r.country_id;
+      const restoredOwner: PixelOwnership | null =
+        r.prev_color === null
+          ? null
+          : {
+              countryId: restoreCountryId,
+              allianceId: r.restore_alliance_id,
+              userId: r.restore_user_id,
+            };
+
       if (r.prev_color === null) {
         // The pixel was unpainted before the incident: remove it entirely.
-        const del = await c.query<{ country_id: number }>(
-          `DELETE FROM pixels WHERE x = $1 AND y = $2 RETURNING country_id`,
-          [r.x, r.y],
-        );
-        const owner = del.rows[0]?.country_id;
-        if (owner !== undefined) {
-          await c.query(
-            `UPDATE country_stats SET held = GREATEST(0, held - 1) WHERE country_id = $1`,
-            [owner],
-          );
-        }
-        // Tell watchers the pixel is gone. Without this the old colour stays
-        // on screen until that tile happens to refresh, so a moderator
-        // watching their own revert sees nothing happen for a couple of
-        // seconds and reasonably concludes it failed.
-        hub.publishPaint(r.x, r.y, ERASED, r.country_id);
+        await c.query(`DELETE FROM pixels WHERE x = $1 AND y = $2`, [r.x, r.y]);
+        publishes.push({
+          x: r.x,
+          y: r.y,
+          color: ERASED,
+          countryId: currentRow?.country_id ?? r.country_id,
+        });
       } else {
         await c.query(
-          `UPDATE pixels
-              SET color = $3, country_id = $4, staff_id = NULL, painted_at = now()
-            WHERE x = $1 AND y = $2`,
-          [r.x, r.y, r.prev_color, r.country_id],
+          `INSERT INTO pixels
+             (x, y, color, country_id, alliance_id, user_id, session_id, staff_id, painted_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now())
+           ON CONFLICT (x, y) DO UPDATE
+             SET color = EXCLUDED.color,
+                 country_id = EXCLUDED.country_id,
+                 alliance_id = EXCLUDED.alliance_id,
+                 user_id = EXCLUDED.user_id,
+                 session_id = EXCLUDED.session_id,
+                 staff_id = EXCLUDED.staff_id,
+                 painted_at = now(),
+                 paint_count = pixels.paint_count + 1`,
+          [
+            r.x,
+            r.y,
+            r.prev_color,
+            restoreCountryId,
+            r.restore_alliance_id,
+            r.restore_user_id,
+            r.restore_session_id,
+            r.restore_staff_id,
+          ],
         );
-        hub.publishPaint(r.x, r.y, r.prev_color, r.country_id);
+        publishes.push({ x: r.x, y: r.y, color: r.prev_color, countryId: restoreCountryId });
       }
+
+      await transferHeld(c, currentOwner, restoredOwner);
 
       // Reverts are audited as paints so the history stays a complete record.
       await c.query(
-        `INSERT INTO pixel_events (x, y, color, prev_color, country_id, staff_id, cost, batch_id)
-         VALUES ($1, $2, $3, NULL, $4, $5, 0, $6)`,
-        [r.x, r.y, r.prev_color ?? 0, r.country_id, staffId, batchId],
+        `INSERT INTO pixel_events
+           (x, y, color, prev_color, country_id, alliance_id, user_id, session_id, staff_id, cost, batch_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,0,$10)`,
+        [
+          r.x,
+          r.y,
+          r.prev_color ?? ERASED,
+          currentRow?.color ?? null,
+          restoreCountryId,
+          r.restore_alliance_id,
+          r.restore_user_id,
+          r.restore_session_id,
+          r.restore_staff_id,
+          batchId,
+        ],
       );
 
       const chain = tileAncestry(r.x, r.y);
@@ -139,10 +215,16 @@ export async function revert(sel: RevertSelector, staffId: number | null): Promi
       [staffId, JSON.stringify(sel), rows.length],
     );
 
-    // Counters moved underneath the in-memory store; reload rather than try
-    // to reconcile a bulk change increment by increment.
-    await leaderboard.load();
-
-    return { affected: rows.length, batchId, preview: false };
+    return {
+      result: { affected: rows.length, batchId, preview: false } satisfies RevertResult,
+      publishes,
+    };
   });
+
+  if (!outcome.result.preview) {
+    // DB state must be visible before stores reload and sockets hear about it.
+    await reloadOwnershipStores();
+    for (const p of outcome.publishes) hub.publishPaint(p.x, p.y, p.color, p.countryId);
+  }
+  return outcome.result;
 }

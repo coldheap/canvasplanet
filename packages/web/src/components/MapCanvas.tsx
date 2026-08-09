@@ -24,11 +24,13 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import {
   BASEMAP_MAX_ZOOM,
+  DEFAULT_VIEW,
   EVENT_WIN_THRESHOLD,
   GRID_ZOOM,
   MAX_MAP_ZOOM,
   MIN_MAP_ZOOM,
   MIN_PAINT_ZOOM,
+  WORLD_SIZE,
   Z_PIXEL,
   pixelToLatLng,
   latLngToPixel,
@@ -77,7 +79,7 @@ export function MapCanvas({
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
 
-    const start = readHash() ?? { z: Z_PIXEL, x: 524288, y: 524288 };
+    const start = readHash() ?? DEFAULT_VIEW;
     const map = L.map(ref.current, {
       center: pixelToLatLng({ x: start.x, y: start.y }) as never,
       zoom: start.z,
@@ -85,7 +87,7 @@ export function MapCanvas({
       maxZoom: MAX_MAP_ZOOM,
       zoomControl: false,
       attributionControl: false,
-      // Integer zoom only: the grid is defined at z12 and fractional zoom
+      // Integer zoom only: the grid is defined at Z_PIXEL and fractional zoom
       // would land pixels on half-pixel boundaries.
       zoomSnap: 1,
       worldCopyJump: true,
@@ -115,7 +117,7 @@ export function MapCanvas({
       zIndex: 1,
     });
 
-    // The canvas. maxNativeZoom pins requests to z12 and lets Leaflet upscale
+    // The canvas. maxNativeZoom pins requests to Z_PIXEL and lets Leaflet upscale
     // beyond it, so zooming in shows crisp big pixels instead of asking the
     // server for tiles that do not exist.
     const canvasLayer = L.tileLayer("/tiles/{z}/{x}/{y}.png", {
@@ -264,7 +266,7 @@ export function MapCanvas({
       // While shift is held, painting happens on mousemove below — a click
       // here would double-paint the pixel the hover-stroke just did.
       if (shiftDown.current) return;
-      if (map.getZoom() < MIN_PAINT_ZOOM) return; // view-only below z12
+      if (map.getZoom() < MIN_PAINT_ZOOM) return; // view-only below the paint zoom
       // A bbox drag (timelapse/revert/regions/stamp/report/embed all go
       // through pickBbox) disables map.dragging for its duration, so Leaflet
       // never records a real drag and fires "click" on the release anyway —
@@ -360,7 +362,7 @@ export function MapCanvas({
 
 /**
  * Pixel gridlines, drawn per Leaflet tile so they pan and zoom for free.
- * Only meaningful at z14+, where a pixel is at least 4 screen pixels.
+ * Only meaningful at GRID_ZOOM+, where a pixel is at least 4 screen pixels.
  */
 const GridLayer = L.GridLayer.extend({
   createTile(coords: L.Coords) {
@@ -370,7 +372,7 @@ const GridLayer = L.GridLayer.extend({
     tile.height = size;
     const ctx = tile.getContext("2d")!;
 
-    // Pixels per tile shrinks as you zoom past z12; below 4px spacing the
+    // Pixel spacing grows as you zoom past Z_PIXEL; below 4px spacing the
     // lines would be denser than the pixels they describe.
     const pxSize = 2 ** (coords.z - Z_PIXEL);
     if (pxSize < 4) return tile;
@@ -396,7 +398,11 @@ const GridLayer = L.GridLayer.extend({
 function readHash(): { z: number; x: number; y: number } | null {
   const m = /^#(\d+)\/(\d+)\/(\d+)$/.exec(location.hash);
   if (!m) return null;
-  return { z: Number(m[1]), x: Number(m[2]), y: Number(m[3]) };
+  const z = Number(m[1]);
+  const x = Number(m[2]);
+  const y = Number(m[3]);
+  if (z < MIN_MAP_ZOOM || z > MAX_MAP_ZOOM || x >= WORLD_SIZE || y >= WORLD_SIZE) return null;
+  return { z, x, y };
 }
 
 function writeHash(map: L.Map): void {

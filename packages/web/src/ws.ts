@@ -1,7 +1,7 @@
 /**
  * WebSocket client.
  *
- * Subscribes to the z10 tiles currently in view and re-subscribes on every
+ * Subscribes to the configured SUB_ZOOM tiles currently in view and re-subscribes on every
  * map move, so the pixel stream is bounded by what is actually on screen
  * rather than by how busy the world is.
  *

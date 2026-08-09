@@ -20,7 +20,7 @@ import {
 } from "@worldcanvas/shared";
 import { tx } from "../db/pool.js";
 import { geo } from "../geo/index.js";
-import { leaderboard } from "../leaderboard/store.js";
+import { incrementCumulative, reloadOwnershipStores, transferHeld } from "../paint/ownership.js";
 import { getProtectedRegions } from "../state/policy.js";
 import { hub } from "../ws/hub.js";
 
@@ -117,8 +117,13 @@ export async function stamp(input: StampInput, staffId: number): Promise<StampRe
 
   await tx(async (c) => {
     for (const pixel of planned) {
-      const prev = await c.query<{ color: number; country_id: number }>(
-        `SELECT color, country_id FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
+      const prev = await c.query<{
+        color: number;
+        country_id: number;
+        alliance_id: number | null;
+        user_id: number | null;
+      }>(
+        `SELECT color, country_id, alliance_id, user_id FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
         [pixel.x, pixel.y],
       );
       const prevRow = prev.rows[0] ?? null;
@@ -128,6 +133,7 @@ export async function stamp(input: StampInput, staffId: number): Promise<StampRe
          VALUES ($1,$2,$3,$4,$5, now())
          ON CONFLICT (x, y) DO UPDATE
            SET color = EXCLUDED.color, country_id = EXCLUDED.country_id,
+               alliance_id = NULL, user_id = NULL,
                staff_id = EXCLUDED.staff_id, session_id = NULL,
                painted_at = now(), paint_count = pixels.paint_count + 1`,
         [pixel.x, pixel.y, pixel.color, pixel.countryId, staffId],
@@ -140,21 +146,12 @@ export async function stamp(input: StampInput, staffId: number): Promise<StampRe
         [pixel.x, pixel.y, pixel.color, prevRow?.color ?? null, pixel.countryId, staffId, batchId],
       );
 
-      // Same counter arithmetic as an ordinary paint.
-      await c.query(
-        `INSERT INTO country_stats (country_id, cumulative, held)
-         VALUES ($1, 1, CASE WHEN $2::boolean THEN 0 ELSE 1 END)
-         ON CONFLICT (country_id) DO UPDATE
-           SET cumulative = country_stats.cumulative + 1,
-               held = country_stats.held + CASE WHEN $2::boolean THEN 0 ELSE 1 END`,
-        [pixel.countryId, prevRow?.country_id === pixel.countryId],
-      );
-      if (prevRow && prevRow.country_id !== pixel.countryId) {
-        await c.query(
-          `UPDATE country_stats SET held = GREATEST(0, held - 1) WHERE country_id = $1`,
-          [prevRow.country_id],
-        );
-      }
+      const previousOwner = prevRow
+        ? { countryId: prevRow.country_id, allianceId: prevRow.alliance_id, userId: prevRow.user_id }
+        : null;
+      const nextOwner = { countryId: pixel.countryId, allianceId: null, userId: null };
+      await transferHeld(c, previousOwner, nextOwner);
+      await incrementCumulative(c, nextOwner);
 
       const chain = tileAncestry(pixel.x, pixel.y);
       await c.query(
@@ -186,9 +183,9 @@ export async function stamp(input: StampInput, staffId: number): Promise<StampRe
     );
   });
 
-  // Push to viewers, then reconcile the in-memory board with the bulk change.
+  // Reconcile only after commit, then expose the committed canvas state.
+  await reloadOwnershipStores();
   for (const pixel of planned) hub.publishPaint(pixel.x, pixel.y, pixel.color, pixel.countryId);
-  await leaderboard.load();
 
   return {
     pixels: planned.length,

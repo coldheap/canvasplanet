@@ -213,7 +213,11 @@ export function registerExploreRoutes(app: FastifyInstance): void {
     const to = req.query.to ? Number(req.query.to) : Date.now();
     const from = req.query.from ? Number(req.query.from) : to - 7 * 24 * 3600_000;
     if (!(from < to)) return reply.code(400).send({ error: "from must be before to" });
-    const frames = Math.max(1, Math.min(Number(req.query.frames ?? 100), TIMELAPSE_MAX_FRAMES));
+    const requestedFrames = Number(req.query.frames ?? 100);
+    if (!Number.isInteger(requestedFrames) || requestedFrames < 1) {
+      return reply.code(400).send({ error: "frames must be a positive integer" });
+    }
+    const frames = Math.min(requestedFrames, TIMELAPSE_MAX_FRAMES);
 
     const body = await buildTimelapse({ x0, y0, x1, y1, from, to, frames });
     return reply.send(body);

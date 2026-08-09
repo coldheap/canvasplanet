@@ -3,12 +3,19 @@
  * a millisecond.
  *
  * Structure (see bake.ts for why it is per-tile and not per-pixel):
- *   - `geo-index.bin` gives an O(1) answer for the ~98% of tiles that are
- *     uniform.
+ *   - `geo-index.bin` gives an O(1) answer for tiles that are uniform.
  *   - MIXED tiles (coastlines, land borders) fall back to point-in-polygon
  *     against the source geometry. For terrain the resulting 256x256 mask is
  *     cached, because coastal tiles people actually paint on are a small,
  *     very hot set.
+ *
+ * The "uniform tiles are the overwhelming majority" premise held at
+ * The previous Z_PIXEL=12 grid used ~9.8 km tiles; at Z_PIXEL=8 each tile is
+ * coarser, so MIXED tiles are resolved against polygon geometry per pixel.
+ * but is a much weaker assumption since Z_PIXEL shrank to 8 (one tile ≈
+ * 156km) — MIXED tiles, and therefore the polygon fallback below, are hit
+ * far more often now. Accepted trade-off, not a bug — see the "shrink the
+ * world" migration/reset for the full reasoning.
  */
 
 import { readFile } from "node:fs/promises";
@@ -17,6 +24,7 @@ import {
   TOTAL_TILES,
   Terrain,
   pixelCenterLatLng,
+  tileIdOf,
 } from "@worldcanvas/shared";
 import { env } from "../env.js";
 import { HEADER_BYTES, MAGIC, MIXED_COUNTRY, TerrainBits, unpack2Bit } from "./bake.js";
@@ -85,7 +93,7 @@ class GeoIndex {
     }
     this.hits++;
 
-    const tile = (x >> 8) * 4096 + (y >> 8);
+    const tile = tileIdOf(x, y);
 
     let countryId = this.countries[tile]!;
     if (countryId === MIXED_COUNTRY) countryId = this.countryByPolygon(x, y);

@@ -77,9 +77,11 @@ export function setup() {
   for (let vu = 1; vu <= 50; vu++) {
     let x, y, countryId;
     for (let tries = 0; tries < 40; tries++) {
+      // Range sized for the current 65,536px world (Z_PIXEL=8) — roughly the
+      // same 9%-85% span of the grid this used before the world shrank.
       const seed = vu + tries * 977;
-      x = 100000 + ((seed * 7919) % 800000);
-      y = 100000 + ((seed * 104729) % 800000);
+      x = 6000 + ((seed * 7919) % 50000);
+      y = 6000 + ((seed * 104729) % 50000);
       const px = http.get(`${BASE}/api/pixel/${x}/${y}`);
       countryId = px.json("countryId");
       if ((countryCounts[countryId] ?? 0) < MAX_VUS_PER_COUNTRY) break;

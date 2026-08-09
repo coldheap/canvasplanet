@@ -9,8 +9,9 @@
  * always have an answer.
  */
 
+import { isIP } from "node:net";
 import type { FastifyInstance } from "fastify";
-import { pool } from "../db/pool.js";
+import { pool, tx } from "../db/pool.js";
 import { renderReportThumbnail, reportSuspects } from "../admin/reports.js";
 import { revert, type RevertSelector } from "../admin/revert.js";
 import { stamp, type StampInput } from "../admin/stamp.js";
@@ -103,25 +104,37 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       const staff = await mod(req, reply);
       if (!staff) return;
       const { ip, sessionId, hours, reason } = req.body;
-      const until = hours ? new Date(Date.now() + hours * 3600_000) : null;
+      if (!ip && sessionId === undefined) {
+        return reply.code(400).send({ error: "ip or sessionId is required" });
+      }
+      if (ip && isIP(ip) === 0) return reply.code(400).send({ error: "ip must be a valid IPv4 or IPv6 address" });
+      if (sessionId !== undefined && (!Number.isInteger(sessionId) || sessionId < 1)) {
+        return reply.code(400).send({ error: "sessionId must be a positive integer" });
+      }
+      if (hours !== undefined && (!Number.isFinite(hours) || hours <= 0)) {
+        return reply.code(400).send({ error: "hours must be a positive number" });
+      }
+      const until = hours === undefined ? null : new Date(Date.now() + hours * 3600_000);
 
-      await pool.query(
-        `INSERT INTO bans (ip, session_id, until, reason, staff_id) VALUES ($1,$2,$3,$4,$5)`,
-        [ip ?? null, sessionId ?? null, until, reason ?? null, staff.id],
-      );
-      if (sessionId) {
-        await pool.query(`UPDATE sessions SET banned_until = $2 WHERE id = $1`, [sessionId, until]);
-        scoring.forget(sessionId);
-      }
-      if (ip) {
-        await pool.query(
-          `INSERT INTO ip_budget (ip, blocked_until) VALUES ($1, $2)
-           ON CONFLICT (ip) DO UPDATE SET blocked_until = EXCLUDED.blocked_until`,
-          [ip, until],
+      await tx(async (c) => {
+        await c.query(
+          `INSERT INTO bans (ip, session_id, until, reason, staff_id) VALUES ($1,$2,$3,$4,$5)`,
+          [ip ?? null, sessionId ?? null, until, reason ?? null, staff.id],
         );
-        // Ban every session behind that IP, not just the one that was caught.
-        await pool.query(`UPDATE sessions SET banned_until = $2 WHERE ip = $1`, [ip, until]);
-      }
+        if (sessionId !== undefined) {
+          await c.query(`UPDATE sessions SET banned_until = $2 WHERE id = $1`, [sessionId, until]);
+        }
+        if (ip) {
+          await c.query(
+            `INSERT INTO ip_budget (ip, blocked_until) VALUES ($1, $2)
+             ON CONFLICT (ip) DO UPDATE SET blocked_until = EXCLUDED.blocked_until`,
+            [ip, until],
+          );
+          // Ban every session behind that IP, not just the one that was caught.
+          await c.query(`UPDATE sessions SET banned_until = $2 WHERE ip = $1`, [ip, until]);
+        }
+      });
+      if (sessionId !== undefined) scoring.forget(sessionId);
       await audit(staff.id, "ban", req.body, null);
       return reply.send({ ok: true, until });
     },
@@ -388,14 +401,20 @@ export function registerAdminRoutes(app: FastifyInstance): void {
         return reply.code(400).send({ error: "id must be a valid user id" });
       }
       const disabled = req.body?.disabled !== false;
-      const { rows } = await pool.query(`UPDATE users SET disabled_at = $2 WHERE id = $1 RETURNING id`, [
-        id,
-        disabled ? new Date() : null,
-      ]);
+      const rows = await tx(async (c) => {
+        const updated = await c.query(`UPDATE users SET disabled_at = $2 WHERE id = $1 RETURNING id`, [
+          id,
+          disabled ? new Date() : null,
+        ]);
+        if (disabled && updated.rows[0]) {
+          await c.query(`DELETE FROM user_sessions WHERE user_id = $1`, [id]);
+          await c.query(`UPDATE sessions SET user_id = NULL WHERE user_id = $1`, [id]);
+        }
+        return updated.rows;
+      });
       if (!rows[0]) return reply.code(404).send();
       // Disabling must cut existing sessions, not just block future logins —
       // same reasoning as staff.disable and alliance.disable.
-      if (disabled) await pool.query(`DELETE FROM user_sessions WHERE user_id = $1`, [id]);
       await audit(staff.id, "user.disable", { id, disabled }, null);
       return reply.send({ ok: true });
     },

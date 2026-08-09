@@ -12,7 +12,7 @@ import type { Terrain } from "./economy.js";
 // WebSocket: client -> server
 // ---------------------------------------------------------------------------
 
-/** Subscribe to the z10 tiles currently in the viewport. Replaces the previous set. */
+/** Subscribe to the configured SUB_ZOOM tiles in the viewport. Replaces the previous set. */
 export interface CSub {
   t: "sub";
   tiles: string[]; // "10/512/511"

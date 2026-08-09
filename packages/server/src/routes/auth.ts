@@ -30,11 +30,11 @@ import {
 } from "@worldcanvas/shared";
 import argon2 from "argon2";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { pool } from "../db/pool.js";
+import { pool, tx } from "../db/pool.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../email/mailer.js";
 import { env } from "../env.js";
 import { players } from "../players/store.js";
-import { getOrCreateSession } from "../session/session.js";
+import { findSession, getOrCreateSession } from "../session/session.js";
 import type { Role } from "./staff.js";
 
 export interface AuthUser {
@@ -461,7 +461,10 @@ export function registerAuthRoutes(app: FastifyInstance): void {
     );
     // A live reset link is a stronger capability than a session cookie —
     // anyone who had one (a stolen device, a shared computer) loses it here.
-    await pool.query(`DELETE FROM user_sessions WHERE user_id = $1`, [row.user_id]);
+    await tx(async (c) => {
+      await c.query(`DELETE FROM user_sessions WHERE user_id = $1`, [row.user_id]);
+      await c.query(`UPDATE sessions SET user_id = NULL WHERE user_id = $1`, [row.user_id]);
+    });
 
     await issueUserSession(row.user_id, reply);
     // Same as /api/auth/verify: this doubles as a login, so it must also
@@ -621,9 +624,11 @@ export function registerAuthRoutes(app: FastifyInstance): void {
 
   app.post("/api/auth/logout", async (req, reply) => {
     const token = req.cookies[USER_COOKIE];
-    if (token) {
-      await pool.query(`DELETE FROM user_sessions WHERE token_hash = $1`, [hash(token)]);
-    }
+    const session = await findSession(req);
+    await tx(async (c) => {
+      if (token) await c.query(`DELETE FROM user_sessions WHERE token_hash = $1`, [hash(token)]);
+      if (session) await c.query(`UPDATE sessions SET user_id = NULL WHERE id = $1`, [session.id]);
+    });
     reply.clearCookie(USER_COOKIE, { path: "/" });
     return reply.send({ ok: true });
   });

@@ -134,7 +134,7 @@ describe("classifyRect — the bake's core decision", () => {
 
   it("never returns Full for anything the boundary passes through", () => {
     // Property check: if the boundary crosses, the answer must be Partial —
-    // a wrong Full is the failure mode that bakes an error into 38MB of
+    // a wrong Full is the failure mode that bakes an error into the binary
     // index and charges people the wrong amount forever.
     for (let i = 0; i < 200; i++) {
       const x = Math.random() * 20 - 5;

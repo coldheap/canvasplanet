@@ -18,7 +18,7 @@
  */
 
 import L from "leaflet";
-import { ERASED, PALETTE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
+import { ERASED, PALETTE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
 
 interface PendingPixel {
   x: number;
@@ -173,7 +173,7 @@ export class LiveOverlay {
     if (this.pending.size === 0) return;
 
     const zoom = this.map.getZoom();
-    // One grid pixel is 2^(zoom-12) screen pixels. Below z12 that is
+    // One grid pixel is 2^(zoom-Z_PIXEL) screen pixels. Below Z_PIXEL that is
     // fractional; clamp so a pixel never renders as nothing.
     const pxSize = Math.max(1, 2 ** (zoom - Z_PIXEL));
 
@@ -194,7 +194,7 @@ export class LiveOverlay {
   }
 }
 
-/** Pack a pixel into one integer key — 20 bits per axis fits z12's 2^20 range. */
+/** Pack a pixel into one collision-free integer key for the configured world. */
 function key(x: number, y: number): number {
-  return x * 1_048_576 + y;
+  return x * WORLD_SIZE + y;
 }

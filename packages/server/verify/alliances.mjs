@@ -12,8 +12,8 @@ const BASE = "http://127.0.0.1:8080";
 const COLOR = 21;
 const NAME = `Verify Alliance ${Date.now()}`;
 // Fresh pixels each run so cost/ownership assertions stay stable.
-const X = 800000 + Math.floor(Math.random() * 200);
-const Y = 800000 + Math.floor(Math.random() * 200);
+const X = 48000 + Math.floor(Math.random() * 200);
+const Y = 48000 + Math.floor(Math.random() * 200);
 
 let failures = 0;
 const check = (label, ok, detail = "") => {

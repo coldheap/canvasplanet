@@ -1,12 +1,16 @@
 /**
  * Builds the per-tile country and terrain index.
  *
- * Why per-TILE and not per-pixel: the grid is 1,048,576^2 = 1.1e12 pixels. One
- * byte per pixel is 1.1 TB; even one bit is 137 GB. Neither ships. But the
- * world is overwhelmingly uniform at 256-pixel granularity — a z12 tile is
- * ~9.8 km across at the equator, and only coastlines and land borders are
- * genuinely mixed. So: one entry per z12 tile, with a vector fallback for
- * the ~1-2% marked MIXED.
+ * Why per-TILE and not per-pixel: even at the current (shrunk, see
+ * config.ts's Z_PIXEL comment) grid of 65,536^2 ≈ 4.3e9 pixels, one byte per
+ * pixel is still 4.3 GB — too much to hold in memory as a flat array. A
+ * Z_PIXEL tile is now ~156 km across at the equator (was ~9.8 km before the
+ * shrink), so the "the world is overwhelmingly uniform at 256-pixel
+ * granularity" premise this design leans on is much weaker than it used to
+ * be — MIXED tiles (coastlines, land borders) are a meaningfully larger
+ * share than the ~1-2% this was originally tuned for, with a
+ * correspondingly heavier vector-fallback load at runtime. Accepted
+ * trade-off — see the "shrink the world" migration/reset for the reasoning.
  *
  * The descent is a quadtree from z0. A node with no candidate polygons, or
  * one that lies wholly inside a single polygon, fills its entire subtree
@@ -122,9 +126,9 @@ function fillBlock(mask: Uint8Array, outSize: number, lx: number, ly: number, si
   }
 }
 
-/** Every z12 tile id under a node at (z, tx, ty). */
+/** Every native Z_PIXEL tile id under a node at (z, tx, ty). */
 function fillSubtree(z: number, tx: number, ty: number, write: (tileId: number) => void): void {
-  const span = 2 ** (Z_PIXEL - z); // z12 tiles per edge
+  const span = 2 ** (Z_PIXEL - z); // native tiles per edge
   const bx = tx * span;
   const by = ty * span;
   for (let x = bx; x < bx + span; x++) {
@@ -208,7 +212,7 @@ function descend(
   }
 }
 
-/** One byte per tile -> two bits per tile. 16.7 MB becomes 4.2 MB. */
+/** One byte per tile -> two bits per tile. */
 export function pack2Bit(src: Uint8Array): Uint8Array {
   const out = new Uint8Array(src.length / 4);
   for (let i = 0; i < src.length; i++) {

@@ -99,7 +99,7 @@ k6/                load and abuse tests from the definition of done
 | `pnpm db:migrate` | Apply pending SQL migrations (forward-only) |
 | `pnpm db:partitions` | Create next months' `pixel_events` partitions — **run monthly from cron** |
 | `pnpm geo:fetch` | Download boundary + ASN datasets (~50 MB) |
-| `pnpm geo:bake` | Build `data/geo-index.bin` (37.7 MB, ~5 min) |
+| `pnpm geo:bake` | Build `data/geo-index.bin` (~147 KB, ~10 sec) |
 | `pnpm seed:landmark` | Paint and protect the Null Island monument |
 | `pnpm staff:create` | Bootstrap-only: grant `mod`/`admin` to an account by email (mints one if it doesn't exist yet) |
 | `pnpm backup` | Dump the database, prune old dumps — **run nightly from cron** |
@@ -113,13 +113,13 @@ k6/                load and abuse tests from the definition of done
 
 | | |
 |---|---|
-| Grid | zoom 12 — 1,048,576 × 1,048,576 pixels, **38.22 m/pixel** at the equator |
-| Grid centre | `(524288, 524288)` = 0°, 0° |
+| Grid | zoom 8 — 65,536 × 65,536 pixels, **~611.5 m/pixel** at the equator |
+| Grid centre | `(32768, 32768)` = 0°, 0° |
 | Charges | +1 per 30s, cap 30, new sessions start full |
 | Cost | 1 base · 2 overpaint · 2 terrain-violating · **1 to restore** |
 | Palette | 32 colours, indices 27–31 are the water family |
 | IP ceiling | 120 paints/hour, shared across every cookie on that IP |
-| Painting | z12 and in only |
+| Painting | z8 and in only |
 
 ## Deployment
 

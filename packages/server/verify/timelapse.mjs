@@ -20,8 +20,8 @@ const boot = await fetch(`${BASE}/api/bootstrap`);
 const cookie = cookieOf(boot);
 
 // A fresh 8x1 strip, painted left to right, then the first pixel overpainted.
-const X0 = 620000 + Math.floor(Math.random() * 2000);
-const Y0 = 620000;
+const X0 = 42000 + Math.floor(Math.random() * 1000);
+const Y0 = 42000;
 const W = 8;
 const started = Date.now();
 

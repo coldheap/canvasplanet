@@ -25,6 +25,8 @@ import { buildTimelapse } from "../timelapse/build.js";
 import { rasterizeFrames } from "./render.js";
 
 let running = false;
+let started = false;
+let recovering = false;
 let timer: NodeJS.Timeout | null = null;
 let sweepTimer: NodeJS.Timeout | null = null;
 let lastRun: { id: string; ms: number; ok: boolean } | null = null;
@@ -37,16 +39,33 @@ const POLL_MS = 5_000;
 const SWEEP_INTERVAL_MS = 60 * 60_000;
 
 export function startExportWorker(): void {
-  timer = setInterval(() => void tick(), POLL_MS);
-  void tick();
+  if (started) return;
+  started = true;
+  recovering = true;
+  void (async () => {
+    try {
+      await pool.query(`UPDATE timelapse_exports SET status = 'queued' WHERE status = 'processing'`);
+    } catch (err) {
+      console.error("[export] recovery failed", err);
+    } finally {
+      recovering = false;
+      if (started) {
+        timer = setInterval(() => void tick(), POLL_MS);
+        void tick();
+      }
+    }
+  })();
   sweepTimer = setInterval(() => {
     void sweepExpiredExports().catch((err) => console.error("[export] sweep failed", err));
   }, SWEEP_INTERVAL_MS);
 }
 
 export function stopExportWorker(): void {
+  started = false;
   if (timer) clearInterval(timer);
   if (sweepTimer) clearInterval(sweepTimer);
+  timer = null;
+  sweepTimer = null;
 }
 
 /** Called right after a new job is enqueued, so it starts without waiting for the next poll. */
@@ -59,40 +78,44 @@ export function exportWorkerStats() {
 }
 
 async function tick(): Promise<void> {
-  if (running) {
-    if (Date.now() - startedAt > DRAIN_WATCHDOG_MS) {
-      console.error(`[export] job wedged for ${((Date.now() - startedAt) / 1000).toFixed(0)}s — resetting`);
-      running = false;
-    } else {
-      return;
-    }
-  }
-
-  const { rows } = await pool.query<{ id: string }>(
-    `SELECT id FROM timelapse_exports WHERE status = 'queued' ORDER BY created_at LIMIT 1`,
-  );
-  const job = rows[0];
-  if (!job) return;
-
+  // Lock before the first await: kick() and the timer can arrive together.
+  if (running || recovering || !started) return;
   running = true;
   startedAt = Date.now();
+  let jobId: string | null = null;
   let ok = false;
   try {
-    await runJob(job.id);
+    const { rows } = await pool.query<{ id: string }>(
+      `UPDATE timelapse_exports
+          SET status = 'processing', error = NULL
+        WHERE id = (
+          SELECT id FROM timelapse_exports
+           WHERE status = 'queued'
+           ORDER BY created_at
+           FOR UPDATE SKIP LOCKED
+           LIMIT 1
+        )
+      RETURNING id`,
+    );
+    jobId = rows[0]?.id ?? null;
+    if (!jobId) return;
+    await runJob(jobId);
     ok = true;
   } catch (err) {
-    console.error(`[export] job ${job.id} failed`, err);
-    await pool
-      .query(`UPDATE timelapse_exports SET status = 'failed', error = $2 WHERE id = $1`, [
-        job.id,
-        String((err as Error)?.message ?? err).slice(0, 500),
-      ])
-      .catch(() => {});
+    console.error(`[export] job ${jobId ?? "claim"} failed`, err);
+    if (jobId) {
+      await pool
+        .query(
+          `UPDATE timelapse_exports SET status = 'failed', error = $2
+            WHERE id = $1 AND status = 'processing'`,
+          [jobId, String((err as Error)?.message ?? err).slice(0, 500)],
+        )
+        .catch(() => {});
+    }
   } finally {
-    lastRun = { id: job.id, ms: Date.now() - startedAt, ok };
+    if (jobId) lastRun = { id: jobId, ms: Date.now() - startedAt, ok };
     running = false;
-    // Another job may already be waiting — do not idle until the next poll.
-    void tick();
+    if (jobId) void tick();
   }
 }
 
@@ -111,13 +134,11 @@ interface JobRow {
 async function runJob(id: string): Promise<void> {
   const { rows } = await pool.query<JobRow>(
     `SELECT id, x0, y0, x1, y1, from_ms, to_ms, frames, format
-       FROM timelapse_exports WHERE id = $1`,
+       FROM timelapse_exports WHERE id = $1 AND status = 'processing'`,
     [id],
   );
   const job = rows[0];
   if (!job) return;
-
-  await pool.query(`UPDATE timelapse_exports SET status = 'processing' WHERE id = $1`, [id]);
 
   const data = await buildTimelapse({
     x0: job.x0,
@@ -141,7 +162,7 @@ async function runJob(id: string): Promise<void> {
   await pool.query(
     `UPDATE timelapse_exports
         SET status = 'done', file_path = $2, bytes = $3, completed_at = now(), expires_at = $4
-      WHERE id = $1`,
+      WHERE id = $1 AND status = 'processing'`,
     [id, filePath, size, expiresAt],
   );
 }
@@ -195,10 +216,22 @@ async function encode(
   });
 
   const exited = once(child, "close");
+  let timedOut = false;
+  const watchdog = setTimeout(() => {
+    timedOut = true;
+    child.kill("SIGKILL");
+  }, DRAIN_WATCHDOG_MS);
 
   try {
     for (const frame of rasterizeFrames(data)) {
-      if (!child.stdin.write(frame)) await once(child.stdin, "drain");
+      if (!child.stdin.write(frame)) {
+        await Promise.race([
+          once(child.stdin, "drain"),
+          exited.then(() => {
+            throw new Error("ffmpeg closed while receiving frames");
+          }),
+        ]);
+      }
       // Rasterizing a frame is synchronous CPU work over w*h pixels; yield
       // between frames so a long encode does not starve the paint path on
       // this single-process server, the same reasoning as tiles/worker.ts.
@@ -207,10 +240,12 @@ async function encode(
     child.stdin.end();
   } catch (err) {
     child.kill();
+    clearTimeout(watchdog);
     throw err;
   }
 
-  const [code] = (await exited) as [number | null];
+  const [code] = (await exited.finally(() => clearTimeout(watchdog))) as [number | null];
+  if (timedOut) throw new Error(`ffmpeg exceeded ${DRAIN_WATCHDOG_MS / 1000}s watchdog`);
   if (code !== 0) {
     throw new Error(`ffmpeg exited ${code}: ${stderr.slice(-2000) || "(no stderr)"}`);
   }

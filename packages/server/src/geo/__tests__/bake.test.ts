@@ -79,7 +79,7 @@ describe("bake — full pipeline on synthetic geometry", () => {
 
   const result = bake(countryIdx, waterIdx);
 
-  it("produces arrays sized for every z12 tile", () => {
+  it("produces arrays sized for every native tile", () => {
     expect(result.countries.length).toBe(TOTAL_TILES);
     expect(result.terrain.length).toBe(TOTAL_TILES / 4);
   });
@@ -128,8 +128,8 @@ describe("bake — full pipeline on synthetic geometry", () => {
     expect(buf.byteLength).toBe(
       HEADER_BYTES + result.countries.byteLength + result.terrain.byteLength,
     );
-    // ~38 MB is the budget stated in the plan.
-    expect(buf.byteLength / 1e6).toBeLessThan(45);
+    // The shrunken z8 index should remain comfortably below one MiB.
+    expect(buf.byteLength).toBeLessThan(200_000);
   });
 });
 
@@ -213,6 +213,6 @@ describe("PolygonIndex", () => {
 
 describe("Z_PIXEL invariant", () => {
   it("the bake leaf level is the pixel grid level", () => {
-    expect(Z_PIXEL).toBe(12);
+    expect(Z_PIXEL).toBe(8);
   });
 });

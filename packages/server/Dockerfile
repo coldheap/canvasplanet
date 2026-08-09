@@ -17,7 +17,8 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY packages/server packages/server
-RUN pnpm --filter @worldcanvas/server build
+RUN pnpm --filter @worldcanvas/shared build \
+ && pnpm --filter @worldcanvas/server build
 
 # ---- runtime ---------------------------------------------------------------
 FROM node:20-alpine AS runtime

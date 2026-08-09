@@ -1,8 +1,8 @@
 /**
  * Coordinate math — the single most safety-critical module in the project.
  *
- * The grid is Web Mercator at zoom 12, identical to Leaflet's CRS.EPSG3857,
- * so a pixel (x, y) is exactly the pixel Leaflet would place at zoom 12.
+ * The grid is Web Mercator at Z_PIXEL, identical to Leaflet's CRS.EPSG3857,
+ * so a pixel (x, y) is exactly the pixel Leaflet would place at that zoom.
  * If this file is ever wrong, every stored pixel is in the wrong place and
  * there is no migration back. It is fully unit-tested.
  */
@@ -80,9 +80,10 @@ export function inWorld(x: number, y: number): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Packed z12 tile id, matching the `tile_id` generated column in Postgres.
- * Keep these two definitions in lockstep — the DB expression is
- * `(x >> 8) * 4096 + (y >> 8)`.
+ * Packed Z_PIXEL tile id, matching the `tile_id` generated column in
+ * Postgres. Keep these two definitions in lockstep — the DB expression is
+ * `(x >> 8) * TILES_PER_AXIS + (y >> 8)` (currently `(x >> 8) * 256 + (y >>
+ * 8)`, see migrations/0016_shrink_world.sql).
  */
 export function tileIdOf(x: number, y: number): number {
   return (x >> 8) * TILES_PER_AXIS + (y >> 8);
@@ -92,7 +93,7 @@ export function tileIdToXY(tileId: number): { tx: number; ty: number } {
   return { tx: Math.floor(tileId / TILES_PER_AXIS), ty: tileId % TILES_PER_AXIS };
 }
 
-/** Pixel-space bbox covered by a z12 tile. */
+/** Pixel-space bbox covered by a native Z_PIXEL tile. */
 export function tileBbox(tx: number, ty: number): Bbox {
   return {
     x0: tx * TILE_SIZE,
@@ -102,14 +103,14 @@ export function tileBbox(tx: number, ty: number): Bbox {
   };
 }
 
-/** Offset of a pixel inside its own z12 tile, 0..65535. */
+/** Offset of a pixel inside its own native tile, 0..65535. */
 export function pixelIndexInTile(x: number, y: number): number {
   return (y & (TILE_SIZE - 1)) * TILE_SIZE + (x & (TILE_SIZE - 1));
 }
 
 /**
- * The full dirty chain for a paint: its z12 tile plus every ancestor up to
- * z0. Thirteen entries. Ordered leaf-first so the tile worker can render
+ * The full dirty chain for a paint: its native tile plus every ancestor up to
+ * z0. Z_PIXEL + 1 entries. Ordered leaf-first so the tile worker can render
  * children before the parents that downsample from them.
  */
 export function tileAncestry(x: number, y: number): Array<{ z: number; x: number; y: number }> {
@@ -126,7 +127,7 @@ export function tileAncestry(x: number, y: number): Array<{ z: number; x: number
 
 /** Tile key at an arbitrary zoom for a given pixel — used for WS subscriptions. */
 export function tileKeyAt(z: number, x: number, y: number): string {
-  const shift = Z_PIXEL - z + 8; // 8 bits pixel→z12tile, then one per zoom step
+  const shift = Z_PIXEL - z + 8; // 8 bits pixel→native tile, then one per zoom step
   return `${z}/${x >> shift}/${y >> shift}`;
 }
 

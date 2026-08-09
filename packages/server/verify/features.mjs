@@ -86,8 +86,8 @@ if (!top) {
 }
 
 // ---- area reports: the moderation input path ------------------------------
-const X0 = 710000 + Math.floor(Math.random() * 2000);
-const Y0 = 710000;
+const X0 = 48000 + Math.floor(Math.random() * 1000);
+const Y0 = 47000;
 
 const report = (body, ck = cookie) =>
   fetch(`${BASE}/api/report`, {

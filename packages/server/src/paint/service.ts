@@ -94,14 +94,21 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
       alliance_id: number | null;
       user_id: number | null;
       event_bonus_until: Date | null;
+      explicitly_banned: boolean;
     }>(
-      `SELECT charges, charges_updated_at, banned_until, asn, alliance_id, user_id, event_bonus_until
-         FROM sessions WHERE id = $1 FOR UPDATE`,
-      [sessionId],
+      `SELECT s.charges, s.charges_updated_at, s.banned_until, s.asn,
+              s.alliance_id, s.user_id, s.event_bonus_until,
+              EXISTS (
+                SELECT 1 FROM bans b
+                 WHERE (b.session_id = s.id OR b.ip = $2::inet)
+                   AND (b.until IS NULL OR b.until > now())
+              ) AS explicitly_banned
+         FROM sessions s WHERE s.id = $1 FOR UPDATE`,
+      [sessionId, ip],
     );
     const s = sess.rows[0];
     if (!s) return { ok: false as const, reason: PaintRefusal.Banned };
-    if (!staff && s.banned_until && s.banned_until.getTime() > now) {
+    if (!staff && (s.explicitly_banned || (s.banned_until && s.banned_until.getTime() > now))) {
       return { ok: false as const, reason: PaintRefusal.Banned };
     }
     // Staff paint on behalf of no alliance or account — same reasoning as
@@ -265,9 +272,9 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
          RETURNING 1
        ),
        dirty AS (
-         -- ONE row, not the whole 13-deep ancestry.
+         -- ONE row, not the whole Z_PIXEL+1-deep ancestry.
          --
-         -- Writing the full chain here meant 13 index insertions and their
+         -- Writing the full chain here meant Z_PIXEL+1 index insertions and their
          -- WAL on every paint, on the request path, to record something the
          -- worker can derive for itself. The worker now marks a tile's parent
          -- when it renders it, so the chain still propagates — but it is

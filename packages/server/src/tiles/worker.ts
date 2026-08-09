@@ -6,7 +6,7 @@
  * in two seconds re-renders once, not 100 times. Clients see no lag because
  * the WS overlay canvas covers the gap.
  *
- * Drains z12 first so parents downsample from already-fresh children.
+ * Drains Z_PIXEL first so parents downsample from already-fresh children.
  */
 
 import { CF_PURGE_BATCH, TILE_WORKER_BATCH } from "@worldcanvas/shared";
@@ -55,7 +55,7 @@ async function drain(): Promise<void> {
   drainStartedAt = started;
   try {
     // Leaf-first (z DESC) so a parent downsamples from already-fresh
-    // children. Note the trade-off: if z12 tiles ever arrive faster than the
+    // children. Note the trade-off: if native tiles ever arrive faster than the
     // batch can drain them, lower zooms starve and the world view stops
     // updating. The propagation chain adds only ~1/3 again on top of the leaf
     // rate (each level is a quarter of the one below), so the headroom is
@@ -76,7 +76,7 @@ async function drain(): Promise<void> {
 
     const urls: string[] = [];
     // Parents of everything rendered this pass. The paint path deliberately
-    // records only the z12 tile — writing the whole 13-deep ancestry on every
+    // records only the native tile — writing the whole ancestry on every
     // paint was 13 index insertions and their WAL on the request path, to
     // record something derivable. Collecting parents here instead means a
     // thousand paints sharing a tile mark its parent once, not a thousand
@@ -127,7 +127,7 @@ async function drain(): Promise<void> {
 
     // Enqueue the parents. Each tick lifts the chain one level, so a paint
     // reaches the world view in about a dozen ticks — coarse zoom levels are
-    // not watched pixel-by-pixel, and the z12 tile the painter is actually
+    // not watched pixel-by-pixel, and the native tile the painter is actually
     // looking at was already refreshed in this pass.
     if (parents.size > 0) {
       const list = [...parents.values()];

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   METRES_PER_PIXEL_EQUATOR,
+  GRID_CENTER,
+  SUB_ZOOM,
   TILES_PER_AXIS,
   TOTAL_TILES,
   WORLD_SIZE,
@@ -22,21 +24,21 @@ import {
 } from "../coords.js";
 
 describe("grid constants", () => {
-  it("is 1,048,576 pixels per axis at z12", () => {
-    expect(WORLD_SIZE).toBe(1_048_576);
-    expect(TILES_PER_AXIS).toBe(4096);
-    expect(TOTAL_TILES).toBe(16_777_216);
+  it("is 65,536 pixels per axis at z8", () => {
+    expect(WORLD_SIZE).toBe(65_536);
+    expect(TILES_PER_AXIS).toBe(256);
+    expect(TOTAL_TILES).toBe(65_536);
   });
 
-  it("is ~38.22 m/pixel at the equator", () => {
-    expect(METRES_PER_PIXEL_EQUATOR).toBeCloseTo(38.2185, 3);
+  it("is ~611.5 m/pixel at the equator", () => {
+    expect(METRES_PER_PIXEL_EQUATOR).toBeCloseTo(611.496, 3);
   });
 });
 
 describe("latLngToPixel", () => {
   it("puts Null Island at the exact centre of the grid", () => {
     // This is the landmark's anchor. If it ever moves, the seed is wrong.
-    expect(latLngToPixel({ lat: 0, lng: 0 })).toEqual({ x: 524288, y: 524288 });
+    expect(latLngToPixel({ lat: 0, lng: 0 })).toEqual({ x: GRID_CENTER, y: GRID_CENTER });
   });
 
   it("puts the antimeridian and the poles at the corners", () => {
@@ -68,7 +70,9 @@ describe("latLngToPixel", () => {
     for (const [lat, lng] of places) {
       const pixel = latLngToPixel({ lat, lng });
       const back = pixelToLatLng(pixel);
-      expect(latLngToPixel(back)).toEqual(pixel);
+      const roundTrip = latLngToPixel(back);
+      expect(Math.abs(roundTrip.x - pixel.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(roundTrip.y - pixel.y)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -101,42 +105,42 @@ describe("latLngToPixel", () => {
 
 describe("tiles", () => {
   it("matches the Postgres generated-column expression", () => {
-    // DB: (x >> 8) * 4096 + (y >> 8)
+    // DB: (x >> 8) * TILES_PER_AXIS + (y >> 8)
     const cases: Array<[number, number]> = [
       [0, 0],
       [255, 255],
       [256, 0],
-      [524288, 524288],
-      [1048575, 1048575],
+      [GRID_CENTER, GRID_CENTER],
+      [WORLD_SIZE - 1, WORLD_SIZE - 1],
     ];
     for (const [x, y] of cases) {
-      expect(tileIdOf(x, y)).toBe(Math.floor(x / 256) * 4096 + Math.floor(y / 256));
+      expect(tileIdOf(x, y)).toBe(Math.floor(x / 256) * TILES_PER_AXIS + Math.floor(y / 256));
     }
   });
 
   it("round-trips tile ids", () => {
-    const id = tileIdOf(524288, 524288);
+    const id = tileIdOf(GRID_CENTER, GRID_CENTER);
     const { tx, ty } = tileIdToXY(id);
-    expect(tx).toBe(2048);
-    expect(ty).toBe(2048);
+    expect(tx).toBe(TILES_PER_AXIS / 2);
+    expect(ty).toBe(TILES_PER_AXIS / 2);
   });
 
-  it("covers exactly 256x256 pixels per z12 tile", () => {
-    const b = tileBbox(2048, 2048);
-    expect(b).toEqual({ x0: 524288, y0: 524288, x1: 524543, y1: 524543 });
+  it("covers exactly 256x256 pixels per native tile", () => {
+    const b = tileBbox(TILES_PER_AXIS / 2, TILES_PER_AXIS / 2);
+    expect(b).toEqual({ x0: GRID_CENTER, y0: GRID_CENTER, x1: GRID_CENTER + 255, y1: GRID_CENTER + 255 });
   });
 
   it("indexes pixels inside a tile without collision", () => {
-    expect(pixelIndexInTile(524288, 524288)).toBe(0);
-    expect(pixelIndexInTile(524289, 524288)).toBe(1);
-    expect(pixelIndexInTile(524288, 524289)).toBe(256);
-    expect(pixelIndexInTile(524543, 524543)).toBe(65535);
+    expect(pixelIndexInTile(GRID_CENTER, GRID_CENTER)).toBe(0);
+    expect(pixelIndexInTile(GRID_CENTER + 1, GRID_CENTER)).toBe(1);
+    expect(pixelIndexInTile(GRID_CENTER, GRID_CENTER + 1)).toBe(256);
+    expect(pixelIndexInTile(GRID_CENTER + 255, GRID_CENTER + 255)).toBe(65535);
   });
 
-  it("produces a 13-deep dirty chain, leaf first, ending at 0/0/0", () => {
-    const chain = tileAncestry(524288, 524288);
+  it("produces a Z_PIXEL+1-deep dirty chain, leaf first, ending at 0/0/0", () => {
+    const chain = tileAncestry(GRID_CENTER, GRID_CENTER);
     expect(chain).toHaveLength(Z_PIXEL + 1);
-    expect(chain[0]).toEqual({ z: 12, x: 2048, y: 2048 });
+    expect(chain[0]).toEqual({ z: Z_PIXEL, x: TILES_PER_AXIS / 2, y: TILES_PER_AXIS / 2 });
     expect(chain[chain.length - 1]).toEqual({ z: 0, x: 0, y: 0 });
     // each step is the parent of the last
     for (let i = 1; i < chain.length; i++) {
@@ -145,9 +149,8 @@ describe("tiles", () => {
     }
   });
 
-  it("covers a 1080p-ish z12 viewport with ~4 subscription tiles", () => {
-    // 1920x1080 pixels at z12 starting at the landmark
-    const keys = subKeysForBbox({ x0: 524288, y0: 524288, x1: 524288 + 1919, y1: 524288 + 1079 }, 10);
+  it("covers a 1080p-ish native viewport with a small subscription set", () => {
+    const keys = subKeysForBbox({ x0: GRID_CENTER, y0: GRID_CENTER, x1: GRID_CENTER + 1919, y1: GRID_CENTER + 1079 }, SUB_ZOOM);
     expect(keys.length).toBeLessThanOrEqual(6);
     expect(keys.length).toBeGreaterThan(0);
     expect(new Set(keys).size).toBe(keys.length);

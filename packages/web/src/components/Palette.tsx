@@ -1,7 +1,7 @@
 /**
  * Colour picker.
  *
- * Below z12 the whole thing collapses to a "Zoom in to paint" hint — a click
+ * Below MIN_PAINT_ZOOM the whole thing collapses to a "Zoom in to paint" hint — a click
  * at z8 covers 16x16 pixels and would waste charges on a guess, so the UI
  * refuses rather than letting people misfire and blame the app.
  */

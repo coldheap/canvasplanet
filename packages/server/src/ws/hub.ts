@@ -2,8 +2,8 @@
  * WebSocket fan-out.
  *
  * Two audiences, deliberately separated:
- *   - Pixel frames go only to sockets subscribed to that z10 tile. This is
- *     what stops bandwidth being O(clients x paints) worldwide.
+ *   - Pixel frames go only to sockets subscribed to that SUB_ZOOM tile. This
+ *     is what stops bandwidth being O(clients x paints) worldwide.
  *   - Leaderboard, pulse and freeze frames go to everyone, on a 1 Hz tick.
  *     The climbing number is the point of the app, so it is never filtered.
  *

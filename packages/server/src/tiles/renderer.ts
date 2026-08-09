@@ -1,12 +1,15 @@
 /**
  * Tile rendering.
  *
- *   z12  — rendered from `pixels`, one index range scan per tile, 1 pixel = 1 px.
- *   z0-11 — mipmap-downsampled from the four child tiles, averaging RGBA
- *           *including alpha*, so a sparse region reads as faint rather than
- *           snapping to whichever colour happened to win.
+ *   z=Z_PIXEL       — rendered from `pixels`, one index range scan per tile,
+ *                      1 pixel = 1 px.
+ *   z0..Z_PIXEL-1   — mipmap-downsampled from the four child tiles, averaging
+ *                      RGBA *including alpha*, so a sparse region reads as
+ *                      faint rather than snapping to whichever colour
+ *                      happened to win.
  *
- * Unpainted pixels stay fully transparent — the OSM basemap shows through.
+ * Unpainted pixels stay fully transparent — the static land/ocean backdrop
+ * (routes/basemap.ts) and, optionally, the OSM overlay show through.
  *
  * Two modes share every byte of this file except the leaf query:
  *   "color" — the canvas itself, one palette RGB per painted pixel.
@@ -22,7 +25,7 @@
  */
 
 import { PNG } from "pngjs";
-import { PALETTE_RGB, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@worldcanvas/shared";
+import { PALETTE_RGB, TILES_PER_AXIS, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@worldcanvas/shared";
 import { pool } from "../db/pool.js";
 import { peekTile } from "./cache.js";
 import { tileEncodeTime, tileQueryTime } from "../metrics.js";
@@ -38,7 +41,7 @@ export const EMPTY_TILE: Buffer = (() => {
 
 /**
  * A tile's painted-pixel count at which the heat ramp reaches full
- * intensity. 65,536 px make up a z12 tile; most painted areas are far
+ * intensity. 65,536 px make up a native tile; most painted areas are far
  * sparser than that, so saturating at 1/16 keeps ordinary activity visible
  * instead of everything but the most-repainted spots reading as "empty".
  */
@@ -53,7 +56,7 @@ async function renderPixelTile(tx: number, ty: number, mode: TileMode): Promise<
 }
 
 async function renderColorLeaf(tx: number, ty: number): Promise<Buffer> {
-  const tileId = tx * 4096 + ty;
+  const tileId = tx * TILES_PER_AXIS + ty;
   // Split the timing: the query is I/O the event loop can interleave, the
   // encode is synchronous CPU that it cannot. Only the second is worth
   // moving to a worker thread, so measure them apart before deciding.
@@ -88,7 +91,7 @@ async function renderColorLeaf(tx: number, ty: number): Promise<Buffer> {
  * tile rather than needing its own invalidation path.
  */
 async function renderHeatLeaf(tx: number, ty: number): Promise<Buffer> {
-  const tileId = tx * 4096 + ty;
+  const tileId = tx * TILES_PER_AXIS + ty;
   const { rows } = await tileQueryTime.measure(() =>
     pool.query<{ n: number }>(`SELECT count(*)::int AS n FROM pixels WHERE tile_id = $1`, [tileId]),
   );

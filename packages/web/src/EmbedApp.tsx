@@ -103,7 +103,7 @@ export function EmbedApp() {
       }).addTo(map);
     }
 
-    // maxNativeZoom pins requests to z12 and lets Leaflet upscale beyond it —
+    // maxNativeZoom pins requests to Z_PIXEL and lets Leaflet upscale beyond it —
     // same reasoning as the main map (see MapCanvas.tsx).
     const canvasLayer = L.tileLayer("/tiles/{z}/{x}/{y}.png", {
       maxNativeZoom: Z_PIXEL,
