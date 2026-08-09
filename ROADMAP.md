@@ -14,14 +14,15 @@ widget (§4.2), alliances (§4.1) and timelapse export (§4.3) are all built.
 OAuth) and §5.2 (leaderboard reorder) are both done.** One manual step is
 still outstanding on Discord OAuth: register the redirect URIs in Discord's
 Developer Portal (see §5.1) before the "Continue with Discord" button can
-complete a real login. Next up: §5.3 (creator tools / social — still just
-directions, not scoped) or §2.5's real-hardware load run — ask before
-assuming which.
+complete a real login. **Phase 6 (streaks) is now done too, built 2026-08-09.**
+Next up: §5.3 (creator tools / social — still just directions, not scoped),
+Phase 7 (Corruption event) or later, or §2.5's real-hardware load run — ask
+before assuming which.
 
 A 2026-08-09 feature brainstorm scoped nine further additions, below as
-**Phase 6–14** — each fully agreed in shape, none started, and not yet
-prioritized against §5.3/§2.5 above. Ask before assuming which (if any) of
-these comes next.
+**Phase 6–14** — each fully agreed in shape, and not yet prioritized against
+§5.3/§2.5 above beyond Phase 6 itself landing. Ask before assuming which (if
+any) comes next.
 
 ---
 
@@ -588,18 +589,70 @@ rather than guessed at now.
 
 ---
 
-## Phase 6 — Streaks
+## Phase 6 — Streaks — done
 
 Cosmetic-only for now, by explicit decision — a milestone charge bonus was
 considered and deliberately deferred, not forgotten.
 
-`user_stats` gains `last_paint_date`, `streak_days`, `best_streak`, updated in
-the same paint transaction as the existing `gain_user` CTE (guarded on
-`user_id IS NOT NULL`, same guard shape as every other per-user stat here).
-UTC day boundary, matching how `pixel_events` timestamps already work. A flame
-icon + count surfaces on the player leaderboard row and player panel. Gated on
-§5.1 accounts — an anonymous session has no persistent identity to hang a
-streak on.
+`user_stats` gained `last_paint_date`, `streak_days`, `best_streak`
+(`0013_streaks.sql`), updated inside the same paint transaction as the
+existing `gain_user` CTE (`paint/service.ts`) — same `user_id IS NOT NULL`
+guard shape as every other per-user stat here, so the vast majority of
+anonymous paints never touch it. UTC day boundary (`(now() AT TIME ZONE
+'utc')::date`), matching how `pixel_events` timestamps already work: same
+day as last paint leaves the streak unchanged, exactly one day later
+increments it, anything else (including the first-ever paint) resets it to 1.
+`best_streak` is `GREATEST`'d alongside in the same CTE so it never needs a
+separate write. A flame icon + count now surfaces on the player leaderboard
+row (`PlayerLeaderboardTab.tsx`, shown once a streak reaches 2 — day one
+isn't a streak yet) and the account panel (`AccountPanel.tsx`, plus "best N"
+once that exceeds the current one). Gated on §5.1 accounts — an anonymous
+session has no persistent identity to hang a streak on.
+
+The wire tuple grew a field rather than adding a new message type:
+`UserLbRow` is now `[userId, displayName, cumulative, held, streakDays]` —
+`best_streak` deliberately isn't broadcast, since it only matters on the
+player's own account panel (`UserDTO.bestStreak`, read straight from
+`user_stats` by `getUserDTO`) and would be dead weight on every leaderboard
+row otherwise.
+
+`players/store.ts`'s in-memory mirror (`PlayerStore`) tracks `lastPaintDate`/
+`streakDays` per player the same way it already mirrors cumulative/held —
+`applyPaint()` recomputes the same same-day/next-day/gap transition in JS
+using `Date.now()` (injectable for tests), so the leaderboard broadcast never
+needs to re-query Postgres for a value the paint response already implies.
+`best_streak` is deliberately *not* mirrored here — never broadcast, so
+duplicating its arithmetic in memory would be untested dead code; the account
+panel reads it straight from the DB instead.
+
+**A real, non-obvious bug was caught by the mandatory Playwright pass, not by
+typecheck or vitest**: `PlayerStore.load()` originally read
+`last_paint_date` through node-postgres's default `DATE` parser, which
+builds a JS `Date` at *local* midnight of that calendar date rather than UTC
+midnight. On this server (local timezone EEST, UTC+3), round-tripping that
+through `.toISOString().slice(0, 10)` silently shifted the date back by one
+day on every `load()` — meaning every server restart quietly desynced the
+in-memory streak mirror from the database it had just loaded from. Every
+other date computation in this feature (the SQL CTE, `applyPaint`'s
+`Date.now()`) deliberately treats "today" as a plain string for exactly this
+class of bug; `load()` now does too, selecting `to_char(us.last_paint_date,
+'YYYY-MM-DD')` instead of the raw column so it never constructs a `Date`
+object from a `DATE` column at all. Unit tests (which never touch Postgres)
+could not have caught this — it only appeared in a real browser reading a
+real post-restart leaderboard row, the standing reason this project drives
+every UI change through an actual browser rather than stopping at typecheck
+and vitest.
+
+Verified for real, not just typechecked: `verify/streaks.mjs` proves every
+transition against the *actual* SQL CTE, not the JS mirror — signs up a real
+account, paints once (streak 1), repaints the same UTC day (unchanged),
+rewinds `user_stats.last_paint_date` a real day via direct SQL and repaints
+(increments to 2, `best_streak` follows), then rewinds 3 days and repaints
+again (resets to 1, `best_streak` stays 2) — plus a Playwright pass
+confirming the flame badge actually renders, with the right count, on both
+the account panel and the player's own leaderboard row, with zero console
+errors, after a real server restart re-synced the in-memory mirror to the
+(deliberately rewound) database state.
 
 ## Phase 7 — Recurring event: Corruption (vs. server)
 

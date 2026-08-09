@@ -213,12 +213,32 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
        gain_user AS (
          -- Same shape again, one level down: only when the painting session
          -- is attached to an account — most sessions never touch this either.
-         INSERT INTO user_stats (user_id, cumulative, held)
-         SELECT $21::bigint, 1, CASE WHEN $22::boolean THEN 0 ELSE 1 END
+         --
+         -- Streaks (ROADMAP.md Phase 6) ride along here rather than as a
+         -- separate CTE: they need the same "only when user_id IS NOT NULL"
+         -- guard and the same old-row-vs-new-row comparison the INSERT ...
+         -- ON CONFLICT already does, so EXCLUDED.last_paint_date (today, UTC)
+         -- against user_stats.last_paint_date (the pre-update value) is all a
+         -- streak transition needs: same day -> unchanged, exactly one day
+         -- earlier -> +1, anything else (including a first-ever paint) -> 1.
+         INSERT INTO user_stats (user_id, cumulative, held, last_paint_date, streak_days, best_streak)
+         SELECT $21::bigint, 1, CASE WHEN $22::boolean THEN 0 ELSE 1 END,
+                (now() AT TIME ZONE 'utc')::date, 1, 1
          WHERE $21::bigint IS NOT NULL
          ON CONFLICT (user_id) DO UPDATE
            SET cumulative = user_stats.cumulative + 1,
-               held = user_stats.held + CASE WHEN $22::boolean THEN 0 ELSE 1 END
+               held = user_stats.held + CASE WHEN $22::boolean THEN 0 ELSE 1 END,
+               streak_days = CASE
+                 WHEN user_stats.last_paint_date = EXCLUDED.last_paint_date THEN user_stats.streak_days
+                 WHEN user_stats.last_paint_date = EXCLUDED.last_paint_date - 1 THEN user_stats.streak_days + 1
+                 ELSE 1
+               END,
+               best_streak = GREATEST(user_stats.best_streak, CASE
+                 WHEN user_stats.last_paint_date = EXCLUDED.last_paint_date THEN user_stats.streak_days
+                 WHEN user_stats.last_paint_date = EXCLUDED.last_paint_date - 1 THEN user_stats.streak_days + 1
+                 ELSE 1
+               END),
+               last_paint_date = EXCLUDED.last_paint_date
          RETURNING 1
        ),
        loss_user AS (

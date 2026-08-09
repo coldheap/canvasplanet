@@ -11,7 +11,7 @@
  */
 
 import { PLAYER_LEADERBOARD_TOP_N } from "@worldcanvas/shared";
-import { LogIn } from "lucide-react";
+import { Flame, LogIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
 
@@ -45,7 +45,14 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
 
       <ol>
         {shown.map((row, i) => (
-          <PlayerRow key={row[0]} rank={i + 1} value={row[col]} name={row[1]} you={row[0] === user?.id} />
+          <PlayerRow
+            key={row[0]}
+            rank={i + 1}
+            value={row[col]}
+            name={row[1]}
+            streak={row[4]}
+            you={row[0] === user?.id}
+          />
         ))}
       </ol>
 
@@ -55,6 +62,7 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
             rank={yourIndex + 1}
             value={ranked[yourIndex]![col]}
             name={ranked[yourIndex]![1]}
+            streak={ranked[yourIndex]![4]}
             you
           />
         </div>
@@ -73,11 +81,13 @@ function PlayerRow({
   rank,
   value,
   name,
+  streak,
   you,
 }: {
   rank: number;
   value: number;
   name: string;
+  streak: number;
   you: boolean;
 }) {
   // A brief highlight whenever the number moves, mirroring the country/
@@ -101,6 +111,12 @@ function PlayerRow({
         {name}
         {you && <em> (you)</em>}
       </span>
+      {streak >= 2 && (
+        <span className="wc-streak" title={`${streak}-day streak`}>
+          <Flame size={12} />
+          {streak}
+        </span>
+      )}
       <span key={bump} className="wc-value wc-value-bump">
         {value.toLocaleString()}
       </span>

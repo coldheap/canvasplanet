@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { AlertOctagon, Check, KeyRound, LogIn, LogOut, Mail, UserCircle, UserPlus } from "lucide-react";
+import { AlertOctagon, Check, Flame, KeyRound, LogIn, LogOut, Mail, UserCircle, UserPlus } from "lucide-react";
 import type { UserDTO } from "@worldcanvas/shared";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
@@ -67,6 +67,15 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
         <span>{user.cumulative.toLocaleString()} painted</span>
         <span>{user.held.toLocaleString()} held</span>
       </p>
+      {user.streakDays >= 2 && (
+        <p className="wc-account-streak">
+          <Flame size={14} />
+          {user.streakDays}-day streak
+          {user.bestStreak > user.streakDays && (
+            <span className="wc-hint"> · best {user.bestStreak}</span>
+          )}
+        </p>
+      )}
       <button className="wc-btn" disabled={busy} onClick={() => void logout()}>
         <LogOut size={15} />
         Sign out

@@ -154,10 +154,12 @@ export async function getUserDTO(
   email: string | null,
   displayName: string,
 ): Promise<UserDTO> {
-  const { rows } = await pool.query<{ cumulative: number; held: number }>(
-    `SELECT cumulative, held FROM user_stats WHERE user_id = $1`,
-    [userId],
-  );
+  const { rows } = await pool.query<{
+    cumulative: number;
+    held: number;
+    streak_days: number;
+    best_streak: number;
+  }>(`SELECT cumulative, held, streak_days, best_streak FROM user_stats WHERE user_id = $1`, [userId]);
   const s = rows[0];
   return {
     id: userId,
@@ -165,6 +167,8 @@ export async function getUserDTO(
     displayName,
     cumulative: s?.cumulative ?? 0,
     held: s?.held ?? 0,
+    streakDays: s?.streak_days ?? 0,
+    bestStreak: s?.best_streak ?? 0,
   };
 }
 

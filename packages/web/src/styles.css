@@ -470,7 +470,7 @@ button {
 }
 
 .wc-player-row {
-  grid-template-columns: 22px 22px 1fr auto;
+  grid-template-columns: 22px 22px 1fr auto auto;
 }
 .wc-player-avatar {
   display: grid;
@@ -482,6 +482,14 @@ button {
   color: var(--wc-accent);
   font-size: 11px;
   font-weight: 700;
+}
+.wc-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #e8720c;
 }
 
 /* ---- alliances (ROADMAP.md §4.1) ----------------------------------------- */
@@ -751,6 +759,15 @@ fieldset select {
   margin: 0;
   font-size: 13px;
   color: var(--wc-dim);
+}
+.wc-account-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8720c;
 }
 .wc-link-btn {
   align-self: flex-start;
