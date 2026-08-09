@@ -304,6 +304,13 @@ export function MapCanvas({
     const lastPainted = { current: null as string | null };
     const lastHoverPixel = { current: null as { x: number; y: number } | null };
 
+    const selectTemplateColor = (pixel: { x: number; y: number }) => {
+      const color = template.colorAt(pixel.x, pixel.y);
+      if (color === null) return;
+      const state = useStore.getState();
+      if (state.selectedColor !== color) state.select(color);
+    };
+
     const paintAt = (pixel: { x: number; y: number }) => {
       if (useStore.getState().historyAt !== null) return;
       if (map.getZoom() < MIN_PAINT_ZOOM) return;
@@ -397,6 +404,7 @@ export function MapCanvas({
         return;
       }
       const { x, y } = latLngToPixel({ lat: e.latlng.lat, lng: e.latlng.lng });
+      selectTemplateColor({ x, y });
       cb.current.onPaint(x, y);
     });
 
@@ -411,6 +419,7 @@ export function MapCanvas({
       }
       const pixel = latLngToPixel({ lat: e.latlng.lat, lng: e.latlng.lng });
       lastHoverPixel.current = pixel;
+      selectTemplateColor(pixel);
       cb.current.onHover(pixel);
       if (shiftDown.current) paintAt(pixel);
     });

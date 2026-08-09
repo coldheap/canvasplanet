@@ -54,7 +54,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
   const [dither, setDither] = useState<DitherMode>("none");
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const [locked, setLocked] = useState(false);
-  const [opacity, setOpacity] = useState(0.6);
+  const [opacity, setOpacity] = useState(0.85);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -241,7 +241,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
           {at && (
             <>
               <label className="wc-opacity">
-                Ghost
+                Unfinished pixels
                 <input
                   type="range"
                   min={10}
@@ -251,6 +251,10 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
                 />
                 <span className="wc-hint">{Math.round(opacity * 100)}%</span>
               </label>
+
+              <p className="wc-hint">
+                Marked pixels still need painting. Hover one to select its palette colour automatically.
+              </p>
 
               <div className="wc-progress">
                 <div className="wc-progress-track">

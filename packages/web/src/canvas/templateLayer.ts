@@ -18,25 +18,31 @@ import {
   Z_PIXEL,
   pixelToLatLng,
 } from "@worldcanvas/shared";
+import { templateColorAt, type TemplatePlacement } from "./templatePixels.js";
 
-export interface Placement {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  /** One palette index per pixel, TRANSPARENT_INDEX for "skip". */
-  data: Uint8Array;
-}
+// At native zoom there is no room for a per-pixel marker. A deliberately
+// lightened/darkened guide colour still makes an unfinished pixel visibly
+// change when the correct, clean palette colour lands underneath it.
+const GUIDE_RGB = PALETTE_RGB.map(([r, g, b]) => {
+  const light = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const contrast = light > 145 ? 0 : 255;
+  const mix = 0.32;
+  return [
+    Math.round(r * (1 - mix) + contrast * mix),
+    Math.round(g * (1 - mix) + contrast * mix),
+    Math.round(b * (1 - mix) + contrast * mix),
+  ] as const;
+});
 
 export class TemplateLayer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private frame: number | null = null;
 
-  private placement: Placement | null = null;
+  private placement: TemplatePlacement | null = null;
   /** Current canvas colours under the template, same layout as `data`. */
   private actual: Uint8Array | null = null;
-  private opacity = 0.5;
+  private opacity = 0.85;
   private nextPixel: { x: number; y: number } | null = null;
   private visible = true;
 
@@ -65,7 +71,7 @@ export class TemplateLayer {
     this.canvas.remove();
   }
 
-  set(placement: Placement | null): void {
+  set(placement: TemplatePlacement | null): void {
     this.placement = placement;
     this.actual = null;
     this.nextPixel = null;
@@ -141,6 +147,11 @@ export class TemplateLayer {
     return this.nextPixel;
   }
 
+  /** Required palette colour under a pointer, or null outside painted art. */
+  colorAt(x: number, y: number): number | null {
+    return templateColorAt(this.placement, x, y);
+  }
+
   private hide = (): void => {
     this.canvas.style.visibility = "hidden";
   };
@@ -193,7 +204,6 @@ export class TemplateLayer {
       pixelToLatLng({ x: p.x, y: p.y }) as never,
     );
 
-    this.ctx.globalAlpha = this.opacity;
     for (let row = 0; row < p.h; row++) {
       // Cull rows outside the viewport before touching their pixels.
       const sy = origin.y + row * px;
@@ -207,10 +217,27 @@ export class TemplateLayer {
 
         const sx = origin.x + col * px;
         if (sx + px < 0 || sx > size.x) continue;
-        const rgb = PALETTE_RGB[want];
+        const rgb = px < 6 ? GUIDE_RGB[want] : PALETTE_RGB[want];
         if (!rgb) continue;
+        this.ctx.globalAlpha = this.opacity;
         this.ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
         this.ctx.fillRect(Math.floor(sx), Math.floor(sy), Math.ceil(px), Math.ceil(px));
+
+        // At close zoom, a high-contrast centre marker makes unfinished
+        // pixels unmistakable. It disappears the instant the canvas matches
+        // the template, leaving the clean target colour behind.
+        if (px >= 6) {
+          const light = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+          const marker = Math.max(2, Math.min(5, Math.floor(px / 4)));
+          this.ctx.globalAlpha = Math.min(1, this.opacity + 0.1);
+          this.ctx.fillStyle = light > 145 ? "#111827" : "#ffffff";
+          this.ctx.fillRect(
+            Math.floor(sx + (px - marker) / 2),
+            Math.floor(sy + (px - marker) / 2),
+            marker,
+            marker,
+          );
+        }
       }
     }
     this.ctx.globalAlpha = 1;
