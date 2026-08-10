@@ -37,7 +37,9 @@ export function ChargeBar() {
         {bank}
         <span className="wc-charge-count-max">/{max}</span>
       </span>
-      <span className="wc-charge-timer">{seconds !== null ? `+1 in ${seconds}s` : "Full"}</span>
+      <span className="wc-charge-timer">
+        {bank >= max ? "Full" : seconds !== null ? `+1 in ${seconds}s` : "Recharging"}
+      </span>
     </div>
   );
 }

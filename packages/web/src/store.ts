@@ -8,6 +8,7 @@
 
 import {
   CHARGE_MAX,
+  CHARGE_REGEN_MS,
   type AllianceDTO,
   type AllianceLbRow,
   type BootstrapResponse,
@@ -227,7 +228,17 @@ export const useStore = create<State>((set) => ({
     }),
 
   setBank: (bank, nextAt) => set({ bank, nextAt }),
-  spendOptimistic: (cost) => set((s) => ({ bank: Math.max(0, s.bank - cost) })),
+  spendOptimistic: (cost) =>
+    set((s) => {
+      const bank = Math.max(0, s.bank - cost);
+      return {
+        bank,
+        // Spending from a full bank is the one transition where nextAt is
+        // still null. Start the countdown locally while the paint request is
+        // in flight; the authoritative response will replace it shortly.
+        nextAt: bank < s.max && s.nextAt === null ? Date.now() + CHARGE_REGEN_MS : s.nextAt,
+      };
+    }),
   setLeaderboard: (world, leaderboard) => set({ world, leaderboard }),
   setAllianceLeaderboard: (allianceLeaderboard) => set({ allianceLeaderboard }),
   setAlliances: (alliances, allianceLeaderboard) => set({ alliances, allianceLeaderboard }),
