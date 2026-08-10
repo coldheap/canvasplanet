@@ -50,6 +50,9 @@ export const env = {
    * forge a fresh IP per request and walk straight past the IP budget.
    */
   trustCfConnectingIp: process.env.TRUST_CF_CONNECTING_IP === "true",
+  /** Optional local-development stand-in for Cloudflare's CF-IPCountry.
+   * Never used in production. */
+  devCountryIso: process.env.DEV_COUNTRY_ISO ?? "",
 
   tileCacheDir: repoPath(process.env.TILE_CACHE_DIR ?? "./tilecache"),
   geoIndexPath: repoPath(process.env.GEO_INDEX_PATH ?? "./data/geo-index.bin"),

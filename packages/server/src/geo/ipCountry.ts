@@ -10,8 +10,11 @@ import { env } from "../env.js";
  * country by forging one request header.
  */
 export function clientCountryIso(req: FastifyRequest): string | null {
-  if (!env.trustCfConnectingIp) return null;
-  return normalizeCountryHeader(req.headers["cf-ipcountry"]);
+  if (env.trustCfConnectingIp) {
+    const cloudflareCountry = normalizeCountryHeader(req.headers["cf-ipcountry"]);
+    if (cloudflareCountry) return cloudflareCountry;
+  }
+  return env.isProd ? null : normalizeCountryHeader(env.devCountryIso);
 }
 
 export function normalizeCountryHeader(value: string | string[] | undefined): string | null {
