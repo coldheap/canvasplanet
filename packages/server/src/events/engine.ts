@@ -25,12 +25,9 @@
  * (ActiveEventState), kept pure and DB-free so it's unit-testable the way
  * economy.ts is — everything below is the I/O around it.
  *
- * resolveEvent() has two race guards worth knowing about before touching it:
- * it awaits any bot write still in flight from the previous tick before
- * reverting (so the bot can't commit a pixel just after the revert already
- * ran), and it re-runs the revert a second time after a short delay, since
- * nothing gates ordinary /api/paint from landing in the zone in the brief
- * window around resolution — see resolveEvent()'s own comments.
+ * resolveEvent() closes the zone to new player writes, waits for both player
+ * and bot writes already in flight, then reverts twice as a defensive mop-up.
+ * See resolveEvent()'s own comments before changing that ordering.
  */
 
 import { randomUUID } from "node:crypto";
@@ -78,6 +75,12 @@ export interface EventHistoryRow {
  *  — see that method's doc comment for why a second pass exists at all. */
 const REVERT_MOPUP_DELAY_MS = 2_000;
 
+interface InFlightPlayerPaint {
+  x: number;
+  y: number;
+  done: Promise<void>;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -92,6 +95,10 @@ class EventEngine {
    *  reverting so the bot's own last writes can't land after the revert's
    *  SELECT already fixed its result set. See botTick()'s doc comment. */
   private botTickPromise: Promise<void> | null = null;
+  /** Every paint request is registered before its transaction starts. This
+   *  lets resolution wait for the exact requests touching its zone, including
+   *  one that began just before the event itself started. */
+  private playerPaints = new Set<InFlightPlayerPaint>();
 
   /**
    * Reverts any event left unresolved by a server restart — the "zero
@@ -137,11 +144,14 @@ class EventEngine {
       if (now >= ev.endsAt) {
         if (!this.resolving) {
           this.resolving = true;
+          ev.beginResolving();
           void this.resolveEvent(ev).finally(() => {
             this.resolving = false;
           });
         }
-        return null;
+        // Keep pushing the resolution state while canvas restoration runs.
+        // A client must never be left looking at an active event stuck at 0:00.
+        return { t: "event", event: ev.toDTO() };
       }
       if (!this.botTicking) {
         this.botTicking = true;
@@ -173,6 +183,27 @@ class EventEngine {
     ev.notePaint(x, y, color, sessionId);
   }
 
+  /** Registers a player paint before its DB transaction. Null means the
+   *  deadline has passed and this zone is closed until rollback completes. */
+  beginPlayerPaint(x: number, y: number): (() => void) | null {
+    const ev = this.active;
+    if (ev?.contains(x, y) && (ev.isResolving() || Date.now() >= ev.endsAt)) return null;
+
+    let finish!: () => void;
+    const done = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const entry = { x, y, done };
+    this.playerPaints.add(entry);
+    let finished = false;
+    return () => {
+      if (finished) return;
+      finished = true;
+      this.playerPaints.delete(entry);
+      finish();
+    };
+  }
+
   /** For bootstrap.ts — a reconnecting/late-joining client's first look. */
   current(): EventStateDTO | null {
     return this.active?.toDTO() ?? null;
@@ -184,6 +215,7 @@ class EventEngine {
     const ev = this.active;
     if (!ev || this.resolving) return false;
     this.resolving = true;
+    ev.beginResolving();
     try {
       await this.resolveEvent(ev);
       return true;
@@ -336,21 +368,25 @@ class EventEngine {
     // the time revert()'s SELECT runs, rather than committing just after and
     // surviving the revert. This was the reproducible half of the bug report:
     // "some black corruption pixels weren't rolled back."
-    if (this.botTickPromise) await this.botTickPromise;
+    const playerPaints = [...this.playerPaints]
+      .filter((paint) => ev.contains(paint.x, paint.y))
+      .map((paint) => paint.done);
+    await Promise.all([...(this.botTickPromise ? [this.botTickPromise] : []), ...playerPaints]);
 
     const pct = ev.corruptionPct();
-    const result = ev.result();
+    const result = ev.resolve();
+    // The winner is known now; canvas restoration can take a few seconds and
+    // must not hide that outcome behind a frozen countdown.
+    hub.broadcast({ t: "event", event: ev.toDTO() });
 
     // Zero permanent trace either way — see migration 0014's header comment.
     await revert({ bbox: ev.bbox, since: ev.startedAt }, null);
 
     // The other half of the bug report — "pixels I placed myself weren't
-    // rolled back": nothing stops an ordinary /api/paint request from
-    // committing into the zone in the brief window between the SELECT above
-    // and now (painting isn't gated on event state at all, by design — see
-    // the module doc comment). A short-delayed second pass mops up whatever
-    // landed in that window; revert() is idempotent, so on the common case
-    // where nothing snuck in, this just finds zero affected rows.
+    // rolled back": beginPlayerPaint() now closes the zone and the await above
+    // drains already-started player transactions before the first pass. Keep
+    // this short-delayed second pass as a defensive mop-up for any non-player
+    // write path; revert() is idempotent.
     await sleep(REVERT_MOPUP_DELAY_MS);
     await revert({ bbox: ev.bbox, since: ev.startedAt }, null);
 

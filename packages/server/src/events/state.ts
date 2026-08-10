@@ -15,6 +15,8 @@ export class ActiveEventState {
   readonly corrupted = new Set<string>();
   /** Distinct sessions that have landed at least one defending paint. */
   readonly defenders = new Set<number>();
+  private resolving = false;
+  private resolvedResult: "defended" | "corrupted" | null = null;
 
   constructor(
     readonly id: number,
@@ -57,6 +59,23 @@ export class ActiveEventState {
     return this.corruptionPct() < EVENT_WIN_THRESHOLD ? "defended" : "corrupted";
   }
 
+  /** Stops presenting the deadline as an active 0:00 countdown. The result
+   *  is filled in after any already-running bot paint has committed. */
+  beginResolving(): void {
+    this.resolving = true;
+  }
+
+  isResolving(): boolean {
+    return this.resolving;
+  }
+
+  /** Freeze the outcome exactly once so cleanup retries cannot change it. */
+  resolve(): "defended" | "corrupted" {
+    this.resolving = true;
+    this.resolvedResult ??= this.result();
+    return this.resolvedResult;
+  }
+
   toDTO(): EventStateDTO {
     return {
       id: this.id,
@@ -66,6 +85,8 @@ export class ActiveEventState {
       endsAt: this.endsAt,
       corruptionPct: this.corruptionPct(),
       defenders: this.defenders.size,
+      status: this.resolving ? "resolving" : "active",
+      result: this.resolvedResult,
     };
   }
 }

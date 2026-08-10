@@ -109,6 +109,28 @@ describe("ActiveEventState.toDTO", () => {
       endsAt: 60_000,
       corruptionPct: 1 / ZONE_AREA,
       defenders: 1,
+      status: "active",
+      result: null,
     });
+  });
+
+  it("freezes and exposes the result while resolution is in progress", () => {
+    const ev = fresh();
+    ev.beginResolving();
+    expect(ev.toDTO()).toMatchObject({ status: "resolving", result: null });
+
+    expect(ev.resolve()).toBe("defended");
+    expect(ev.toDTO()).toMatchObject({ status: "resolving", result: "defended" });
+
+    // Cleanup retries retain the deadline result even if bookkeeping changes.
+    const need = Math.ceil(ZONE_AREA * EVENT_WIN_THRESHOLD);
+    let n = 0;
+    for (let x = BBOX.x0; x <= BBOX.x1 && n < need; x++) {
+      for (let y = BBOX.y0; y <= BBOX.y1 && n < need; y++) {
+        ev.notePaint(x, y, BOT_COLOR, null);
+        n++;
+      }
+    }
+    expect(ev.resolve()).toBe("defended");
   });
 });

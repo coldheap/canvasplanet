@@ -127,6 +127,11 @@ export interface EventStateDTO {
   corruptionPct: number;
   /** Distinct sessions that have landed at least one defending paint so far. */
   defenders: number;
+  /** Resolution is separate from cleanup: once the deadline passes, clients
+   *  can show an honest final state while the server restores the zone. */
+  status: "active" | "resolving";
+  /** Frozen at the deadline. Null only while the event can still change. */
+  result: "defended" | "corrupted" | null;
 }
 
 export interface SEvent {

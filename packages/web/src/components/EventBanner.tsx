@@ -13,20 +13,42 @@
 import { Biohazard, Crosshair } from "lucide-react";
 import { EVENT_WIN_THRESHOLD, type EventStateDTO } from "@worldcanvas/shared";
 
-export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocate: () => void }) {
+export function eventBannerText(event: EventStateDTO, now = Date.now()): string {
   const pct = Math.min(1, event.corruptionPct);
-  const danger = event.corruptionPct >= EVENT_WIN_THRESHOLD;
-  const msLeft = Math.max(0, event.endsAt - Date.now());
+  const pctLabel = Math.round(pct * 100);
+  const thresholdLabel = Math.round(EVENT_WIN_THRESHOLD * 100);
+  const msLeft = Math.max(0, event.endsAt - now);
   const mm = Math.floor(msLeft / 60_000);
   const ss = Math.floor((msLeft % 60_000) / 1000)
     .toString()
     .padStart(2, "0");
 
   return (
-    <div className={danger ? "wc-event-banner wc-event-danger" : "wc-event-banner"}>
+    event.status === "active"
+      ? `Corruption event — ${pctLabel}% corrupted · Win below ${thresholdLabel}% · Lose at ${thresholdLabel}% or more · ${mm}:${ss} left`
+      : event.result === null
+        ? `Corruption event — Finalizing result at ${pctLabel}%…`
+        : event.result === "defended"
+          ? `Victory — Zone defended at ${pctLabel}% corruption. Restoring canvas…`
+          : `Defeat — Zone lost at ${pctLabel}% corruption. Restoring canvas…`
+  );
+}
+
+export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocate: () => void }) {
+  const pct = Math.min(1, event.corruptionPct);
+  const danger =
+    event.result === "corrupted" || (event.result === null && event.corruptionPct >= EVENT_WIN_THRESHOLD);
+  const status = eventBannerText(event);
+
+  return (
+    <div
+      className={danger ? "wc-event-banner wc-event-danger" : "wc-event-banner"}
+      role="status"
+      aria-live="polite"
+    >
       <Biohazard size={15} />
       <span>
-        Corruption event — {Math.round(pct * 100)}% corrupted, {mm}:{ss} left
+        {status}
         {event.defenders > 0 ? ` · ${event.defenders} defending` : ""}
       </span>
       <div className="wc-event-bar">
