@@ -156,6 +156,7 @@ interface State {
   select: (color: number) => void;
   setHistoryAt: (at: number | null) => void;
   setPanel: (panel: State["panel"]) => void;
+  togglePanel: (panel: State["panel"]) => void;
   openCountryPage: (iso: string) => void;
   updateSettings: (patch: Partial<Settings>) => void;
 }
@@ -259,6 +260,7 @@ export const useStore = create<State>((set) => ({
   select: (selectedColor) => set({ selectedColor }),
   setHistoryAt: (historyAt) => set({ historyAt }),
   setPanel: (panel) => set({ panel }),
+  togglePanel: (panel) => set((state) => ({ panel: state.panel === panel ? "none" : panel })),
   openCountryPage: (openCountry) => set({ openCountry, panel: "country" }),
   updateSettings: (patch) =>
     set((s) => {

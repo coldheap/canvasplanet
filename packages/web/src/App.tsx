@@ -42,7 +42,7 @@ const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
 const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
-  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event, pps } =
+  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
@@ -394,10 +394,6 @@ export function App() {
     return <div className="wc-boot">{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</div>;
   }
 
-  const toggle = (
-    p: "activity" | "leaderboard" | "settings" | "overlay" | "timelapse" | "report" | "embed" | "account",
-  ) => setPanel(panel === p ? "none" : p);
-
   return (
     <div className="wc-app">
       <MapCanvas
@@ -471,7 +467,7 @@ export function App() {
           aria-pressed={panel === "activity"}
           aria-label="Live activity"
           title="Live activity"
-          onClick={() => toggle("activity")}
+          onClick={() => togglePanel("activity")}
         >
           <Activity size={19} />
           <span className={pps > 0 ? "wc-activity-indicator is-live" : "wc-activity-indicator"} aria-hidden />
@@ -481,7 +477,7 @@ export function App() {
           aria-pressed={panel === "leaderboard"}
           aria-label="Leaderboard"
           title="Leaderboard"
-          onClick={() => toggle("leaderboard")}
+          onClick={() => togglePanel("leaderboard")}
         >
           <Trophy size={19} />
         </button>
@@ -490,7 +486,7 @@ export function App() {
           aria-pressed={panel === "overlay"}
           aria-label="Template overlay"
           title="Template overlay"
-          onClick={() => toggle("overlay")}
+          onClick={() => togglePanel("overlay")}
         >
           <LayoutTemplate size={19} />
         </button>
@@ -499,7 +495,7 @@ export function App() {
           aria-pressed={panel === "timelapse"}
           aria-label="Timelapse"
           title="Timelapse"
-          onClick={() => toggle("timelapse")}
+          onClick={() => togglePanel("timelapse")}
         >
           <Clapperboard size={19} />
         </button>
@@ -508,7 +504,7 @@ export function App() {
           aria-pressed={panel === "report"}
           aria-label="Report an area"
           title="Report an area"
-          onClick={() => toggle("report")}
+          onClick={() => togglePanel("report")}
         >
           <Flag size={19} />
         </button>
@@ -517,7 +513,7 @@ export function App() {
           aria-pressed={panel === "embed"}
           aria-label="Embed"
           title="Embed on your site"
-          onClick={() => toggle("embed")}
+          onClick={() => togglePanel("embed")}
         >
           <Code2 size={19} />
         </button>
@@ -527,7 +523,7 @@ export function App() {
           aria-pressed={panel === "account"}
           aria-label="Account"
           title={user ? user.displayName : "Sign in"}
-          onClick={() => toggle("account")}
+          onClick={() => togglePanel("account")}
         >
           <UserCircle size={19} />
         </button>
@@ -536,7 +532,7 @@ export function App() {
           aria-pressed={panel === "settings" || panel === "admin"}
           aria-label="Settings"
           title="Settings"
-          onClick={() => toggle("settings")}
+          onClick={() => togglePanel("settings")}
         >
           <SettingsIcon size={19} />
         </button>
