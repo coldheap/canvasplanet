@@ -213,7 +213,6 @@ export function GlobeCanvas({
       const color = PALETTE[current.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
       const cursorAt = lastPointerLngLat ?? pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
-      cursorElement.style.setProperty("--wc-paint-color", color);
       paintCursor.setLngLat([cursorAt.lng, cursorAt.lat]);
       if (!paintCursorVisible) {
         paintCursor.addTo(map);
@@ -224,12 +223,7 @@ export function GlobeCanvas({
       const previewKey = `${pixel.x},${pixel.y},${color}`;
       if (previewKey === paintPreviewKey) return;
       paintPreviewKey = previewKey;
-      const feature = pixelFeature(
-        pixel.x + PREVIEW_INSET,
-        pixel.y + PREVIEW_INSET,
-        color,
-        1 - PREVIEW_INSET * 2,
-      );
+      const feature = pixelFeature(pixel.x, pixel.y, color);
       (map.getSource("paint-preview") as GeoJSONSource | undefined)?.setData({
         type: "FeatureCollection",
         features: [feature],
@@ -586,7 +580,7 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         type: "fill",
         source: "paint-preview",
         layout: { visibility: historyAt === null ? "visible" : "none" },
-        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.78, "fill-antialias": false },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.55, "fill-antialias": false },
       },
     ],
     sky: {
@@ -595,9 +589,9 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
   };
 }
 
-function pixelFeature(x: number, y: number, color: string, size = 1): LivePixel["feature"] {
+function pixelFeature(x: number, y: number, color: string): LivePixel["feature"] {
   const nw = pixelToLatLng({ x, y });
-  const se = pixelToLatLng({ x: x + size, y: y + size });
+  const se = pixelToLatLng({ x: x + 1, y: y + 1 });
   return {
     type: "Feature",
     properties: { color },
@@ -608,11 +602,8 @@ function pixelFeature(x: number, y: number, color: string, size = 1): LivePixel[
   };
 }
 
-const PREVIEW_INSET = 0.28;
 const PAINT_CURSOR_HTML = `<svg viewBox="0 0 24 28" aria-hidden="true">
   <path class="wc-paint-cursor-pointer" d="M1 1.5 2.2 21l5-4.8 4.1 10 4.3-1.9-4.1-9.7 7-.2L1 1.5Z" />
-  <circle class="wc-paint-cursor-chip-border" cx="17" cy="7" r="5" />
-  <circle class="wc-paint-cursor-swatch" cx="17" cy="7" r="3.6" />
 </svg>`;
 
 function writeHash(map: MapLibreMap): void {
