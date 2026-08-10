@@ -22,7 +22,6 @@ export function CountryLeaderboardTab() {
 
   return (
     <>
-      <p className="wc-hint wc-lb-country-note">Ranked by the painter&apos;s country, not the pixel&apos;s map location.</p>
       <CountryPieChart rows={ranked} countries={countries} />
 
       <ol>

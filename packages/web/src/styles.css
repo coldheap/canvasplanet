@@ -721,8 +721,7 @@ button {
   color: var(--wc-text);
 }
 
-.wc-lb-empty,
-.wc-lb-country-note {
+.wc-lb-empty {
   margin: 10px 2px 0;
 }
 .wc-country-pie {
