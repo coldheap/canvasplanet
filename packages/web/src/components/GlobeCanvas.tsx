@@ -21,6 +21,7 @@ import {
 import {
   GeoJSONSource,
   Map as MapLibreMap,
+  Marker,
   NavigationControl,
   RasterTileSource,
   type MapMouseEvent,
@@ -28,6 +29,7 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./GlobeCanvas.css";
+import "./PaintCursor.css";
 import { normalizeHistoryAt } from "../history.js";
 import { useStore } from "../store.js";
 
@@ -113,6 +115,50 @@ export function GlobeCanvas({
     let lastPainted: string | null = null;
     let shiftDown = false;
     let hoverPixel: { x: number; y: number } | null = null;
+    let paintPreviewKey: string | null = null;
+    let paintCursorVisible = false;
+    const cursorElement = document.createElement("div");
+    cursorElement.className = "wc-paint-cursor";
+    cursorElement.innerHTML = '<span class="wc-paint-cursor-swatch"></span>';
+    const paintCursor = new Marker({ element: cursorElement, anchor: "center" });
+
+    const hidePaintPreview = () => {
+      const source = map.getSource("paint-preview") as GeoJSONSource | undefined;
+      source?.setData(EMPTY_FEATURES);
+      if (paintCursorVisible) {
+        paintCursor.remove();
+        paintCursorVisible = false;
+      }
+      paintPreviewKey = null;
+      map.getCanvasContainer().classList.remove("wc-paint-preview-active");
+    };
+
+    const showPaintPreview = (pixel: { x: number; y: number }) => {
+      const current = useStore.getState();
+      if (current.historyAt !== null || current.mapPicking || map.getZoom() < MIN_PAINT_ZOOM || !map.isStyleLoaded()) {
+        hidePaintPreview();
+        return;
+      }
+
+      const color = PALETTE[current.selectedColor]?.hex;
+      if (!color) return hidePaintPreview();
+      const previewKey = `${pixel.x},${pixel.y},${color}`;
+      if (previewKey === paintPreviewKey) return;
+      paintPreviewKey = previewKey;
+      const feature = pixelFeature(pixel.x, pixel.y, color);
+      (map.getSource("paint-preview") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: [feature],
+      });
+      const center = pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
+      cursorElement.style.setProperty("--wc-paint-color", color);
+      paintCursor.setLngLat([center.lng, center.lat]);
+      if (!paintCursorVisible) {
+        paintCursor.addTo(map);
+        paintCursorVisible = true;
+      }
+      map.getCanvasContainer().classList.add("wc-paint-preview-active");
+    };
 
     const renderLivePixels = () => {
       const source = map.getSource("live") as GeoJSONSource | undefined;
@@ -216,15 +262,18 @@ export function GlobeCanvas({
     const onMouseMove = (event: MapMouseEvent) => {
       if (useStore.getState().historyAt !== null || map.getZoom() < MIN_PAINT_ZOOM) {
         hoverPixel = null;
+        hidePaintPreview();
         cb.current.onHover(null);
         return;
       }
       hoverPixel = latLngToPixel(event.lngLat);
+      showPaintPreview(hoverPixel);
       cb.current.onHover(hoverPixel);
       if (shiftDown) paintAt(hoverPixel);
     };
     const onMouseOut = () => {
       hoverPixel = null;
+      hidePaintPreview();
       cb.current.onHover(null);
     };
     const onContextMenu = (event: MapMouseEvent) => {
@@ -283,6 +332,10 @@ export function GlobeCanvas({
       map.setLayoutProperty("canvas", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("live-pixels", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("history", "visibility", selected === null ? "none" : "visible");
+      map.setLayoutProperty("paint-preview-fill", "visibility", selected === null ? "visible" : "none");
+      map.setLayoutProperty("paint-preview-outline", "visibility", selected === null ? "visible" : "none");
+      if (hoverPixel) showPaintPreview(hoverPixel);
+      else hidePaintPreview();
     });
 
     return () => {
@@ -292,6 +345,7 @@ export function GlobeCanvas({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", stopShiftPaint);
+      hidePaintPreview();
       map.remove();
       mapRef.current = null;
     };
@@ -328,6 +382,7 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         maxzoom: Z_PIXEL,
       },
       live: { type: "geojson", data: EMPTY_FEATURES },
+      "paint-preview": { type: "geojson", data: EMPTY_FEATURES },
     },
     layers: [
       { id: "basemap", type: "raster", source: "basemap", paint: { "raster-fade-duration": 0 } },
@@ -358,6 +413,20 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         source: "live",
         layout: { visibility: historyAt === null ? "visible" : "none" },
         paint: { "fill-color": ["get", "color"], "fill-antialias": false },
+      },
+      {
+        id: "paint-preview-fill",
+        type: "fill",
+        source: "paint-preview",
+        layout: { visibility: historyAt === null ? "visible" : "none" },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.78, "fill-antialias": false },
+      },
+      {
+        id: "paint-preview-outline",
+        type: "line",
+        source: "paint-preview",
+        layout: { visibility: historyAt === null ? "visible" : "none" },
+        paint: { "line-color": "rgba(255,255,255,0.9)", "line-width": 1 },
       },
     ],
     sky: {

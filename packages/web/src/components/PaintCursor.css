@@ -1,0 +1,54 @@
+/* A precise pixel preview plus a screen-sized reticle keeps the target easy to
+   find at native zoom, where one canvas pixel is only one display pixel. */
+.wc-paint-cursor {
+  --wc-paint-color: #ffffff;
+  display: grid !important;
+  width: 28px !important;
+  height: 28px !important;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-radius: 50%;
+  background: rgba(10, 15, 25, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(7, 12, 22, 0.84),
+    0 2px 9px rgba(7, 12, 22, 0.38);
+  pointer-events: none !important;
+}
+
+.wc-paint-cursor::before,
+.wc-paint-cursor::after {
+  position: absolute;
+  content: "";
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 0 1px rgba(7, 12, 22, 0.5);
+}
+
+.wc-paint-cursor::before {
+  width: 36px;
+  height: 1px;
+}
+
+.wc-paint-cursor::after {
+  width: 1px;
+  height: 36px;
+}
+
+.wc-paint-cursor-swatch {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 2px;
+  background: var(--wc-paint-color);
+  box-shadow: 0 0 0 1px rgba(7, 12, 22, 0.72);
+}
+
+@media (pointer: fine) {
+  .wc-map.wc-paint-preview-active,
+  .wc-map.wc-paint-preview-active .leaflet-interactive,
+  .maplibregl-canvas-container.wc-paint-preview-active,
+  .maplibregl-canvas-container.wc-paint-preview-active .maplibregl-canvas {
+    cursor: none !important;
+  }
+}

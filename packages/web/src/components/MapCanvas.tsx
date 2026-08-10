@@ -30,6 +30,7 @@ import {
   MAX_MAP_ZOOM,
   MIN_MAP_ZOOM,
   MIN_PAINT_ZOOM,
+  PALETTE,
   WORLD_SIZE,
   Z_PIXEL,
   pixelToLatLng,
@@ -43,6 +44,7 @@ import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
 import { useStore } from "../store.js";
 import { HistoryMode } from "./HistoryMode.js";
+import "./PaintCursor.css";
 
 export interface MapHandle {
   map: L.Map;
@@ -326,6 +328,62 @@ export function MapCanvas({
     const shiftDown = { current: false };
     const lastPainted = { current: null as string | null };
     const lastHoverPixel = { current: null as { x: number; y: number } | null };
+    let paintPreview: L.Rectangle | null = null;
+    let paintPreviewKey: string | null = null;
+    const paintCursor = L.marker([0, 0], {
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({
+        className: "wc-paint-cursor",
+        html: '<span class="wc-paint-cursor-swatch"></span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+      zIndexOffset: 1_000,
+    });
+
+    const hidePaintPreview = () => {
+      if (paintPreview) {
+        paintPreview.remove();
+        paintPreview = null;
+      }
+      paintCursor.remove();
+      paintPreviewKey = null;
+      map.getContainer().classList.remove("wc-paint-preview-active");
+    };
+
+    const showPaintPreview = (pixel: { x: number; y: number }) => {
+      const state = useStore.getState();
+      if (state.historyAt !== null || state.mapPicking || map.getZoom() < MIN_PAINT_ZOOM) {
+        hidePaintPreview();
+        return;
+      }
+
+      const color = PALETTE[state.selectedColor]?.hex;
+      if (!color) return hidePaintPreview();
+      const previewKey = `${pixel.x},${pixel.y},${color}`;
+      if (previewKey === paintPreviewKey) return;
+      paintPreviewKey = previewKey;
+      const nw = pixelToLatLng({ x: pixel.x, y: pixel.y });
+      const se = pixelToLatLng({ x: pixel.x + 1, y: pixel.y + 1 });
+      const bounds = L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]);
+      if (paintPreview) {
+        paintPreview.setBounds(bounds).setStyle({ fillColor: color });
+      } else {
+        paintPreview = L.rectangle(bounds, {
+          stroke: false,
+          fillColor: color,
+          fillOpacity: 0.78,
+          interactive: false,
+        }).addTo(map);
+      }
+
+      const center = pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
+      paintCursor.setLatLng([center.lat, center.lng]);
+      if (!map.hasLayer(paintCursor)) paintCursor.addTo(map);
+      paintCursor.getElement()?.style.setProperty("--wc-paint-color", color);
+      map.getContainer().classList.add("wc-paint-preview-active");
+    };
 
     const selectTemplateColor = (pixel: { x: number; y: number }) => {
       const color = template.colorAt(pixel.x, pixel.y);
@@ -434,20 +492,24 @@ export function MapCanvas({
     map.on("mousemove", (e: L.LeafletMouseEvent) => {
       if (useStore.getState().historyAt !== null) {
         lastHoverPixel.current = null;
+        hidePaintPreview();
         return cb.current.onHover(null);
       }
       if (map.getZoom() < MIN_PAINT_ZOOM) {
         lastHoverPixel.current = null;
+        hidePaintPreview();
         return cb.current.onHover(null);
       }
       const pixel = latLngToPixel({ lat: e.latlng.lat, lng: e.latlng.lng });
       lastHoverPixel.current = pixel;
       selectTemplateColor(pixel);
+      showPaintPreview(pixel);
       cb.current.onHover(pixel);
       if (shiftDown.current) paintAt(pixel);
     });
     map.on("mouseout", () => {
       lastHoverPixel.current = null;
+      hidePaintPreview();
       cb.current.onHover(null);
     });
 
@@ -495,6 +557,8 @@ export function MapCanvas({
       applyOsm();
       applyEventZone();
       applyHistory();
+      if (lastHoverPixel.current) showPaintPreview(lastHoverPixel.current);
+      else hidePaintPreview();
     });
 
     return () => {
@@ -507,6 +571,7 @@ export function MapCanvas({
       bbox.destroy();
       point.destroy();
       template.destroy();
+      hidePaintPreview();
       overlay.destroy();
       map.remove();
       mapRef.current = null;
