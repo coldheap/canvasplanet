@@ -17,7 +17,7 @@ export function CountryLeaderboardTab() {
   const showPin = yourIndex >= LEADERBOARD_TOP_N && !expanded;
 
   if (ranked.length === 0) {
-    return <p className="wc-hint wc-lb-empty">No IP-attributed country placements yet.</p>;
+    return <p className="wc-hint wc-lb-empty">No data yet.</p>;
   }
 
   return (
