@@ -1164,23 +1164,6 @@ fieldset select {
   animation: wc-toast 3.5s forwards;
 }
 
-/* Server-confirmed placement feedback. This stays anchored in map space at
- * 1.5x the painted pixel and is suppressed below zoom 14. */
-.wc-placement-pixel-flash {
-  pointer-events: none;
-  animation: wc-placement-pixel-flash 650ms ease-in-out forwards;
-}
-.wc-placement-pixel-flash.is-reduced {
-  opacity: 0.9;
-  animation: none;
-}
-
-@keyframes wc-placement-pixel-flash {
-  0% { opacity: 0.08; }
-  48% { opacity: 0.95; }
-  100% { opacity: 0; }
-}
-
 @keyframes wc-toast {
   0%,
   85% {

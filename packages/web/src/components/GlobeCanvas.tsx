@@ -29,11 +29,6 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./GlobeCanvas.css";
 import { normalizeHistoryAt } from "../history.js";
-import {
-  PLACEMENT_FLASH_MIN_ZOOM,
-  PLACEMENT_FLASH_PADDING,
-  placementFlashPresentation,
-} from "../canvas/placementFlash.js";
 import { useStore } from "../store.js";
 
 const EMPTY_FEATURES: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -46,13 +41,6 @@ interface LivePixel {
   feature: GeoJSON.Feature<GeoJSON.Polygon, { color: string }>;
 }
 
-interface PlacementFlash {
-  at: number;
-  duration: number;
-  reduced: boolean;
-  feature: GeoJSON.Feature<GeoJSON.Polygon, { opacity: number }>;
-}
-
 export interface GlobeView {
   lat: number;
   lng: number;
@@ -62,7 +50,6 @@ export interface GlobeView {
 export interface GlobeHandle {
   applyPixels: (pixels: readonly PixelTuple[]) => void;
   flyTo: (x: number, y: number, z?: number) => void;
-  flashPixel: (x: number, y: number) => void;
   getView: () => GlobeView;
   refreshTiles: () => void;
 }
@@ -126,9 +113,6 @@ export function GlobeCanvas({
     let lastPainted: string | null = null;
     let shiftDown = false;
     let hoverPixel: { x: number; y: number } | null = null;
-    const placementFlashes = new Map<number, PlacementFlash>();
-    let placementFlashId = 0;
-    let placementFrame: number | null = null;
 
     const renderLivePixels = () => {
       const source = map.getSource("live") as GeoJSONSource | undefined;
@@ -193,37 +177,6 @@ export function GlobeCanvas({
     const flyTo = (x: number, y: number, z = Z_PIXEL) => {
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
       map.flyTo({ center: [target.lng, target.lat], zoom: z, duration: 700 });
-    };
-
-    const flashPixel = (x: number, y: number) => {
-      if (map.getZoom() < PLACEMENT_FLASH_MIN_ZOOM) return;
-      const { duration, reduced } = placementFlashPresentation();
-      placementFlashes.set(++placementFlashId, {
-        at: performance.now(),
-        duration,
-        reduced,
-        feature: placementFeature(x, y),
-      });
-      if (placementFrame === null) placementFrame = requestAnimationFrame(renderPlacementFlashes);
-    };
-
-    const renderPlacementFlashes = (now: number) => {
-      const source = map.getSource("placement-flashes") as GeoJSONSource | undefined;
-      if (!source) return;
-      for (const [id, flash] of placementFlashes) {
-        const progress = (now - flash.at) / flash.duration;
-        if (progress >= 1) {
-          placementFlashes.delete(id);
-          continue;
-        }
-        // One soft heartbeat: faint -> bright red -> gone.
-        flash.feature.properties.opacity = flash.reduced ? 0.8 : Math.sin(progress * Math.PI) * 0.9;
-      }
-      source.setData({
-        type: "FeatureCollection",
-        features: [...placementFlashes.values()].map(({ feature }) => feature),
-      });
-      placementFrame = placementFlashes.size ? requestAnimationFrame(renderPlacementFlashes) : null;
     };
 
     const emitViewport = () => {
@@ -313,7 +266,7 @@ export function GlobeCanvas({
 
     map.once("load", () => {
       emitViewport();
-      cb.current.onReady({ applyPixels, flyTo, flashPixel, getView, refreshTiles });
+      cb.current.onReady({ applyPixels, flyTo, getView, refreshTiles });
     });
 
     const unsubscribe = useStore.subscribe((next) => {
@@ -329,7 +282,6 @@ export function GlobeCanvas({
       }
       map.setLayoutProperty("canvas", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("live-pixels", "visibility", selected === null ? "visible" : "none");
-      map.setLayoutProperty("placement-flashes", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("history", "visibility", selected === null ? "none" : "visible");
     });
 
@@ -337,7 +289,6 @@ export function GlobeCanvas({
       unsubscribe();
       if (refreshTimer !== null) window.clearTimeout(refreshTimer);
       if (clearTimer !== null) window.clearTimeout(clearTimer);
-      if (placementFrame !== null) cancelAnimationFrame(placementFrame);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", stopShiftPaint);
@@ -377,7 +328,6 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         maxzoom: Z_PIXEL,
       },
       live: { type: "geojson", data: EMPTY_FEATURES },
-      "placement-flashes": { type: "geojson", data: EMPTY_FEATURES },
     },
     layers: [
       { id: "basemap", type: "raster", source: "basemap", paint: { "raster-fade-duration": 0 } },
@@ -409,14 +359,6 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         layout: { visibility: historyAt === null ? "visible" : "none" },
         paint: { "fill-color": ["get", "color"], "fill-antialias": false },
       },
-      {
-        id: "placement-flashes",
-        type: "fill",
-        source: "placement-flashes",
-        minzoom: PLACEMENT_FLASH_MIN_ZOOM,
-        layout: { visibility: historyAt === null ? "visible" : "none" },
-        paint: { "fill-color": "#ef4444", "fill-opacity": ["get", "opacity"], "fill-antialias": false },
-      },
     ],
     sky: {
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 7, 0.6, 10, 0],
@@ -430,25 +372,6 @@ function pixelFeature(x: number, y: number, color: string): LivePixel["feature"]
   return {
     type: "Feature",
     properties: { color },
-    geometry: {
-      type: "Polygon",
-      coordinates: [[[nw.lng, nw.lat], [se.lng, nw.lat], [se.lng, se.lat], [nw.lng, se.lat], [nw.lng, nw.lat]]],
-    },
-  };
-}
-
-function placementFeature(x: number, y: number): PlacementFlash["feature"] {
-  const nw = pixelToLatLng({
-    x: Math.max(0, x - PLACEMENT_FLASH_PADDING),
-    y: Math.max(0, y - PLACEMENT_FLASH_PADDING),
-  });
-  const se = pixelToLatLng({
-    x: Math.min(WORLD_SIZE, x + 1 + PLACEMENT_FLASH_PADDING),
-    y: Math.min(WORLD_SIZE, y + 1 + PLACEMENT_FLASH_PADDING),
-  });
-  return {
-    type: "Feature",
-    properties: { opacity: 1 },
     geometry: {
       type: "Polygon",
       coordinates: [[[nw.lng, nw.lat], [se.lng, nw.lat], [se.lng, se.lat], [nw.lng, se.lat], [nw.lng, nw.lat]]],

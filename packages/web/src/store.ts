@@ -24,8 +24,6 @@ import { create } from "zustand";
 export interface Settings {
   grid: "auto" | "on" | "off";
   sound: boolean;
-  /** Brief visual confirmation centred on a successfully placed pixel. */
-  placementFlash: boolean;
   notifyWhenFull: boolean;
   /** Whole-app dark theme — see the `html.wc-dark` block in styles.css.
    *  Deliberately leaves the map's own basemap tiles alone. */
@@ -44,7 +42,6 @@ export const DEFAULT_SETTINGS: Settings = {
   // it. Settings has "auto" (on at z14+) for people who want them back.
   grid: "off",
   sound: true,
-  placementFlash: true,
   notifyWhenFull: false,
   darkMode: false,
   reduceMotion: "system",

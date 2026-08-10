@@ -38,11 +38,6 @@ import {
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
-import {
-  PLACEMENT_FLASH_MIN_ZOOM,
-  PLACEMENT_FLASH_PADDING,
-  placementFlashPresentation,
-} from "../canvas/placementFlash.js";
 import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
@@ -56,8 +51,6 @@ export interface MapHandle {
   refreshTiles: () => void;
   /** Animate to a pixel coordinate. Used by country pages to fly to a hotspot. */
   flyTo: (x: number, y: number, z?: number) => void;
-  /** Brief visual confirmation for a server-confirmed local placement. */
-  flashPixel: (x: number, y: number) => void;
   /** Frame a complete template in the usable part of the viewport. */
   fitTemplate: (x: number, y: number, w: number, h: number) => void;
   /** Rectangle selection, for admin regions and revert-by-area. */
@@ -127,35 +120,6 @@ export function MapCanvas({
       boxZoom: false,
     });
     mapRef.current = map;
-
-    const placementFlashes = new Set<L.Rectangle>();
-    const placementTimers = new Set<number>();
-    const flashPixel = (x: number, y: number) => {
-      if (map.getZoom() < PLACEMENT_FLASH_MIN_ZOOM) return;
-      const { duration, reduced } = placementFlashPresentation();
-      const nw = pixelToLatLng({
-        x: Math.max(0, x - PLACEMENT_FLASH_PADDING),
-        y: Math.max(0, y - PLACEMENT_FLASH_PADDING),
-      });
-      const se = pixelToLatLng({
-        x: Math.min(WORLD_SIZE, x + 1 + PLACEMENT_FLASH_PADDING),
-        y: Math.min(WORLD_SIZE, y + 1 + PLACEMENT_FLASH_PADDING),
-      });
-      const flash = L.rectangle(L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]), {
-        interactive: false,
-        stroke: false,
-        fillColor: "#ef4444",
-        fillOpacity: 1,
-        className: reduced ? "wc-placement-pixel-flash is-reduced" : "wc-placement-pixel-flash",
-      }).addTo(map);
-      placementFlashes.add(flash);
-      const timer = window.setTimeout(() => {
-        placementTimers.delete(timer);
-        placementFlashes.delete(flash);
-        flash.remove();
-      }, duration);
-      placementTimers.add(timer);
-    };
 
     // Always on — see the file doc comment's layer 1. zIndex 0 pins it
     // under both the OSM overlay and the pixel canvas.
@@ -521,7 +485,7 @@ export function MapCanvas({
     const point = new PointPick(map);
     const template = new TemplateLayer(map);
     applyHistory();
-    cb.current.onReady({ map, overlay, refreshTiles, flyTo, flashPixel, fitTemplate, bbox, point, template });
+    cb.current.onReady({ map, overlay, refreshTiles, flyTo, fitTemplate, bbox, point, template });
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
     // and the corruption zone changes on its own 1Hz WS push, not a map event.
@@ -544,8 +508,6 @@ export function MapCanvas({
       point.destroy();
       template.destroy();
       overlay.destroy();
-      for (const timer of placementTimers) window.clearTimeout(timer);
-      for (const flash of placementFlashes) flash.remove();
       map.remove();
       mapRef.current = null;
     };
