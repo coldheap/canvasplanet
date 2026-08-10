@@ -208,7 +208,7 @@ export function MapCanvas({
       // Aim at the pixel's centre, not its corner, or the target sits half a
       // pixel off at high zoom.
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
-      map.flyTo([target.lat, target.lng] as never, z, { duration: 0.7 });
+      map.flyTo([target.lat, target.lng] as never, z, { duration: 1.2 });
     };
 
     const fitTemplate = (x: number, y: number, w: number, h: number) => {
