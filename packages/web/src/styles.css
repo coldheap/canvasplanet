@@ -1164,46 +1164,21 @@ fieldset select {
   animation: wc-toast 3.5s forwards;
 }
 
-/* Server-confirmed placement feedback. The marker is centred over the exact
- * pixel in both Leaflet and MapLibre, while staying large enough to read at
- * the minimum painting zoom. */
-.wc-placement-flash-anchor {
-  width: 0;
-  height: 0;
-  background: transparent;
-  border: 0;
-}
-.wc-placement-flash {
-  width: 26px;
-  height: 26px;
-  box-sizing: border-box;
+/* Server-confirmed placement feedback. This is the pixel's exact map-space
+ * rectangle, never a screen-space marker; the renderer suppresses it below
+ * zoom 14 where an individual pixel is too small to read. */
+.wc-placement-pixel-flash {
   pointer-events: none;
-  border: 3px solid #fff;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--wc-accent) 42%, transparent);
-  box-shadow: 0 0 0 2px var(--wc-accent), 0 0 16px 5px rgba(255, 255, 255, 0.9);
-  transform: translate(-50%, -50%) scale(0.45);
-  animation: wc-placement-flash 750ms ease-out forwards;
+  animation: wc-placement-pixel-flash 450ms ease-out forwards;
 }
-.wc-placement-flash.is-reduced {
+.wc-placement-pixel-flash.is-reduced {
   opacity: 0.9;
-  transform: translate(-50%, -50%);
   animation: none;
 }
 
-@keyframes wc-placement-flash {
-  0% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(0.45);
-  }
-  55% {
-    opacity: 0.95;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.35);
-  }
+@keyframes wc-placement-pixel-flash {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes wc-toast {

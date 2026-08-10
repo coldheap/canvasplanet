@@ -1,19 +1,18 @@
-export const PLACEMENT_FLASH_MS = 750;
-export const REDUCED_PLACEMENT_FLASH_MS = 400;
+import { GRID_ZOOM } from "@worldcanvas/shared";
 
-/** Build the decorative marker shared by the flat-map and globe renderers. */
-export function createPlacementFlashElement(): { element: HTMLDivElement; duration: number } {
-  const element = document.createElement("div");
-  element.setAttribute("aria-hidden", "true");
+export const PLACEMENT_FLASH_MIN_ZOOM = GRID_ZOOM;
+export const PLACEMENT_FLASH_MS = 450;
+export const REDUCED_PLACEMENT_FLASH_MS = 300;
 
+/** Motion preference shared by the flat-map and globe placement flashes. */
+export function placementFlashPresentation(): { duration: number; reduced: boolean } {
   const root = document.documentElement;
-  const reduceMotion =
+  const reduced =
     root.classList.contains("wc-motion-reduce") ||
     (!root.classList.contains("wc-motion-full") && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  element.className = reduceMotion ? "wc-placement-flash is-reduced" : "wc-placement-flash";
   return {
-    element,
-    duration: reduceMotion ? REDUCED_PLACEMENT_FLASH_MS : PLACEMENT_FLASH_MS,
+    duration: reduced ? REDUCED_PLACEMENT_FLASH_MS : PLACEMENT_FLASH_MS,
+    reduced,
   };
 }

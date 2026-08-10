@@ -38,7 +38,7 @@ import {
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
-import { createPlacementFlashElement } from "../canvas/placementFlash.js";
+import { PLACEMENT_FLASH_MIN_ZOOM, placementFlashPresentation } from "../canvas/placementFlash.js";
 import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
@@ -124,26 +124,25 @@ export function MapCanvas({
     });
     mapRef.current = map;
 
-    const placementMarkers = new Set<L.Marker>();
+    const placementFlashes = new Set<L.Rectangle>();
     const placementTimers = new Set<number>();
     const flashPixel = (x: number, y: number) => {
-      const { element, duration } = createPlacementFlashElement();
-      const center = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
-      const marker = L.marker([center.lat, center.lng], {
+      if (map.getZoom() < PLACEMENT_FLASH_MIN_ZOOM) return;
+      const { duration, reduced } = placementFlashPresentation();
+      const nw = pixelToLatLng({ x, y });
+      const se = pixelToLatLng({ x: x + 1, y: y + 1 });
+      const flash = L.rectangle(L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]), {
         interactive: false,
-        keyboard: false,
-        icon: L.divIcon({
-          className: "wc-placement-flash-anchor",
-          html: element,
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
-        }),
+        stroke: false,
+        fillColor: "#ef4444",
+        fillOpacity: 1,
+        className: reduced ? "wc-placement-pixel-flash is-reduced" : "wc-placement-pixel-flash",
       }).addTo(map);
-      placementMarkers.add(marker);
+      placementFlashes.add(flash);
       const timer = window.setTimeout(() => {
         placementTimers.delete(timer);
-        placementMarkers.delete(marker);
-        marker.remove();
+        placementFlashes.delete(flash);
+        flash.remove();
       }, duration);
       placementTimers.add(timer);
     };
@@ -536,7 +535,7 @@ export function MapCanvas({
       template.destroy();
       overlay.destroy();
       for (const timer of placementTimers) window.clearTimeout(timer);
-      for (const marker of placementMarkers) marker.remove();
+      for (const flash of placementFlashes) flash.remove();
       map.remove();
       mapRef.current = null;
     };
