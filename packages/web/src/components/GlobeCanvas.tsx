@@ -126,10 +126,11 @@ export function GlobeCanvas({
     let touchMoved = false;
     let paintPreviewKey: string | null = null;
     let paintCursorVisible = false;
+    let lastPointerLngLat: { lng: number; lat: number } | null = null;
     const cursorElement = document.createElement("div");
     cursorElement.className = "wc-paint-cursor";
-    cursorElement.innerHTML = '<span class="wc-paint-cursor-swatch"></span>';
-    const paintCursor = new Marker({ element: cursorElement, anchor: "center" });
+    cursorElement.innerHTML = PAINT_CURSOR_HTML;
+    const paintCursor = new Marker({ element: cursorElement, anchor: "top-left" });
 
     const hidePaintPreview = () => {
       const source = map.getSource("paint-preview") as GeoJSONSource | undefined;
@@ -151,22 +152,28 @@ export function GlobeCanvas({
 
       const color = PALETTE[current.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
-      const previewKey = `${pixel.x},${pixel.y},${color}`;
-      if (previewKey === paintPreviewKey) return;
-      paintPreviewKey = previewKey;
-      const feature = pixelFeature(pixel.x, pixel.y, color);
-      (map.getSource("paint-preview") as GeoJSONSource | undefined)?.setData({
-        type: "FeatureCollection",
-        features: [feature],
-      });
-      const center = pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
+      const cursorAt = lastPointerLngLat ?? pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
       cursorElement.style.setProperty("--wc-paint-color", color);
-      paintCursor.setLngLat([center.lng, center.lat]);
+      paintCursor.setLngLat([cursorAt.lng, cursorAt.lat]);
       if (!paintCursorVisible) {
         paintCursor.addTo(map);
         paintCursorVisible = true;
       }
       map.getCanvasContainer().classList.add("wc-paint-preview-active");
+
+      const previewKey = `${pixel.x},${pixel.y},${color}`;
+      if (previewKey === paintPreviewKey) return;
+      paintPreviewKey = previewKey;
+      const feature = pixelFeature(
+        pixel.x + PREVIEW_INSET,
+        pixel.y + PREVIEW_INSET,
+        color,
+        1 - PREVIEW_INSET * 2,
+      );
+      (map.getSource("paint-preview") as GeoJSONSource | undefined)?.setData({
+        type: "FeatureCollection",
+        features: [feature],
+      });
     };
 
     const renderLivePixels = () => {
@@ -276,12 +283,14 @@ export function GlobeCanvas({
         return;
       }
       hoverPixel = latLngToPixel(event.lngLat);
+      lastPointerLngLat = { lng: event.lngLat.lng, lat: event.lngLat.lat };
       showPaintPreview(hoverPixel);
       cb.current.onHover(hoverPixel);
       if (shiftDown) paintAt(hoverPixel);
     };
     const onMouseOut = () => {
       hoverPixel = null;
+      lastPointerLngLat = null;
       hidePaintPreview();
       cb.current.onHover(null);
     };
@@ -387,7 +396,6 @@ export function GlobeCanvas({
       map.setLayoutProperty("live-pixels", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("history", "visibility", selected === null ? "none" : "visible");
       map.setLayoutProperty("paint-preview-fill", "visibility", selected === null ? "visible" : "none");
-      map.setLayoutProperty("paint-preview-outline", "visibility", selected === null ? "visible" : "none");
       if (hoverPixel) showPaintPreview(hoverPixel);
       else hidePaintPreview();
     });
@@ -490,13 +498,6 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         layout: { visibility: historyAt === null ? "visible" : "none" },
         paint: { "fill-color": ["get", "color"], "fill-opacity": 0.78, "fill-antialias": false },
       },
-      {
-        id: "paint-preview-outline",
-        type: "line",
-        source: "paint-preview",
-        layout: { visibility: historyAt === null ? "visible" : "none" },
-        paint: { "line-color": "rgba(255,255,255,0.9)", "line-width": 1 },
-      },
     ],
     sky: {
       "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 7, 0.6, 10, 0],
@@ -504,9 +505,9 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
   };
 }
 
-function pixelFeature(x: number, y: number, color: string): LivePixel["feature"] {
+function pixelFeature(x: number, y: number, color: string, size = 1): LivePixel["feature"] {
   const nw = pixelToLatLng({ x, y });
-  const se = pixelToLatLng({ x: x + 1, y: y + 1 });
+  const se = pixelToLatLng({ x: x + size, y: y + size });
   return {
     type: "Feature",
     properties: { color },
@@ -516,6 +517,13 @@ function pixelFeature(x: number, y: number, color: string): LivePixel["feature"]
     },
   };
 }
+
+const PREVIEW_INSET = 0.28;
+const PAINT_CURSOR_HTML = `<svg viewBox="0 0 24 28" aria-hidden="true">
+  <path class="wc-paint-cursor-pointer" d="M1 1.5 2.2 21l5-4.8 4.1 10 4.3-1.9-4.1-9.7 7-.2L1 1.5Z" />
+  <circle class="wc-paint-cursor-chip-border" cx="17" cy="7" r="5" />
+  <circle class="wc-paint-cursor-swatch" cx="17" cy="7" r="3.6" />
+</svg>`;
 
 function writeHash(map: MapLibreMap): void {
   // Flat-map links intentionally start at zoom 2. When the complete globe is

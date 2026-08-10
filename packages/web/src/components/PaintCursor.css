@@ -1,47 +1,36 @@
-/* A precise pixel preview plus a screen-sized reticle keeps the target easy to
-   find at native zoom, where one canvas pixel is only one display pixel. */
+/* A familiar pointer with a small colour chip: precise without covering the
+   target artwork. The actual preview is an inset patch inside the map pixel. */
 .wc-paint-cursor {
   --wc-paint-color: #ffffff;
-  display: grid !important;
-  width: 28px !important;
+  display: block !important;
+  width: 24px !important;
   height: 28px !important;
-  place-items: center;
-  border: 2px solid rgba(255, 255, 255, 0.96);
-  border-radius: 50%;
-  background: rgba(10, 15, 25, 0.16);
-  box-shadow:
-    0 0 0 1px rgba(7, 12, 22, 0.84),
-    0 2px 9px rgba(7, 12, 22, 0.38);
   pointer-events: none !important;
+  filter: drop-shadow(0 2px 2px rgba(7, 12, 22, 0.34));
 }
 
-.wc-paint-cursor::before,
-.wc-paint-cursor::after {
-  position: absolute;
-  content: "";
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 0 0 1px rgba(7, 12, 22, 0.5);
+.wc-paint-cursor svg {
+  display: block;
+  width: 24px;
+  height: 28px;
+  overflow: visible;
 }
 
-.wc-paint-cursor::before {
-  width: 36px;
-  height: 1px;
+.wc-paint-cursor-pointer {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: rgba(7, 12, 22, 0.92);
+  stroke-width: 1.35;
+  stroke-linejoin: round;
 }
 
-.wc-paint-cursor::after {
-  width: 1px;
-  height: 36px;
+.wc-paint-cursor-chip-border {
+  fill: rgba(7, 12, 22, 0.88);
 }
 
 .wc-paint-cursor-swatch {
-  position: relative;
-  z-index: 1;
-  width: 9px;
-  height: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  border-radius: 2px;
-  background: var(--wc-paint-color);
-  box-shadow: 0 0 0 1px rgba(7, 12, 22, 0.72);
+  fill: var(--wc-paint-color);
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-width: 1.15;
 }
 
 @media (pointer: fine) {

@@ -328,6 +328,7 @@ export function MapCanvas({
     const shiftDown = { current: false };
     const lastPainted = { current: null as string | null };
     const lastHoverPixel = { current: null as { x: number; y: number } | null };
+    const lastPointerLatLng = { current: null as L.LatLng | null };
     let paintPreview: L.Rectangle | null = null;
     let paintPreviewKey: string | null = null;
     const paintCursor = L.marker([0, 0], {
@@ -335,9 +336,9 @@ export function MapCanvas({
       keyboard: false,
       icon: L.divIcon({
         className: "wc-paint-cursor",
-        html: '<span class="wc-paint-cursor-swatch"></span>',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        html: PAINT_CURSOR_HTML,
+        iconSize: [24, 28],
+        iconAnchor: [1, 1],
       }),
       zIndexOffset: 1_000,
     });
@@ -361,11 +362,17 @@ export function MapCanvas({
 
       const color = PALETTE[state.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
+      const cursorAt = lastPointerLatLng.current ?? pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
+      paintCursor.setLatLng(cursorAt);
+      if (!map.hasLayer(paintCursor)) paintCursor.addTo(map);
+      paintCursor.getElement()?.style.setProperty("--wc-paint-color", color);
+      map.getContainer().classList.add("wc-paint-preview-active");
+
       const previewKey = `${pixel.x},${pixel.y},${color}`;
       if (previewKey === paintPreviewKey) return;
       paintPreviewKey = previewKey;
-      const nw = pixelToLatLng({ x: pixel.x, y: pixel.y });
-      const se = pixelToLatLng({ x: pixel.x + 1, y: pixel.y + 1 });
+      const nw = pixelToLatLng({ x: pixel.x + PREVIEW_INSET, y: pixel.y + PREVIEW_INSET });
+      const se = pixelToLatLng({ x: pixel.x + 1 - PREVIEW_INSET, y: pixel.y + 1 - PREVIEW_INSET });
       const bounds = L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]);
       if (paintPreview) {
         paintPreview.setBounds(bounds).setStyle({ fillColor: color });
@@ -373,16 +380,11 @@ export function MapCanvas({
         paintPreview = L.rectangle(bounds, {
           stroke: false,
           fillColor: color,
-          fillOpacity: 0.78,
+          fillOpacity: 0.9,
           interactive: false,
         }).addTo(map);
       }
 
-      const center = pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
-      paintCursor.setLatLng([center.lat, center.lng]);
-      if (!map.hasLayer(paintCursor)) paintCursor.addTo(map);
-      paintCursor.getElement()?.style.setProperty("--wc-paint-color", color);
-      map.getContainer().classList.add("wc-paint-preview-active");
     };
 
     const selectTemplateColor = (pixel: { x: number; y: number }) => {
@@ -502,6 +504,7 @@ export function MapCanvas({
       }
       const pixel = latLngToPixel({ lat: e.latlng.lat, lng: e.latlng.lng });
       lastHoverPixel.current = pixel;
+      lastPointerLatLng.current = e.latlng;
       selectTemplateColor(pixel);
       showPaintPreview(pixel);
       cb.current.onHover(pixel);
@@ -509,6 +512,7 @@ export function MapCanvas({
     });
     map.on("mouseout", () => {
       lastHoverPixel.current = null;
+      lastPointerLatLng.current = null;
       hidePaintPreview();
       cb.current.onHover(null);
     });
@@ -585,6 +589,13 @@ export function MapCanvas({
     </>
   );
 }
+
+const PREVIEW_INSET = 0.28;
+const PAINT_CURSOR_HTML = `<svg viewBox="0 0 24 28" aria-hidden="true">
+  <path class="wc-paint-cursor-pointer" d="M1 1.5 2.2 21l5-4.8 4.1 10 4.3-1.9-4.1-9.7 7-.2L1 1.5Z" />
+  <circle class="wc-paint-cursor-chip-border" cx="17" cy="7" r="5" />
+  <circle class="wc-paint-cursor-swatch" cx="17" cy="7" r="3.6" />
+</svg>`;
 
 /**
  * Pixel gridlines, drawn per Leaflet tile so they pan and zoom for free.
