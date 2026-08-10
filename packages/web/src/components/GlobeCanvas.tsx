@@ -29,7 +29,11 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./GlobeCanvas.css";
 import { normalizeHistoryAt } from "../history.js";
-import { PLACEMENT_FLASH_MIN_ZOOM, placementFlashPresentation } from "../canvas/placementFlash.js";
+import {
+  PLACEMENT_FLASH_MIN_ZOOM,
+  PLACEMENT_FLASH_PADDING,
+  placementFlashPresentation,
+} from "../canvas/placementFlash.js";
 import { useStore } from "../store.js";
 
 const EMPTY_FEATURES: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -212,7 +216,8 @@ export function GlobeCanvas({
           placementFlashes.delete(id);
           continue;
         }
-        flash.feature.properties.opacity = flash.reduced ? 0.9 : Math.max(0, 1 - progress);
+        // One soft heartbeat: faint -> bright red -> gone.
+        flash.feature.properties.opacity = flash.reduced ? 0.8 : Math.sin(progress * Math.PI) * 0.9;
       }
       source.setData({
         type: "FeatureCollection",
@@ -433,8 +438,14 @@ function pixelFeature(x: number, y: number, color: string): LivePixel["feature"]
 }
 
 function placementFeature(x: number, y: number): PlacementFlash["feature"] {
-  const nw = pixelToLatLng({ x, y });
-  const se = pixelToLatLng({ x: x + 1, y: y + 1 });
+  const nw = pixelToLatLng({
+    x: Math.max(0, x - PLACEMENT_FLASH_PADDING),
+    y: Math.max(0, y - PLACEMENT_FLASH_PADDING),
+  });
+  const se = pixelToLatLng({
+    x: Math.min(WORLD_SIZE, x + 1 + PLACEMENT_FLASH_PADDING),
+    y: Math.min(WORLD_SIZE, y + 1 + PLACEMENT_FLASH_PADDING),
+  });
   return {
     type: "Feature",
     properties: { opacity: 1 },

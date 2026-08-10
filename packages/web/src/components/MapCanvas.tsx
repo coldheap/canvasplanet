@@ -38,7 +38,11 @@ import {
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
-import { PLACEMENT_FLASH_MIN_ZOOM, placementFlashPresentation } from "../canvas/placementFlash.js";
+import {
+  PLACEMENT_FLASH_MIN_ZOOM,
+  PLACEMENT_FLASH_PADDING,
+  placementFlashPresentation,
+} from "../canvas/placementFlash.js";
 import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
@@ -129,8 +133,14 @@ export function MapCanvas({
     const flashPixel = (x: number, y: number) => {
       if (map.getZoom() < PLACEMENT_FLASH_MIN_ZOOM) return;
       const { duration, reduced } = placementFlashPresentation();
-      const nw = pixelToLatLng({ x, y });
-      const se = pixelToLatLng({ x: x + 1, y: y + 1 });
+      const nw = pixelToLatLng({
+        x: Math.max(0, x - PLACEMENT_FLASH_PADDING),
+        y: Math.max(0, y - PLACEMENT_FLASH_PADDING),
+      });
+      const se = pixelToLatLng({
+        x: Math.min(WORLD_SIZE, x + 1 + PLACEMENT_FLASH_PADDING),
+        y: Math.min(WORLD_SIZE, y + 1 + PLACEMENT_FLASH_PADDING),
+      });
       const flash = L.rectangle(L.latLngBounds([nw.lat, nw.lng], [se.lat, se.lng]), {
         interactive: false,
         stroke: false,

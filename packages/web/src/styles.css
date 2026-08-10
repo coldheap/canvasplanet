@@ -1164,12 +1164,11 @@ fieldset select {
   animation: wc-toast 3.5s forwards;
 }
 
-/* Server-confirmed placement feedback. This is the pixel's exact map-space
- * rectangle, never a screen-space marker; the renderer suppresses it below
- * zoom 14 where an individual pixel is too small to read. */
+/* Server-confirmed placement feedback. This stays anchored in map space at
+ * 1.5x the painted pixel and is suppressed below zoom 14. */
 .wc-placement-pixel-flash {
   pointer-events: none;
-  animation: wc-placement-pixel-flash 450ms ease-out forwards;
+  animation: wc-placement-pixel-flash 650ms ease-in-out forwards;
 }
 .wc-placement-pixel-flash.is-reduced {
   opacity: 0.9;
@@ -1177,8 +1176,9 @@ fieldset select {
 }
 
 @keyframes wc-placement-pixel-flash {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  0% { opacity: 0.08; }
+  48% { opacity: 0.95; }
+  100% { opacity: 0; }
 }
 
 @keyframes wc-toast {
