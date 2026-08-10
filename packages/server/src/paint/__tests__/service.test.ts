@@ -42,6 +42,7 @@ describe("paint identical colour", () => {
     const result = await paint({
       sessionId: 10,
       ip: "127.0.0.1",
+      originCountryId: null,
       x: 100,
       y: 100,
       color: 7,

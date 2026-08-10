@@ -58,20 +58,19 @@ const short = await (await fetch(`${BASE}/api/status/history?days=7`)).json();
 check("the window is caller-controlled", short.history?.length === 7, `${short.history?.length}`);
 
 // ---- country subdivisions -------------------------------------------------
-// Pick the country with the most held pixels, so this does not depend on a
-// particular country having been painted.
-const board = await (await fetch(`${BASE}/api/leaderboard`)).json();
 const boot = await fetch(`${BASE}/api/bootstrap`);
 const cookie = cookieOf(boot);
 const { countries } = await boot.json();
-const byId = new Map(countries.map((c) => [c.id, c]));
 
 // id 0 is International Waters, which has no subdivisions by definition.
-const top = board.rows.filter((r) => r[0] !== 0).sort((a, b) => b[1] - a[1])[0];
-if (!top) {
-  console.log("  SKIP  subdivisions (no country has any pixels yet)");
+// geo.mjs runs earlier in the suite and paints central France. The public
+// country leaderboard now ranks painter IP countries, so it is deliberately
+// no longer a source for choosing a geographically painted country here.
+const france = countries.find((country) => country.iso_a2 === "FR");
+if (!france) {
+  console.log("  SKIP  subdivisions (France is missing from the country catalog)");
 } else {
-  const iso = byId.get(top[0])?.iso_a2;
+  const iso = france.iso_a2;
   const country = await (await fetch(`${BASE}/api/country/${iso}`)).json();
   check("country page returns subdivisions", Array.isArray(country.subdivisions));
   check(

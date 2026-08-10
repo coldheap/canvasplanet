@@ -9,10 +9,9 @@
  * they are tabs of one panel now so switching between "how am I doing" and
  * "how is my team/country doing" doesn't cost a whole panel re-open.
  *
- * The All-time/Held toggle is shared across all three tabs rather than each
- * keeping its own — cumulative/held is the same concept at every level, and
- * a reader flipping tabs to compare would otherwise have to flip the toggle
- * three times too.
+ * The All-time/Held toggle is shared by player and faction. Country is a
+ * placement leaderboard derived from painter IPs, so it has no geographic
+ * "held" concept and shows placement share instead.
  */
 
 import { Trophy, X } from "lucide-react";
@@ -54,7 +53,7 @@ export function LeaderboardPanel() {
           </button>
         </nav>
 
-        <div className="wc-lb-toggle" role="tablist" aria-label="Ranking metric">
+        {tab !== "country" && <div className="wc-lb-toggle" role="tablist" aria-label="Ranking metric">
           <button
             role="tab"
             aria-selected={mode === "cumulative"}
@@ -65,12 +64,12 @@ export function LeaderboardPanel() {
           <button role="tab" aria-selected={mode === "held"} onClick={() => setMode("held")}>
             Held
           </button>
-        </div>
+        </div>}
       </header>
 
       {tab === "player" && <PlayerLeaderboardTab mode={mode} />}
       {tab === "faction" && <FactionLeaderboardTab mode={mode} />}
-      {tab === "country" && <CountryLeaderboardTab mode={mode} />}
+      {tab === "country" && <CountryLeaderboardTab />}
     </aside>
   );
 }

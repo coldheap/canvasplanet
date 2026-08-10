@@ -721,6 +721,61 @@ button {
   color: var(--wc-text);
 }
 
+.wc-lb-empty,
+.wc-lb-country-note {
+  margin: 10px 2px 0;
+}
+.wc-country-pie {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0 6px;
+}
+.wc-country-pie-graphic {
+  width: 112px;
+  aspect-ratio: 1;
+  border: 3px solid var(--wc-panel);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--wc-panel-border), 0 6px 18px rgba(20, 30, 50, 0.12);
+}
+.wc-country-pie figcaption {
+  min-width: 0;
+}
+.wc-country-pie figcaption > strong {
+  font-size: 12px;
+}
+.wc-country-pie ul {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.wc-country-pie li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10px;
+}
+.wc-country-pie li i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.wc-country-pie li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-country-pie li em {
+  color: var(--wc-dim);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- leaderboard scope tabs (ROADMAP.md §5.2: player/faction/country) ---- */
 
 .wc-lb-tabs {

@@ -38,6 +38,8 @@ import { getProtectedRegions, isFrozen } from "../state/policy.js";
 export interface PaintInput {
   sessionId: number;
   ip: string;
+  /** Painter location inferred from the trusted client-IP country header. */
+  originCountryId: number | null;
   x: number;
   y: number;
   color: number;
@@ -64,7 +66,7 @@ export type PaintOutcome =
   | { ok: false; reason: PaintRefusal; retryAfterMs?: number; regionName?: string };
 
 export async function paint(input: PaintInput): Promise<PaintOutcome> {
-  const { x, y, color, sessionId, ip, staff } = input;
+  const { x, y, color, sessionId, ip, originCountryId, staff } = input;
 
   // ---- Phase 1: refusals that need no I/O at all ------------------------
   if (!isValidColor(color)) return { ok: false, reason: PaintRefusal.BadColor };
@@ -231,6 +233,16 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
           WHERE country_id = $11::smallint AND $11::smallint IS DISTINCT FROM $4::smallint
          RETURNING 1
        ),
+       origin_gain AS (
+         -- Unlike country_stats above, this attributes the placement to the
+         -- painter's IP country rather than the pixel's map location.
+         INSERT INTO country_placement_stats (country_id, placements)
+         SELECT $24::smallint, 1
+         WHERE $24::smallint IS NOT NULL
+         ON CONFLICT (country_id) DO UPDATE
+           SET placements = country_placement_stats.placements + 1
+         RETURNING 1
+       ),
        gain_alliance AS (
          -- Same shape as gain/loss, but only when the painting session
          -- belongs to an alliance at all — most sessions never touch this.
@@ -333,6 +345,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
         userId,
         prevUserId === userId,
         prevUserId,
+        originCountryId,
       ],
     );
 

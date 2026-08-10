@@ -322,7 +322,7 @@ class EventEngine {
       });
 
       hub.publishPaint(x, y, ev.botColor, countryId);
-      leaderboard.applyPaint(countryId, prevRow?.country_id ?? null);
+      leaderboard.applySystemPaint();
       alliances.applyPaint(null, prevRow?.alliance_id ?? null);
       players.applyPaint(null, prevRow?.user_id ?? null);
       ev.notePaint(x, y, ev.botColor, null);

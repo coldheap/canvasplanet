@@ -15,6 +15,7 @@ import { players } from "../players/store.js";
 import * as score from "../security/score.js";
 import * as turnstile from "../security/turnstile.js";
 import { clientIp, getOrCreateSession } from "../session/session.js";
+import { clientCountryIso } from "../geo/ipCountry.js";
 import { getStaff } from "./staff.js";
 import { hub } from "../ws/hub.js";
 
@@ -23,6 +24,7 @@ export function registerPaintRoutes(app: FastifyInstance): void {
     const session = await getOrCreateSession(req, reply);
     const staff = await getStaff(req);
     const ip = clientIp(req);
+    const originCountryId = leaderboard.countryIdForIso(clientCountryIso(req));
     const { x, y, color, turnstileToken } = req.body ?? ({} as PaintRequest);
 
     // ---- Turnstile gate: once per session, before its first pixel --------
@@ -47,7 +49,15 @@ export function registerPaintRoutes(app: FastifyInstance): void {
       session.turnstileOk = true;
     }
 
-    const result = await paint({ sessionId: session.id, ip, x, y, color, staff });
+    const result = await paint({
+      sessionId: session.id,
+      ip,
+      originCountryId,
+      x,
+      y,
+      color,
+      staff,
+    });
 
     if (!result.ok) {
       return reply.code(REFUSAL_STATUS[result.reason]).send({
@@ -64,7 +74,7 @@ export function registerPaintRoutes(app: FastifyInstance): void {
     // else, so there is exactly one code path to get wrong.
     if (result.changed) {
       hub.publishPaint(x, y, color, result.countryId);
-      leaderboard.applyPaint(result.countryId, result.prevCountryId);
+      leaderboard.applyPlacement(originCountryId);
       alliances.applyPaint(result.allianceId, result.prevAllianceId);
       players.applyPaint(result.userId, result.prevUserId);
       // ROADMAP.md Phase 7 — a no-op unless this pixel landed inside an active

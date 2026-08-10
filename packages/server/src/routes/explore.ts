@@ -152,14 +152,29 @@ export function registerExploreRoutes(app: FastifyInstance): void {
 
   // ---- country pages ------------------------------------------------------
   app.get<{ Params: { iso: string } }>("/api/country/:iso", async (req, reply) => {
-    const { rows } = await pool.query<{ id: number; name: string; flag: string }>(
-      `SELECT id, name, flag FROM countries WHERE iso_a2 = upper($1)`,
+    const { rows } = await pool.query<{
+      id: number;
+      name: string;
+      flag: string;
+      cumulative: number;
+      held: number;
+      rank: number | null;
+    }>(
+      `SELECT c.id, c.name, c.flag,
+              COALESCE(s.cumulative, 0)::bigint AS cumulative,
+              COALESCE(s.held, 0)::bigint AS held,
+              s.rank::int
+         FROM countries c
+         LEFT JOIN (
+           SELECT country_id, cumulative, held,
+                  rank() OVER (ORDER BY cumulative DESC) AS rank
+             FROM country_stats
+         ) s ON s.country_id = c.id
+        WHERE c.iso_a2 = upper($1)`,
       [req.params.iso],
     );
     const country = rows[0];
     if (!country) return reply.code(404).send();
-
-    const stat = leaderboard.rows().find((r) => r[0] === country.id);
 
     // Busiest area in the last day, as a z6-ish bucket the client can fly to.
     // Bucketing in SQL avoids pulling a day of events into the process.
@@ -174,9 +189,6 @@ export function registerExploreRoutes(app: FastifyInstance): void {
 
     return reply.send({
       ...country,
-      cumulative: stat?.[1] ?? 0,
-      held: stat?.[2] ?? 0,
-      rank: leaderboard.rankOf(country.id),
       // Centre of the busiest bucket.
       hotspot: h ? { x: (h.bx << 14) + 8192, y: (h.by << 14) + 8192, paints: h.n } : null,
       subdivisions: await subdivisionBreakdown(country.id, req.params.iso.toUpperCase()),

@@ -1,61 +1,64 @@
 /**
- * Leaderboard state.
+ * Country placement leaderboard state.
  *
- * `country_stats` is denormalised and updated inside the paint transaction,
- * so this never aggregates on read. It holds the full ~200-row table in
- * memory, applies increments as paints land, and emits a delta frame once a
- * second — the climbing number is the whole point of the app, so it is the
- * one thing every client receives regardless of viewport.
+ * Rows count placements by the painter's IP-derived country, not the
+ * geographic country underneath the pixel. The two concepts intentionally
+ * have separate tables: `country_stats` still powers map ownership/country
+ * pages, while `country_placement_stats` powers this public leaderboard.
  */
 
 import { type LbRow, type ServerMessage } from "@worldcanvas/shared";
 import { pool } from "../db/pool.js";
 
-interface Stat {
-  cumulative: number;
-  held: number;
-}
-
-class LeaderboardStore {
-  private stats = new Map<number, Stat>();
+export class LeaderboardStore {
+  private stats = new Map<number, number>();
+  private countryIdsByIso = new Map<string, number>();
   private world = 0;
   private dirty = false;
 
   async load(): Promise<void> {
-    const { rows } = await pool.query<{ country_id: number; cumulative: number; held: number }>(
-      `SELECT country_id, cumulative, held FROM country_stats`,
-    );
+    const [placements, totals, countries] = await Promise.all([
+      pool.query<{ country_id: number; placements: number }>(
+        `SELECT country_id, placements FROM country_placement_stats`,
+      ),
+      pool.query<{ world: number }>(
+        `SELECT COALESCE(sum(cumulative), 0)::bigint AS world FROM country_stats`,
+      ),
+      pool.query<{ id: number; iso_a2: string }>(`SELECT id, iso_a2 FROM countries`),
+    ]);
     this.stats.clear();
-    this.world = 0;
-    for (const r of rows) {
-      this.stats.set(r.country_id, { cumulative: r.cumulative, held: r.held });
-      this.world += r.cumulative;
-    }
+    this.countryIdsByIso.clear();
+    for (const r of placements.rows) this.stats.set(r.country_id, r.placements);
+    for (const r of countries.rows) this.countryIdsByIso.set(r.iso_a2.trim().toUpperCase(), r.id);
+    this.world = totals.rows[0]?.world ?? 0;
     this.dirty = true;
-    console.log(`[leaderboard] loaded ${this.stats.size} countries, ${this.world} paints`);
+    console.log(`[leaderboard] loaded ${this.stats.size} painter countries, ${this.world} paints`);
   }
 
-  /** Mirrors exactly what the paint transaction did to country_stats. */
-  applyPaint(countryId: number, prevCountryId: number | null): void {
-    const s = this.stats.get(countryId) ?? { cumulative: 0, held: 0 };
-    s.cumulative += 1;
-    if (prevCountryId !== countryId) s.held += 1;
-    this.stats.set(countryId, s);
-
-    if (prevCountryId !== null && prevCountryId !== countryId) {
-      const p = this.stats.get(prevCountryId);
-      if (p) p.held = Math.max(0, p.held - 1);
-    }
-
+  /** Mirrors a committed interactive paint. Null means its IP country could
+   * not be resolved; it still contributes to the global paint total. */
+  applyPlacement(countryId: number | null): void {
+    if (countryId !== null) this.stats.set(countryId, (this.stats.get(countryId) ?? 0) + 1);
     this.world += 1;
     this.dirty = true;
   }
 
-  /** Full table, ranked. Ranking is by cumulative; `held` rides along so the
-   *  panel's toggle needs no second request. */
+  /** Bot/admin bulk paths have no client IP but still advance the world total. */
+  applySystemPaint(): void {
+    this.world += 1;
+    this.dirty = true;
+  }
+
+  countryIdForIso(iso: string | null): number | null {
+    return iso === null ? null : (this.countryIdsByIso.get(iso.toUpperCase()) ?? null);
+  }
+
+  /** Full table, ranked. The third tuple value is retained for wire
+   * compatibility; country-of-painter rankings are placements only. */
   rows(): LbRow[] {
     return [...this.stats.entries()]
-      .map(([id, s]) => [id, s.cumulative, s.held] as LbRow)
+      .filter(([, placements]) => placements > 0)
+      .map(([id, placements]) => [id, placements, 0] as LbRow)
       .sort((a, b) => b[1] - a[1]);
   }
 
@@ -68,8 +71,7 @@ class LeaderboardStore {
     return idx < 0 ? null : idx + 1;
   }
 
-  /** Called on the 1 Hz hub tick. Returns null when nothing changed, so a
-   *  quiet canvas costs no bandwidth at all. */
+  /** Called on the 1 Hz hub tick. Returns null when nothing changed. */
   tick(): ServerMessage | null {
     if (!this.dirty) return null;
     this.dirty = false;

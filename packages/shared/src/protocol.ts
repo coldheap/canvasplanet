@@ -47,7 +47,7 @@ export interface SPixels {
   p: PixelTuple[];
 }
 
-/** [countryId, cumulative, held] */
+/** [countryId, IP-attributed placements, reserved] */
 export type LbRow = [number, number, number];
 
 export interface SLeaderboard {
@@ -56,9 +56,8 @@ export interface SLeaderboard {
   rows: LbRow[];
 }
 
-/** [allianceId, cumulative, held] — same shape as LbRow, no world total: the
- *  world total already exists on the country leaderboard, and every painted
- *  pixel is in exactly one country regardless of alliance membership. */
+/** [allianceId, cumulative, held] — same shape as LbRow, with no separate
+ *  world total because the global placement total already rides on `lb`. */
 export type AllianceLbRow = [number, number, number];
 
 export interface SAllianceLb {
@@ -218,7 +217,7 @@ export interface BootstrapResponse {
    * goes stale when the economy is retuned.
    */
   regenMs: number;
-  /** Country of this session's last paint — drives the pinned leaderboard row. */
+  /** Country inferred from this request's client IP; drives the pinned country row. */
   yourCountryId: number | null;
   /** True once this session has passed Turnstile; false means the first
    *  paint will come back 428. */

@@ -14,6 +14,7 @@ import { players } from "../players/store.js";
 import { env } from "../env.js";
 import * as turnstile from "../security/turnstile.js";
 import { getOrCreateSession } from "../session/session.js";
+import { clientCountryIso } from "../geo/ipCountry.js";
 import { getProtectedRegions, isFrozen } from "../state/policy.js";
 import { getAuthUser, getUserDTO } from "./auth.js";
 
@@ -56,7 +57,7 @@ export function registerBootstrapRoutes(app: FastifyInstance): void {
       max: CHARGE_MAX,
       nextAt: nextMs === null ? null : now + nextMs,
       regenMs,
-      yourCountryId: session.lastCountryId,
+      yourCountryId: leaderboard.countryIdForIso(clientCountryIso(req)),
       verified: session.turnstileOk || !turnstile.isEnabled(),
       staff: staff ? { id: staff.id, username: staff.username, role: staff.role } : null,
       user: authUser ? await getUserDTO(authUser.id, authUser.email, authUser.displayName) : null,
