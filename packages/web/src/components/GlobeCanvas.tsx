@@ -351,7 +351,19 @@ export function GlobeCanvas({
     };
   }, []);
 
-  return <div ref={ref} className="wc-globe-view" aria-label="Interactive 3D globe canvas" />;
+  return (
+    <div className="wc-globe-view" aria-label="Interactive 3D globe canvas">
+      <div ref={ref} />
+      <a
+        className="wc-globe-credit"
+        href="https://www.eso.org/public/images/eso0932a/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        ESO/S. Brunier
+      </a>
+    </div>
+  );
 }
 
 export default GlobeCanvas;

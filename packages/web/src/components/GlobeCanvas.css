@@ -2,45 +2,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse at 18% 76%, rgba(24, 78, 132, 0.2) 0, transparent 34%),
-    radial-gradient(ellipse at 82% 22%, rgba(88, 40, 116, 0.19) 0, transparent 31%),
-    radial-gradient(ellipse at 54% 42%, rgba(31, 69, 132, 0.2) 0, transparent 43%),
-    radial-gradient(circle at 50% 42%, #121d34 0, #080d19 45%, #02040a 100%);
-}
-
-/* MapLibre leaves the sky transparent, so the layers below show through only
-   outside the globe and give the view a quiet, deep-space setting. */
-.wc-globe-view::before,
-.wc-globe-view::after {
-  position: absolute;
-  inset: -10%;
-  z-index: 0;
-  pointer-events: none;
-  content: "";
-  background-repeat: repeat;
-  mix-blend-mode: screen;
-}
-
-.wc-globe-view::before {
-  opacity: 0.72;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.9) 0 0.7px, transparent 1.4px),
-    radial-gradient(circle at 71% 31%, rgba(181, 211, 255, 0.8) 0 0.8px, transparent 1.5px),
-    radial-gradient(circle at 43% 77%, rgba(255, 231, 178, 0.75) 0 0.6px, transparent 1.3px),
-    radial-gradient(circle at 89% 83%, rgba(215, 191, 255, 0.75) 0 0.7px, transparent 1.4px);
-  background-size: 173px 191px, 227px 241px, 263px 229px, 311px 277px;
-  animation: wc-star-drift 110s linear infinite;
-}
-
-.wc-globe-view::after {
-  opacity: 0.44;
-  background-image:
-    radial-gradient(circle at 21% 63%, rgba(255, 255, 255, 0.7) 0 0.45px, transparent 1px),
-    radial-gradient(circle at 63% 14%, rgba(185, 215, 255, 0.65) 0 0.5px, transparent 1.1px),
-    radial-gradient(circle at 78% 72%, rgba(255, 224, 184, 0.6) 0 0.45px, transparent 1px);
-  background-size: 97px 113px, 131px 157px, 149px 127px;
-  animation: wc-star-drift 75s linear infinite reverse;
+  background: #010206 url("/assets/milky-way-panorama.jpg") center / cover no-repeat;
 }
 
 .wc-globe-view > .maplibregl-map {
@@ -49,9 +11,24 @@
   z-index: 1;
 }
 
-@keyframes wc-star-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(2.5%, -1.5%, 0); }
+.wc-globe-credit {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  z-index: 2;
+  padding: 3px 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.56);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 9px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.wc-globe-credit:hover,
+.wc-globe-credit:focus-visible {
+  color: #fff;
+  text-decoration: underline;
 }
 
 .wc-globe-view .maplibregl-canvas {
@@ -95,13 +72,6 @@ html.wc-globe-active #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wc-globe-view::before,
-  .wc-globe-view::after {
-    animation: none;
-  }
 }
 
 @media (max-width: 700px) {
