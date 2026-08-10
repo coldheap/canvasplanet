@@ -213,7 +213,8 @@ button {
 
 .wc-rail {
   position: absolute;
-  z-index: 1000;
+  /* Keep the rail's brand/control surface above full-width status banners. */
+  z-index: 1150;
   top: var(--wc-gap);
   left: var(--wc-gap);
   bottom: var(--wc-gap);
