@@ -20,6 +20,7 @@
 
 import L from "leaflet";
 import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
+import { livePixelScreenSize } from "./livePixels.js";
 import { tilePixelMatches } from "./tilePixels.js";
 
 interface PendingPixel {
@@ -227,9 +228,12 @@ export class LiveOverlay {
     if (this.pending.size === 0) return;
 
     const zoom = this.map.getZoom();
-    // One grid pixel is 2^(zoom-Z_PIXEL) screen pixels. Below Z_PIXEL that is
-    // fractional; clamp so a pixel never renders as nothing.
-    const pxSize = Math.max(1, 2 ** (zoom - Z_PIXEL));
+    // Below the native grid zoom, a world pixel occupies only a fraction of
+    // one screen pixel. Drawing each live delta as a forced 1px dot makes
+    // distant paint look randomly scattered and grows expensive on a busy
+    // canvas. The raster pyramid is the correct aggregate at those zooms.
+    const pxSize = livePixelScreenSize(zoom);
+    if (pxSize === 0) return;
 
     for (const pixel of this.pending.values()) {
       const p = this.map.latLngToContainerPoint(pixelToLatLng({ x: pixel.x, y: pixel.y }) as never);

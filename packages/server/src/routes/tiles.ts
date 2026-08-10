@@ -6,6 +6,7 @@ import {
 } from "@worldcanvas/shared";
 import type { FastifyInstance } from "fastify";
 import { readTile } from "../tiles/cache.js";
+import { tileEtag } from "../tiles/etag.js";
 import { renderHistoryTile } from "../tiles/renderer.js";
 
 const HISTORY_LRU_MAX = 200;
@@ -78,7 +79,7 @@ export function registerTileRoutes(app: FastifyInstance): void {
       return reply
         .header("Content-Type", "image/png")
         .header("Cache-Control", "private, max-age=300")
-        .header("ETag", `"history-${key}-${buf.length}"`)
+        .header("ETag", tileEtag(`history-${key}`, buf))
         .send(buf);
     },
   );
@@ -95,7 +96,7 @@ export function registerTileRoutes(app: FastifyInstance): void {
       return reply
         .header("Content-Type", "image/png")
         .header("Cache-Control", "public, max-age=0, s-maxage=86400")
-        .header("ETag", `"${z}-${x}-${y}-${buf.length}"`)
+        .header("ETag", tileEtag(`${z}-${x}-${y}`, buf))
         .send(buf);
     },
   );
@@ -115,7 +116,7 @@ export function registerTileRoutes(app: FastifyInstance): void {
       return reply
         .header("Content-Type", "image/png")
         .header("Cache-Control", "public, max-age=0, s-maxage=86400")
-        .header("ETag", `"heat-${z}-${x}-${y}-${buf.length}"`)
+        .header("ETag", tileEtag(`heat-${z}-${x}-${y}`, buf))
         .send(buf);
     },
   );

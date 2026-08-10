@@ -11,6 +11,7 @@
  */
 
 import {
+  MIN_PAINT_ZOOM,
   SUB_ZOOM,
   type AllianceLbRow,
   type ChatMessageDTO,
@@ -138,7 +139,10 @@ export class WsClient {
 
   /** Called on every map move. Cheap: it diffs before sending. */
   setViewport(bbox: { x0: number; y0: number; x1: number; y1: number }, zoom: number): void {
-    const tiles = zoom >= SUB_ZOOM ? subKeysForBbox(bbox, SUB_ZOOM) : [];
+    // Below the native/painting zoom, individual world pixels are smaller
+    // than one screen pixel. The raster pyramid is both more accurate and
+    // much cheaper than streaming thousands of invisible live deltas.
+    const tiles = zoom >= MIN_PAINT_ZOOM ? subKeysForBbox(bbox, SUB_ZOOM) : [];
     if (tiles.length === this.tiles.length && tiles.every((t, i) => t === this.tiles[i])) return;
     this.tiles = tiles;
     this.send({ t: "sub", tiles });

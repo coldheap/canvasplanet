@@ -1,5 +1,6 @@
 import { PALETTE_RGB, TILE_SIZE } from "@worldcanvas/shared";
 import { describe, expect, it } from "vitest";
+import { livePixelScreenSize } from "./livePixels.js";
 import { tilePixelMatches } from "./tilePixels.js";
 
 describe("tilePixelMatches", () => {
@@ -15,5 +16,17 @@ describe("tilePixelMatches", () => {
     expect(tilePixelMatches(rgba, x, y, color)).toBe(true);
     expect(tilePixelMatches(rgba, x, y, color + 1)).toBe(false);
     expect(tilePixelMatches(rgba, x + 1, y, color)).toBe(false);
+  });
+});
+
+describe("livePixelScreenSize", () => {
+  it("leaves sub-pixel paints to the raster pyramid below native zoom", () => {
+    expect(livePixelScreenSize(10)).toBe(0);
+    expect(livePixelScreenSize(11)).toBe(0);
+  });
+
+  it("draws exact live pixels at native zoom and above", () => {
+    expect(livePixelScreenSize(12)).toBe(1);
+    expect(livePixelScreenSize(15)).toBe(8);
   });
 });
