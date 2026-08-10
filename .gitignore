@@ -21,3 +21,6 @@ data/*.zip
 
 .DS_Store
 coverage/
+
+# local learning notes
+PERSONAL_CODING_GUIDE.txt
