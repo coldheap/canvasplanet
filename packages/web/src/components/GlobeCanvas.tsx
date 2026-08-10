@@ -40,6 +40,11 @@ const LIVE_HANDOFF_MS = 1_500;
 const MAX_LIVE_PIXELS = 8_000;
 const DOUBLE_TAP_MS = 500;
 const DOUBLE_TAP_DISTANCE = 30;
+const SPIN_SECONDS_PER_REVOLUTION = 120;
+const SPIN_STEP_MS = 1_000;
+const SPIN_SLOW_ZOOM = 3;
+const SPIN_MAX_ZOOM = 5;
+const SPIN_RESUME_MS = 2_500;
 
 interface LivePixel {
   at: number;
@@ -127,10 +132,65 @@ export function GlobeCanvas({
     let paintPreviewKey: string | null = null;
     let paintCursorVisible = false;
     let lastPointerLngLat: { lng: number; lat: number } | null = null;
+    let userInteracting = false;
+    let spinInProgress = false;
+    let spinResumeTimer: number | null = null;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const cursorElement = document.createElement("div");
     cursorElement.className = "wc-paint-cursor";
     cursorElement.innerHTML = PAINT_CURSOR_HTML;
     const paintCursor = new Marker({ element: cursorElement, anchor: "top-left" });
+
+    const clearSpinResume = () => {
+      if (spinResumeTimer === null) return;
+      window.clearTimeout(spinResumeTimer);
+      spinResumeTimer = null;
+    };
+
+    const spinGlobe = () => {
+      clearSpinResume();
+      if (userInteracting || reducedMotion.matches || document.hidden || map.getZoom() >= SPIN_MAX_ZOOM) return;
+
+      const zoom = map.getZoom();
+      const zoomScale =
+        zoom <= SPIN_SLOW_ZOOM ? 1 : (SPIN_MAX_ZOOM - zoom) / (SPIN_MAX_ZOOM - SPIN_SLOW_ZOOM);
+      const degrees = (360 / SPIN_SECONDS_PER_REVOLUTION) * (SPIN_STEP_MS / 1_000) * zoomScale;
+      const center = map.getCenter();
+      spinInProgress = true;
+      map.easeTo({
+        center: [center.lng - degrees, center.lat],
+        duration: SPIN_STEP_MS,
+        easing: (t) => t,
+        essential: false,
+      });
+    };
+
+    const pauseSpin = () => {
+      userInteracting = true;
+      clearSpinResume();
+      if (!spinInProgress) return;
+      spinInProgress = false;
+      map.stop();
+    };
+
+    const resumeSpin = (delay = SPIN_RESUME_MS) => {
+      userInteracting = false;
+      clearSpinResume();
+      if (reducedMotion.matches || document.hidden || map.getZoom() >= SPIN_MAX_ZOOM) return;
+      spinResumeTimer = window.setTimeout(() => {
+        spinResumeTimer = null;
+        spinGlobe();
+      }, delay);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) pauseSpin();
+      else resumeSpin();
+    };
+    const onMotionPreferenceChange = () => {
+      if (reducedMotion.matches) pauseSpin();
+      else resumeSpin();
+    };
 
     const hidePaintPreview = () => {
       const source = map.getSource("paint-preview") as GeoJSONSource | undefined;
@@ -307,6 +367,7 @@ export function GlobeCanvas({
     // double-taps internally. Recognise two stationary taps here so both
     // input methods lead to the same 2D destination.
     const onTouchStart = (event: MapTouchEvent) => {
+      pauseSpin();
       touchMoved = false;
       const point = event.points.length === 1 ? event.points[0]! : null;
       touchStart = point ? { x: point.x, y: point.y } : null;
@@ -321,6 +382,7 @@ export function GlobeCanvas({
     const onTouchEnd = (event: MapTouchEvent) => {
       const original = event.originalEvent;
       touchStart = null;
+      if (original.touches.length === 0) resumeSpin();
       if (touchMoved || original.touches.length !== 0 || event.points.length !== 1) {
         lastTap = null;
         return;
@@ -339,6 +401,12 @@ export function GlobeCanvas({
       lastTap = null;
       original.preventDefault();
       cb.current.onOpenMap({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+    };
+    const onTouchCancel = (event: MapTouchEvent) => {
+      touchStart = null;
+      touchMoved = false;
+      lastTap = null;
+      if (event.originalEvent.touches.length === 0) resumeSpin();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -359,8 +427,26 @@ export function GlobeCanvas({
     const onKeyUp = (event: KeyboardEvent) => {
       if (event.key === "Shift") stopShiftPaint();
     };
+    const onMouseDown = () => pauseSpin();
+    const onMouseUp = () => resumeSpin();
+    const onWheel = () => {
+      pauseSpin();
+      resumeSpin();
+    };
+    const onMoveEnd = () => {
+      const completedSpin = spinInProgress;
+      spinInProgress = false;
+      writeHash(map);
+      emitViewport();
+      if (completedSpin) spinGlobe();
+      else if (!userInteracting) resumeSpin();
+    };
 
     map.on("click", onClick);
+    map.on("mousedown", onMouseDown);
+    map.on("mouseup", onMouseUp);
+    map.on("wheel", onWheel);
+    map.on("dragend", onMouseUp);
     map.on("mousemove", onMouseMove);
     map.on("mouseout", onMouseOut);
     map.on("contextmenu", onContextMenu);
@@ -368,17 +454,18 @@ export function GlobeCanvas({
     map.on("touchstart", onTouchStart);
     map.on("touchmove", onTouchMove);
     map.on("touchend", onTouchEnd);
-    map.on("moveend", () => {
-      writeHash(map);
-      emitViewport();
-    });
+    map.on("touchcancel", onTouchCancel);
+    map.on("moveend", onMoveEnd);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", stopShiftPaint);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    reducedMotion.addEventListener("change", onMotionPreferenceChange);
 
     map.once("load", () => {
       emitViewport();
       cb.current.onReady({ applyPixels, flyTo, getView, refreshTiles });
+      resumeSpin(600);
     });
 
     const unsubscribe = useStore.subscribe((next) => {
@@ -404,9 +491,12 @@ export function GlobeCanvas({
       unsubscribe();
       if (refreshTimer !== null) window.clearTimeout(refreshTimer);
       if (clearTimer !== null) window.clearTimeout(clearTimer);
+      clearSpinResume();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", stopShiftPaint);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      reducedMotion.removeEventListener("change", onMotionPreferenceChange);
       hidePaintPreview();
       map.remove();
       mapRef.current = null;
