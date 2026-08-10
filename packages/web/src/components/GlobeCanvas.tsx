@@ -25,6 +25,7 @@ import {
   NavigationControl,
   RasterTileSource,
   type MapMouseEvent,
+  type MapTouchEvent,
   type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -37,6 +38,8 @@ const EMPTY_FEATURES: GeoJSON.FeatureCollection = { type: "FeatureCollection", f
 const LIVE_SETTLE_MS = 2_750;
 const LIVE_HANDOFF_MS = 1_500;
 const MAX_LIVE_PIXELS = 8_000;
+const DOUBLE_TAP_MS = 500;
+const DOUBLE_TAP_DISTANCE = 30;
 
 interface LivePixel {
   at: number;
@@ -61,6 +64,7 @@ export function GlobeCanvas({
   onPaint,
   onHover,
   onInspect,
+  onOpenMap,
   onReady,
   onViewport,
   onUnavailable,
@@ -69,14 +73,15 @@ export function GlobeCanvas({
   onPaint: (x: number, y: number) => void;
   onHover: (pixel: { x: number; y: number } | null) => void;
   onInspect: (pixel: { x: number; y: number }) => void;
+  onOpenMap: (target: { lat: number; lng: number }) => void;
   onReady: (handle: GlobeHandle) => void;
   onViewport: (bbox: { x0: number; y0: number; x1: number; y1: number }, zoom: number) => void;
   onUnavailable: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const cb = useRef({ onPaint, onHover, onInspect, onReady, onViewport, onUnavailable });
-  cb.current = { onPaint, onHover, onInspect, onReady, onViewport, onUnavailable };
+  const cb = useRef({ onPaint, onHover, onInspect, onOpenMap, onReady, onViewport, onUnavailable });
+  cb.current = { onPaint, onHover, onInspect, onOpenMap, onReady, onViewport, onUnavailable };
 
   useEffect(() => {
     document.documentElement.classList.add("wc-globe-active");
@@ -97,6 +102,7 @@ export function GlobeCanvas({
         zoom: initialView.z,
         minZoom: 0,
         maxZoom: MAX_MAP_ZOOM,
+        doubleClickZoom: false,
         attributionControl: false,
         canvasContextAttributes: { antialias: true },
       });
@@ -115,6 +121,9 @@ export function GlobeCanvas({
     let lastPainted: string | null = null;
     let shiftDown = false;
     let hoverPixel: { x: number; y: number } | null = null;
+    let lastTap: { at: number; x: number; y: number } | null = null;
+    let touchStart: { x: number; y: number } | null = null;
+    let touchMoved = false;
     let paintPreviewKey: string | null = null;
     let paintCursorVisible = false;
     const cursorElement = document.createElement("div");
@@ -281,6 +290,47 @@ export function GlobeCanvas({
       event.preventDefault();
       cb.current.onInspect(latLngToPixel(event.lngLat));
     };
+    const onDoubleClick = (event: MapMouseEvent) => {
+      event.preventDefault();
+      cb.current.onOpenMap({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+    };
+    // MapLibre exposes mouse double-clicks as map events, but handles touch
+    // double-taps internally. Recognise two stationary taps here so both
+    // input methods lead to the same 2D destination.
+    const onTouchStart = (event: MapTouchEvent) => {
+      touchMoved = false;
+      const point = event.points.length === 1 ? event.points[0]! : null;
+      touchStart = point ? { x: point.x, y: point.y } : null;
+    };
+    const onTouchMove = (event: MapTouchEvent) => {
+      const point = event.points.length === 1 ? event.points[0]! : null;
+      if (!point || !touchStart || Math.hypot(point.x - touchStart.x, point.y - touchStart.y) > DOUBLE_TAP_DISTANCE) {
+        touchMoved = true;
+        lastTap = null;
+      }
+    };
+    const onTouchEnd = (event: MapTouchEvent) => {
+      const original = event.originalEvent;
+      touchStart = null;
+      if (touchMoved || original.touches.length !== 0 || event.points.length !== 1) {
+        lastTap = null;
+        return;
+      }
+
+      const point = event.points[0]!;
+      const secondTap =
+        lastTap !== null &&
+        original.timeStamp - lastTap.at <= DOUBLE_TAP_MS &&
+        Math.hypot(point.x - lastTap.x, point.y - lastTap.y) <= DOUBLE_TAP_DISTANCE;
+      if (!secondTap) {
+        lastTap = { at: original.timeStamp, x: point.x, y: point.y };
+        return;
+      }
+
+      lastTap = null;
+      original.preventDefault();
+      cb.current.onOpenMap({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+    };
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing =
@@ -305,6 +355,10 @@ export function GlobeCanvas({
     map.on("mousemove", onMouseMove);
     map.on("mouseout", onMouseOut);
     map.on("contextmenu", onContextMenu);
+    map.on("dblclick", onDoubleClick);
+    map.on("touchstart", onTouchStart);
+    map.on("touchmove", onTouchMove);
+    map.on("touchend", onTouchEnd);
     map.on("moveend", () => {
       writeHash(map);
       emitViewport();
@@ -352,7 +406,10 @@ export function GlobeCanvas({
   }, []);
 
   return (
-    <div className="wc-globe-view" aria-label="Interactive 3D globe canvas">
+    <div
+      className="wc-globe-view"
+      aria-label="Interactive 3D globe canvas. Double-tap a location to open the flat map."
+    >
       <div ref={ref} />
       <a
         className="wc-globe-credit"

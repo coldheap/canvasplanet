@@ -39,6 +39,7 @@ import { ChatPanel } from "./components/ChatPanel.js";
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
 const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
+const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
   const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, openCountry, mapPicking, user, frozen, event, pps } =
@@ -91,6 +92,19 @@ export function App() {
       handle.current.map.setView([view.lat, view.lng], Math.max(MIN_MAP_ZOOM, flatZoom.current ?? Math.round(view.z)), {
         animate: false,
       });
+    }
+    setViewMode("map");
+    saveViewMode("map");
+  }, []);
+
+  const switchToMapAt = useCallback((target: { lat: number; lng: number }) => {
+    globeHandle.current = null;
+    if (handle.current) {
+      handle.current.map.setView(
+        [target.lat, target.lng],
+        Math.max(GLOBE_TELEPORT_ZOOM, flatZoom.current ?? GLOBE_TELEPORT_ZOOM),
+        { animate: false },
+      );
     }
     setViewMode("map");
     saveViewMode("map");
@@ -402,6 +416,7 @@ export function App() {
             onPaint={onPaint}
             onHover={onHover}
             onInspect={onInspect}
+            onOpenMap={switchToMapAt}
             onReady={(globe) => {
               globeHandle.current = globe;
             }}
