@@ -35,6 +35,7 @@ import { StatusPanel } from "./components/StatusPanel.js";
 import { TimelapsePanel } from "./components/TimelapsePanel.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
+import { DiscordIcon, DiscordPanel } from "./components/DiscordPanel.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -517,6 +518,15 @@ export function App() {
         >
           <Code2 size={19} />
         </button>
+        <button
+          className="wc-rail-btn wc-rail-btn-discord"
+          aria-pressed={panel === "discord"}
+          aria-label="Discord community"
+          title="Discord community"
+          onClick={() => togglePanel("discord")}
+        >
+          <DiscordIcon />
+        </button>
         <span className="wc-rail-spacer" />
         <button
           className="wc-rail-btn"
@@ -593,6 +603,7 @@ export function App() {
         panel === "admin" ||
         panel === "country" ||
         panel === "status" ||
+        panel === "discord" ||
         panel === "account") && (
         <div
           className={mapPicking ? "wc-modal-backdrop wc-hidden" : "wc-modal-backdrop"}
@@ -604,6 +615,7 @@ export function App() {
             </button>
             {panel === "settings" && <SettingsPanel />}
             {panel === "status" && <StatusPanel />}
+            {panel === "discord" && <DiscordPanel />}
             {panel === "account" && <AccountPanel />}
             {panel === "admin" && <AdminPanel handle={handle.current} />}
             {panel === "country" && openCountry && (

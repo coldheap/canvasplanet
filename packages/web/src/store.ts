@@ -113,6 +113,7 @@ interface State {
     | "status"
     | "report"
     | "embed"
+    | "discord"
     | "account";
   /** ISO alpha-2 of the country whose page is open. */
   openCountry: string | null;
