@@ -21,7 +21,6 @@ import {
 import {
   GeoJSONSource,
   Map as MapLibreMap,
-  Marker,
   NavigationControl,
   RasterTileSource,
   type MapMouseEvent,
@@ -130,17 +129,12 @@ export function GlobeCanvas({
     let touchStart: { x: number; y: number } | null = null;
     let touchMoved = false;
     let paintPreviewKey: string | null = null;
-    let paintCursorVisible = false;
-    let lastPointerLngLat: { lng: number; lat: number } | null = null;
+    let pendingPreviewPixel: { x: number; y: number } | null = null;
+    let previewTimer: number | null = null;
     let userInteracting = false;
     let spinInProgress = false;
     let spinResumeTimer: number | null = null;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const cursorElement = document.createElement("div");
-    cursorElement.className = "wc-paint-cursor";
-    cursorElement.innerHTML = PAINT_CURSOR_HTML;
-    const paintCursor = new Marker({ element: cursorElement, anchor: "top-left" });
-
     const clearSpinResume = () => {
       if (spinResumeTimer === null) return;
       window.clearTimeout(spinResumeTimer);
@@ -193,12 +187,11 @@ export function GlobeCanvas({
     };
 
     const hidePaintPreview = () => {
+      if (previewTimer !== null) window.clearTimeout(previewTimer);
+      previewTimer = null;
+      pendingPreviewPixel = null;
       const source = map.getSource("paint-preview") as GeoJSONSource | undefined;
       source?.setData(EMPTY_FEATURES);
-      if (paintCursorVisible) {
-        paintCursor.remove();
-        paintCursorVisible = false;
-      }
       paintPreviewKey = null;
       map.getCanvasContainer().classList.remove("wc-paint-preview-active");
     };
@@ -212,12 +205,6 @@ export function GlobeCanvas({
 
       const color = PALETTE[current.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
-      const cursorAt = lastPointerLngLat ?? pixelToLatLng({ x: pixel.x + 0.5, y: pixel.y + 0.5 });
-      paintCursor.setLngLat([cursorAt.lng, cursorAt.lat]);
-      if (!paintCursorVisible) {
-        paintCursor.addTo(map);
-        paintCursorVisible = true;
-      }
       map.getCanvasContainer().classList.add("wc-paint-preview-active");
 
       const previewKey = `${pixel.x},${pixel.y},${color}`;
@@ -228,6 +215,17 @@ export function GlobeCanvas({
         type: "FeatureCollection",
         features: [feature],
       });
+    };
+
+    const schedulePaintPreview = (pixel: { x: number; y: number }) => {
+      pendingPreviewPixel = pixel;
+      if (previewTimer !== null) return;
+      previewTimer = window.setTimeout(() => {
+        previewTimer = null;
+        const next = pendingPreviewPixel;
+        pendingPreviewPixel = null;
+        if (next) showPaintPreview(next);
+      }, PAINT_PREVIEW_DELAY_MS);
     };
 
     const renderLivePixels = () => {
@@ -337,14 +335,12 @@ export function GlobeCanvas({
         return;
       }
       hoverPixel = latLngToPixel(event.lngLat);
-      lastPointerLngLat = { lng: event.lngLat.lng, lat: event.lngLat.lat };
-      showPaintPreview(hoverPixel);
+      schedulePaintPreview(hoverPixel);
       cb.current.onHover(hoverPixel);
       if (shiftDown) paintAt(hoverPixel);
     };
     const onMouseOut = () => {
       hoverPixel = null;
-      lastPointerLngLat = null;
       hidePaintPreview();
       cb.current.onHover(null);
     };
@@ -477,7 +473,7 @@ export function GlobeCanvas({
       map.setLayoutProperty("live-pixels", "visibility", selected === null ? "visible" : "none");
       map.setLayoutProperty("history", "visibility", selected === null ? "none" : "visible");
       map.setLayoutProperty("paint-preview-fill", "visibility", selected === null ? "visible" : "none");
-      if (hoverPixel) showPaintPreview(hoverPixel);
+      if (hoverPixel) schedulePaintPreview(hoverPixel);
       else hidePaintPreview();
     });
 
@@ -580,7 +576,7 @@ function makeStyle(historyAt: number | null, osmLayer: boolean): StyleSpecificat
         type: "fill",
         source: "paint-preview",
         layout: { visibility: historyAt === null ? "visible" : "none" },
-        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.55, "fill-antialias": false },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 1, "fill-antialias": false },
       },
     ],
     sky: {
@@ -602,9 +598,7 @@ function pixelFeature(x: number, y: number, color: string): LivePixel["feature"]
   };
 }
 
-const PAINT_CURSOR_HTML = `<svg viewBox="0 0 24 28" aria-hidden="true">
-  <path class="wc-paint-cursor-pointer" d="M1 1.5 2.2 21l5-4.8 4.1 10 4.3-1.9-4.1-9.7 7-.2L1 1.5Z" />
-</svg>`;
+const PAINT_PREVIEW_DELAY_MS = 35;
 
 function writeHash(map: MapLibreMap): void {
   // Flat-map links intentionally start at zoom 2. When the complete globe is
