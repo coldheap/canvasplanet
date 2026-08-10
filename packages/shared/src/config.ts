@@ -297,8 +297,14 @@ export const EVENT_DURATION_MS = 10 * 60_000;
 /** Palette index the bot corrupts pixels with — Black, so it reads as a
  *  clear "something wrong happened here" rather than an ordinary colour. */
 export const EVENT_BOT_COLOR = 0;
-/** Bot brush size: pixels it (re-)paints per LB_TICK_MS tick. */
+/** Bot work budget per LB_TICK_MS tick. An ordinary target costs one unit. */
 export const EVENT_BOT_PIXELS_PER_TICK = 6;
+/** Bot work needed to overwrite a pixel currently held by a player. Claiming
+ *  clean ground first therefore makes that ground twice as slow to corrupt. */
+export const EVENT_BOT_PLAYER_PIXEL_COST = 2;
+/** Extra canvas margin restored with the event zone so nearby event-time
+ *  grief does not survive the automatic rollback. */
+export const EVENT_ROLLBACK_PADDING = 3;
 /** Coverage the zone must stay under, at the timer's end, for defenders to
  *  win. Measured as corrupted pixels / zone area. */
 export const EVENT_WIN_THRESHOLD = 0.5;

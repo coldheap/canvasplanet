@@ -6,9 +6,37 @@
  * around them) is not.
  */
 
-import { EVENT_WIN_THRESHOLD, EVENT_ZONE_SIZE, type Bbox, type EventStateDTO } from "@worldcanvas/shared";
+import {
+  EVENT_BOT_PLAYER_PIXEL_COST,
+  EVENT_ROLLBACK_PADDING,
+  EVENT_WIN_THRESHOLD,
+  EVENT_ZONE_SIZE,
+  PAINT_BOUNDS,
+  WORLD_SIZE,
+  type Bbox,
+  type EventStateDTO,
+} from "@worldcanvas/shared";
 
 const ZONE_AREA = EVENT_ZONE_SIZE * EVENT_ZONE_SIZE;
+
+/** A server paint uses twice the normal tick budget when it takes a pixel
+ * currently held by a player. Anonymous players still have a session id, so
+ * this covers every ordinary player paint rather than only signed-in users. */
+export function botPaintWorkCost(previousSessionId: number | null): number {
+  return previousSessionId === null ? 1 : EVENT_BOT_PLAYER_PIXEL_COST;
+}
+
+/** The rollback reaches a few pixels beyond the visible contest rectangle,
+ * clipped to the configured paintable world. */
+export function eventRollbackBbox(bbox: Bbox): Bbox {
+  const bounds = PAINT_BOUNDS ?? { x0: 0, y0: 0, x1: WORLD_SIZE - 1, y1: WORLD_SIZE - 1 };
+  return {
+    x0: Math.max(bounds.x0, bbox.x0 - EVENT_ROLLBACK_PADDING),
+    y0: Math.max(bounds.y0, bbox.y0 - EVENT_ROLLBACK_PADDING),
+    x1: Math.min(bounds.x1, bbox.x1 + EVENT_ROLLBACK_PADDING),
+    y1: Math.min(bounds.y1, bbox.y1 + EVENT_ROLLBACK_PADDING),
+  };
+}
 
 export class ActiveEventState {
   /** "x,y" keys currently showing the bot's colour — corruptionPct's numerator. */
@@ -30,6 +58,12 @@ export class ActiveEventState {
   /** True if (x,y) falls inside this event's zone. */
   contains(x: number, y: number): boolean {
     return x >= this.bbox.x0 && x <= this.bbox.x1 && y >= this.bbox.y0 && y <= this.bbox.y1;
+  }
+
+  /** Includes the cleanup margin used to drain writes before rollback. */
+  containsRollbackArea(x: number, y: number): boolean {
+    const bbox = eventRollbackBbox(this.bbox);
+    return x >= bbox.x0 && x <= bbox.x1 && y >= bbox.y0 && y <= bbox.y1;
   }
 
   /**

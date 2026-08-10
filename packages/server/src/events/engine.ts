@@ -3,12 +3,15 @@
  * contest.
  *
  * On a fixed interval a bot session starts painting a random small zone a
- * fixed "corruption" colour at a steady tick. Any ordinary player paint
- * inside the zone with a different colour counts as defence — there is no
- * special pixel type, attribution works exactly like any other paint
+ * fixed "corruption" colour at a steady tick. The zone is cleared to
+ * unclaimed ground first, and player-held pixels then cost the bot twice its
+ * normal tick budget to retake. Any ordinary player paint inside the zone
+ * with a different colour counts as defence — there is no special pixel
+ * type, attribution works exactly like any other paint
  * (routes/paint.ts calls applyPaint() after every commit, same as the
- * leaderboard/alliance/player stores). When the timer ends the WHOLE zone is
- * reverted to its pre-event state, win or lose, via admin/revert.ts —
+ * leaderboard/alliance/player stores). When the timer ends the whole zone
+ * plus a small cleanup margin is reverted to its pre-event state, win or
+ * lose, via admin/revert.ts —
  * nothing about this event survives on the canvas either way;
  * corruption_events (migration 0014) is the only permanent record.
  *
@@ -32,7 +35,9 @@
 
 import { randomUUID } from "node:crypto";
 import {
+  bboxContains,
   bboxOverlaps,
+  ERASED,
   EVENT_BONUS_DURATION_MS,
   EVENT_BOT_COLOR,
   EVENT_BOT_PIXELS_PER_TICK,
@@ -50,11 +55,11 @@ import { pool, tx } from "../db/pool.js";
 import { env } from "../env.js";
 import { geo } from "../geo/index.js";
 import { leaderboard } from "../leaderboard/store.js";
-import { incrementCumulative, transferHeld } from "../paint/ownership.js";
+import { incrementCumulative, reloadOwnershipStores, transferHeld } from "../paint/ownership.js";
 import { players } from "../players/store.js";
 import { getProtectedRegions, isFrozen } from "../state/policy.js";
 import { hub } from "../ws/hub.js";
-import { ActiveEventState } from "./state.js";
+import { ActiveEventState, botPaintWorkCost, eventRollbackBbox } from "./state.js";
 
 export interface EventHistoryRow {
   id: number;
@@ -81,6 +86,13 @@ interface InFlightPlayerPaint {
   done: Promise<void>;
 }
 
+interface ClearedPixel {
+  x: number;
+  y: number;
+  color: number;
+  country_id: number;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -91,6 +103,10 @@ class EventEngine {
   private starting = false;
   private resolving = false;
   private botTicking = false;
+  /** Briefly closes the chosen square while its pre-event contents are
+   * recorded and cleared. The event is not exposed to clients until that
+   * transaction has committed. */
+  private preparingBbox: Bbox | null = null;
   /** The in-flight botTick(), if any — resolveEvent() awaits this before
    *  reverting so the bot's own last writes can't land after the revert's
    *  SELECT already fixed its result set. See botTick()'s doc comment. */
@@ -119,7 +135,10 @@ class EventEngine {
     for (const r of rows) {
       console.warn(`[events] reverting unresolved event ${r.id} left over from a restart`);
       await revert(
-        { bbox: { x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 }, since: r.started_at.getTime() },
+        {
+          bbox: eventRollbackBbox({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 }),
+          since: r.started_at.getTime(),
+        },
         null,
       );
       await pool.query(
@@ -165,7 +184,7 @@ class EventEngine {
 
     if (!this.starting && now >= this.nextAt) {
       this.starting = true;
-      void this.startEvent(now).finally(() => {
+      void this.startEvent().finally(() => {
         this.starting = false;
       });
     }
@@ -186,8 +205,10 @@ class EventEngine {
   /** Registers a player paint before its DB transaction. Null means the
    *  deadline has passed and this zone is closed until rollback completes. */
   beginPlayerPaint(x: number, y: number): (() => void) | null {
+    if (this.preparingBbox && bboxContains(this.preparingBbox, x, y)) return null;
+
     const ev = this.active;
-    if (ev?.contains(x, y) && (ev.isResolving() || Date.now() >= ev.endsAt)) return null;
+    if (ev?.containsRollbackArea(x, y) && (ev.isResolving() || Date.now() >= ev.endsAt)) return null;
 
     let finish!: () => void;
     const done = new Promise<void>((resolve) => {
@@ -256,12 +277,12 @@ class EventEngine {
       const x0 = bounds.x0 + Math.floor(Math.random() * (maxX0 + 1));
       const y0 = bounds.y0 + Math.floor(Math.random() * (maxY0 + 1));
       const candidate: Bbox = { x0, y0, x1: x0 + span - 1, y1: y0 + span - 1 };
-      if (!regions.some((r) => bboxOverlaps(r, candidate))) return candidate;
+      if (!regions.some((r) => bboxOverlaps(r, eventRollbackBbox(candidate)))) return candidate;
     }
     return null;
   }
 
-  private async startEvent(now: number): Promise<void> {
+  private async startEvent(): Promise<void> {
     // A frozen canvas means nobody can paint at all — starting a contest
     // defenders are structurally unable to respond to would not be a fair
     // fight. nextAt is left untouched, so this is retried every tick until
@@ -272,26 +293,129 @@ class EventEngine {
     const bbox = this.pickZone();
     if (!bbox) return; // try again next tick
 
-    const endsAt = now + env.eventDurationMs;
-    const { rows } = await pool.query<{ id: number }>(
-      `INSERT INTO corruption_events (x0, y0, x1, y1, bot_color, started_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, to_timestamp($6 / 1000.0), to_timestamp($7 / 1000.0))
-       RETURNING id`,
-      [bbox.x0, bbox.y0, bbox.x1, bbox.y1, EVENT_BOT_COLOR, now, endsAt],
-    );
+    this.preparingBbox = bbox;
+    try {
+      // Drain requests that registered just before the square closed. Without
+      // this boundary, one could commit between the clear's SELECT and DELETE
+      // and either survive the clear or be erased without joining the event.
+      const pending = [...this.playerPaints]
+        .filter((paint) => bboxContains(bbox, paint.x, paint.y))
+        .map((paint) => paint.done);
+      await Promise.all(pending);
 
-    this.active = new ActiveEventState(rows[0]!.id, bbox, EVENT_BOT_COLOR, now, endsAt, randomUUID());
-    console.log(
-      `[events] corruption event ${this.active.id} started at (${bbox.x0},${bbox.y0})-(${bbox.x1},${bbox.y1}), ends in ${env.eventDurationMs}ms`,
-    );
-    hub.broadcast({ t: "event", event: this.active.toDTO() });
+      const batchId = randomUUID();
+      const created = await this.createAndClearEvent(bbox, batchId);
+
+      // Establish in-memory authority immediately after the durable clear.
+      // Store reloads and socket publication are follow-up visibility work;
+      // if either fails, the next tick must continue this event rather than
+      // start a second one over an unresolved database row.
+      this.active = new ActiveEventState(
+        created.id,
+        bbox,
+        EVENT_BOT_COLOR,
+        created.startedAt,
+        created.endsAt,
+        batchId,
+      );
+      if (created.pixels.length > 0) {
+        await reloadOwnershipStores();
+        for (const pixel of created.pixels) hub.publishPaint(pixel.x, pixel.y, ERASED, pixel.country_id);
+      }
+      console.log(
+        `[events] corruption event ${this.active.id} started at (${bbox.x0},${bbox.y0})-(${bbox.x1},${bbox.y1}), cleared ${created.pixels.length} pixels, ends in ${env.eventDurationMs}ms`,
+      );
+      hub.broadcast({ t: "event", event: this.active.toDTO() });
+    } finally {
+      this.preparingBbox = null;
+    }
+  }
+
+  /** Records the event and turns its square into genuinely unclaimed ground
+   * in one transaction. The erase history is what lets the normal revert
+   * engine reconstruct every pre-event colour and owner at resolution. */
+  private async createAndClearEvent(
+    bbox: Bbox,
+    batchId: string,
+  ): Promise<{ id: number; startedAt: number; endsAt: number; pixels: ClearedPixel[] }> {
+    const outcome = await tx(async (c) => {
+      const event = await c.query<{ id: number; started_at: Date; ends_at: Date }>(
+        `INSERT INTO corruption_events (x0, y0, x1, y1, bot_color, started_at, ends_at)
+         VALUES ($1, $2, $3, $4, $5, now(), now() + ($6 * interval '1 millisecond'))
+         RETURNING id, started_at, ends_at`,
+        [bbox.x0, bbox.y0, bbox.x1, bbox.y1, EVENT_BOT_COLOR, env.eventDurationMs],
+      );
+
+      const { rows } = await c.query<ClearedPixel>(
+        `WITH cleared AS (
+           DELETE FROM pixels
+            WHERE x BETWEEN $1 AND $2 AND y BETWEEN $3 AND $4
+            RETURNING x, y, color, country_id, alliance_id, user_id
+         ),
+         history AS (
+           INSERT INTO pixel_events (x, y, color, prev_color, country_id, cost, batch_id)
+           SELECT x, y, $5, color, country_id, 0, $6 FROM cleared
+           RETURNING 1
+         ),
+         country_loss AS (
+           UPDATE country_stats stats
+              SET held = GREATEST(0, stats.held - loss.amount)
+             FROM (
+               SELECT country_id, COUNT(*)::int AS amount FROM cleared GROUP BY country_id
+             ) loss
+            WHERE stats.country_id = loss.country_id
+           RETURNING 1
+         ),
+         alliance_loss AS (
+           UPDATE alliance_stats stats
+              SET held = GREATEST(0, stats.held - loss.amount)
+             FROM (
+               SELECT alliance_id, COUNT(*)::int AS amount
+                 FROM cleared WHERE alliance_id IS NOT NULL GROUP BY alliance_id
+             ) loss
+            WHERE stats.alliance_id = loss.alliance_id
+           RETURNING 1
+         ),
+         user_loss AS (
+           UPDATE user_stats stats
+              SET held = GREATEST(0, stats.held - loss.amount)
+             FROM (
+               SELECT user_id, COUNT(*)::int AS amount
+                 FROM cleared WHERE user_id IS NOT NULL GROUP BY user_id
+             ) loss
+            WHERE stats.user_id = loss.user_id
+           RETURNING 1
+         )
+         SELECT x, y, color, country_id FROM cleared`,
+        [bbox.x0, bbox.x1, bbox.y0, bbox.y1, ERASED, batchId],
+      );
+
+      if (rows.length > 0) {
+        const dirty = rows.flatMap((pixel) => tileAncestry(pixel.x, pixel.y));
+        await c.query(
+          `INSERT INTO tile_dirty (z, x, y)
+           SELECT * FROM UNNEST($1::smallint[], $2::int[], $3::int[])
+           ON CONFLICT DO NOTHING`,
+          [dirty.map((tile) => tile.z), dirty.map((tile) => tile.x), dirty.map((tile) => tile.y)],
+        );
+      }
+
+      return {
+        id: event.rows[0]!.id,
+        startedAt: event.rows[0]!.started_at.getTime(),
+        endsAt: event.rows[0]!.ends_at.getTime(),
+        pixels: rows,
+      };
+    });
+
+    return outcome;
   }
 
   /**
-   * The bot's brush stroke: EVENT_BOT_PIXELS_PER_TICK pixels per LB_TICK_MS,
-   * same write shape as admin/stamp.ts (staff bypass — no charges, no
-   * alliance/user attribution) but applied incrementally rather than as one
-   * batch, since this runs continuously rather than once.
+   * The bot's brush stroke: EVENT_BOT_PIXELS_PER_TICK work units per
+   * LB_TICK_MS. Clean/server-held ground costs one; player-held ground costs
+   * two. The writes otherwise have admin/stamp.ts's shape (staff bypass — no
+   * charges or alliance/user attribution) and are applied incrementally.
    *
    * `botTicking`/`botTickPromise` bookkeeping lives in the caller (tick()),
    * not here — resolveEvent() needs to await the exact promise a still-running
@@ -305,22 +429,29 @@ class EventEngine {
     // pauses the bot too rather than let it grind on uncontested while
     // nobody can defend.
     if (isFrozen()) return;
-    for (let i = 0; i < EVENT_BOT_PIXELS_PER_TICK; i++) {
+    let workSpent = 0;
+    let attempts = 0;
+    while (workSpent < EVENT_BOT_PIXELS_PER_TICK && attempts < EVENT_BOT_PIXELS_PER_TICK) {
+      attempts++;
       const x = ev.bbox.x0 + Math.floor(Math.random() * EVENT_ZONE_SIZE);
       const y = ev.bbox.y0 + Math.floor(Math.random() * EVENT_ZONE_SIZE);
       const { countryId } = geo.lookup(x, y);
 
-      const prevRow = await tx(async (c) => {
+      const painted = await tx(async (c) => {
         const prev = await c.query<{
           color: number;
           country_id: number;
           alliance_id: number | null;
           user_id: number | null;
+          session_id: number | null;
         }>(
-          `SELECT color, country_id, alliance_id, user_id FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
+          `SELECT color, country_id, alliance_id, user_id, session_id
+             FROM pixels WHERE x = $1 AND y = $2 FOR UPDATE`,
           [x, y],
         );
         const prevRow = prev.rows[0] ?? null;
+        const workCost = botPaintWorkCost(prevRow?.session_id ?? null);
+        if (workSpent + workCost > EVENT_BOT_PIXELS_PER_TICK) return null;
 
         await c.query(
           `INSERT INTO pixels (x, y, color, country_id, painted_at)
@@ -350,13 +481,15 @@ class EventEngine {
           [chain.map((t) => t.z), chain.map((t) => t.x), chain.map((t) => t.y)],
         );
 
-        return prevRow;
+        return { prevRow, workCost };
       });
 
+      if (!painted) continue;
+      workSpent += painted.workCost;
       hub.publishPaint(x, y, ev.botColor, countryId);
       leaderboard.applySystemPaint();
-      alliances.applyPaint(null, prevRow?.alliance_id ?? null);
-      players.applyPaint(null, prevRow?.user_id ?? null);
+      alliances.applyPaint(null, painted.prevRow?.alliance_id ?? null);
+      players.applyPaint(null, painted.prevRow?.user_id ?? null);
       ev.notePaint(x, y, ev.botColor, null);
     }
   }
@@ -369,7 +502,7 @@ class EventEngine {
     // surviving the revert. This was the reproducible half of the bug report:
     // "some black corruption pixels weren't rolled back."
     const playerPaints = [...this.playerPaints]
-      .filter((paint) => ev.contains(paint.x, paint.y))
+      .filter((paint) => ev.containsRollbackArea(paint.x, paint.y))
       .map((paint) => paint.done);
     await Promise.all([...(this.botTickPromise ? [this.botTickPromise] : []), ...playerPaints]);
 
@@ -380,7 +513,8 @@ class EventEngine {
     hub.broadcast({ t: "event", event: ev.toDTO() });
 
     // Zero permanent trace either way — see migration 0014's header comment.
-    await revert({ bbox: ev.bbox, since: ev.startedAt }, null);
+    const rollbackBbox = eventRollbackBbox(ev.bbox);
+    await revert({ bbox: rollbackBbox, since: ev.startedAt }, null);
 
     // The other half of the bug report — "pixels I placed myself weren't
     // rolled back": beginPlayerPaint() now closes the zone and the await above
@@ -388,7 +522,7 @@ class EventEngine {
     // this short-delayed second pass as a defensive mop-up for any non-player
     // write path; revert() is idempotent.
     await sleep(REVERT_MOPUP_DELAY_MS);
-    await revert({ bbox: ev.bbox, since: ev.startedAt }, null);
+    await revert({ bbox: rollbackBbox, since: ev.startedAt }, null);
 
     await pool.query(
       `UPDATE corruption_events

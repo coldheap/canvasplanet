@@ -1,6 +1,11 @@
-import { EVENT_WIN_THRESHOLD, EVENT_ZONE_SIZE } from "@worldcanvas/shared";
+import {
+  EVENT_ROLLBACK_PADDING,
+  EVENT_WIN_THRESHOLD,
+  EVENT_ZONE_SIZE,
+  PAINT_BOUNDS,
+} from "@worldcanvas/shared";
 import { describe, expect, it } from "vitest";
-import { ActiveEventState } from "../state.js";
+import { ActiveEventState, botPaintWorkCost, eventRollbackBbox } from "../state.js";
 
 // Exercises only the pure arithmetic — contains/notePaint/corruptionPct/
 // result/toDTO never touch the database or the network. The I/O around them
@@ -22,6 +27,34 @@ describe("ActiveEventState.contains", () => {
     expect(ev.contains(BBOX.x0 - 1, BBOX.y0)).toBe(false);
     expect(ev.contains(BBOX.x1 + 1, BBOX.y1)).toBe(false);
     expect(ev.contains(BBOX.x0, BBOX.y1 + 1)).toBe(false);
+  });
+
+  it("includes the cleanup margin only in the rollback area", () => {
+    const ev = fresh();
+    expect(ev.contains(BBOX.x0 - EVENT_ROLLBACK_PADDING, BBOX.y0)).toBe(false);
+    expect(ev.containsRollbackArea(BBOX.x0 - EVENT_ROLLBACK_PADDING, BBOX.y0)).toBe(true);
+    expect(ev.containsRollbackArea(BBOX.x0 - EVENT_ROLLBACK_PADDING - 1, BBOX.y0)).toBe(false);
+  });
+});
+
+describe("event helpers", () => {
+  it("charges the bot twice as much work for a player-held pixel", () => {
+    expect(botPaintWorkCost(null)).toBe(1);
+    expect(botPaintWorkCost(42)).toBe(2);
+  });
+
+  it("expands rollback bounds and clips them to the paintable world", () => {
+    expect(eventRollbackBbox(BBOX)).toEqual({
+      x0: BBOX.x0 - EVENT_ROLLBACK_PADDING,
+      y0: BBOX.y0 - EVENT_ROLLBACK_PADDING,
+      x1: BBOX.x1 + EVENT_ROLLBACK_PADDING,
+      y1: BBOX.y1 + EVENT_ROLLBACK_PADDING,
+    });
+
+    const bounds = PAINT_BOUNDS ?? { x0: 0, y0: 0, x1: Number.MAX_SAFE_INTEGER, y1: Number.MAX_SAFE_INTEGER };
+    expect(
+      eventRollbackBbox({ x0: bounds.x0, y0: bounds.y0, x1: bounds.x0 + 5, y1: bounds.y0 + 5 }),
+    ).toMatchObject({ x0: bounds.x0, y0: bounds.y0 });
   });
 });
 
