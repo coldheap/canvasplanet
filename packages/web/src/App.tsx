@@ -518,6 +518,7 @@ export function App() {
         >
           <Code2 size={19} />
         </button>
+        <span className="wc-rail-spacer" />
         <button
           className="wc-rail-btn wc-rail-btn-discord"
           aria-pressed={panel === "discord"}
@@ -527,7 +528,6 @@ export function App() {
         >
           <DiscordIcon />
         </button>
-        <span className="wc-rail-spacer" />
         <button
           className="wc-rail-btn"
           aria-pressed={panel === "account"}
