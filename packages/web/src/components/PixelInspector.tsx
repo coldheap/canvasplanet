@@ -7,7 +7,7 @@
  * pins it so you can move the mouse away and still read it.
  */
 
-import { Clock, Layers, MapPin, Pin, X } from "lucide-react";
+import { Clock, Layers, MapPin, X } from "lucide-react";
 import { PALETTE, type PixelInfo } from "@worldcanvas/shared";
 import { useStore } from "../store.js";
 import { CountryFlag } from "./CountryFlag.js";
@@ -45,7 +45,6 @@ export function PixelInspector({
             {info.x.toLocaleString()}, {info.y.toLocaleString()}
           </span>
         </div>
-        {pinned && <Pin size={13} className="wc-inspector-pin" />}
       </div>
 
       <dl className="wc-inspector-rows">

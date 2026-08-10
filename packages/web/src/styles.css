@@ -1580,7 +1580,7 @@ html.wc-motion-reduce * {
 
 .wc-inspector {
   position: absolute;
-  left: var(--wc-gap);
+  left: calc(52px + var(--wc-gap) * 2);
   bottom: var(--wc-gap);
   z-index: 1000;
   width: 240px;
@@ -1619,12 +1619,6 @@ html.wc-motion-reduce * {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
-.wc-inspector-pin {
-  margin-left: auto;
-  color: var(--wc-accent);
-  flex: none;
-}
-
 .wc-inspector-rows {
   margin: 0;
   display: flex;
@@ -1730,7 +1724,10 @@ html.wc-motion-reduce * {
 }
 
 @media (max-width: 640px) {
-  .wc-inspector { width: calc(100vw - 2 * var(--wc-gap)); }
+  .wc-inspector {
+    left: calc(46px + var(--wc-gap) * 2);
+    width: calc(100vw - 46px - 3 * var(--wc-gap));
+  }
   .wc-activity-panel {
     left: calc(46px + var(--wc-gap) * 2);
     width: min(390px, calc(100vw - 46px - 3 * var(--wc-gap)));
