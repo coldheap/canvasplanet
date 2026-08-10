@@ -47,6 +47,7 @@ export function App() {
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
   const [globeStart, setGlobeStart] = useState<GlobeView>(readGlobeStart);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
+  const [bootError, setBootError] = useState(false);
   const toastId = useRef(0);
   const showToast = useCallback((text: string) => {
     setToast({ id: ++toastId.current, text });
@@ -104,9 +105,14 @@ export function App() {
   // ---- boot ---------------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
+    let retryTimer: number | null = null;
+    let attempts = 0;
 
-    void api.bootstrap().then((boot) => {
+    const load = () => {
+      void api.bootstrap().then((boot) => {
       if (cancelled) return;
+      attempts = 0;
+      setBootError(false);
       hydrate(boot);
 
       // /api/auth/verify redirects back here with a flag (the emailed link
@@ -201,10 +207,19 @@ export function App() {
       });
       client.connect();
       ws.current = client;
-    });
+      }).catch(() => {
+        if (cancelled) return;
+        setBootError(true);
+        const delay = Math.min(1000 * 2 ** Math.min(attempts++, 4), 10_000);
+        retryTimer = window.setTimeout(load, delay);
+      });
+    };
+
+    load();
 
     return () => {
       cancelled = true;
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
       // Handlers above close over this render's `handle`/store setters; an
       // un-disconnected socket would keep calling them after unmount (see
       // ws.ts's disconnect() doc — EmbedApp.tsx hit exactly this).
@@ -364,7 +379,9 @@ export function App() {
       .catch(() => showToast("That template link is no longer available."));
   }, []);
 
-  if (!ready) return <div className="wc-boot">Loading the canvas…</div>;
+  if (!ready) {
+    return <div className="wc-boot">{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</div>;
+  }
 
   const toggle = (
     p: "activity" | "leaderboard" | "settings" | "overlay" | "timelapse" | "report" | "embed" | "account",

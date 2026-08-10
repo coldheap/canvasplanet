@@ -36,8 +36,21 @@ const post = <T>(path: string, body: unknown) =>
   }).then(json<T>);
 
 export const api = {
-  bootstrap: () =>
-    fetch("/api/bootstrap", { credentials: "same-origin" }).then(json<BootstrapResponse>),
+  bootstrap: async () => {
+    // A proxy can keep a request open while the API is restarting. Without a
+    // deadline App's initial ready=false state would remain forever because
+    // the fetch neither resolves nor rejects.
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10_000);
+    try {
+      return await fetch("/api/bootstrap", {
+        credentials: "same-origin",
+        signal: controller.signal,
+      }).then(json<BootstrapResponse>);
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  },
 
   /**
    * Paint returns the error body rather than throwing, because every refusal
