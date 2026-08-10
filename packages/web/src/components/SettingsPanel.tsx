@@ -48,6 +48,11 @@ export function SettingsPanel() {
         <legend>Charges</legend>
         <Toggle label="Paint sound" on={settings.sound} set={(sound) => updateSettings({ sound })} />
         <Toggle
+          label="Flash successfully placed pixels"
+          on={settings.placementFlash}
+          set={(placementFlash) => updateSettings({ placementFlash })}
+        />
+        <Toggle
           label="Notify me when charges are full"
           on={settings.notifyWhenFull}
           set={async (notifyWhenFull) => {

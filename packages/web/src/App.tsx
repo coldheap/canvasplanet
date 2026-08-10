@@ -321,10 +321,13 @@ export function App() {
 
     const ok = res as PaintResponse;
     setBank(ok.bank, ok.nextAt);
+    if (useStore.getState().settings.placementFlash) {
+      (viewMode === "globe" ? globeHandle.current : handle.current)?.flashPixel(x, y);
+    }
     // The pixel we just painted is now known-current; keep the cache honest
     // so the next hover shows overpaint cost rather than base cost.
     if (known) pixelCache.current.set(k, { ...known, color: selectedColor });
-  }, [hydrate, setBank]);
+  }, [hydrate, setBank, viewMode]);
 
   const onViewport = useCallback(
     (bbox: { x0: number; y0: number; x1: number; y1: number }, z: number) => {

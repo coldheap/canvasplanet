@@ -21,6 +21,7 @@ import {
 import {
   GeoJSONSource,
   Map as MapLibreMap,
+  Marker,
   NavigationControl,
   RasterTileSource,
   type MapMouseEvent,
@@ -29,6 +30,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./GlobeCanvas.css";
 import { normalizeHistoryAt } from "../history.js";
+import { createPlacementFlashElement } from "../canvas/placementFlash.js";
 import { useStore } from "../store.js";
 
 const EMPTY_FEATURES: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -50,6 +52,7 @@ export interface GlobeView {
 export interface GlobeHandle {
   applyPixels: (pixels: readonly PixelTuple[]) => void;
   flyTo: (x: number, y: number, z?: number) => void;
+  flashPixel: (x: number, y: number) => void;
   getView: () => GlobeView;
   refreshTiles: () => void;
 }
@@ -113,6 +116,8 @@ export function GlobeCanvas({
     let lastPainted: string | null = null;
     let shiftDown = false;
     let hoverPixel: { x: number; y: number } | null = null;
+    const placementMarkers = new Set<Marker>();
+    const placementTimers = new Set<number>();
 
     const renderLivePixels = () => {
       const source = map.getSource("live") as GeoJSONSource | undefined;
@@ -177,6 +182,25 @@ export function GlobeCanvas({
     const flyTo = (x: number, y: number, z = Z_PIXEL) => {
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
       map.flyTo({ center: [target.lng, target.lat], zoom: z, duration: 700 });
+    };
+
+    const flashPixel = (x: number, y: number) => {
+      const { element, duration } = createPlacementFlashElement();
+      // MapLibre positions the marker root with an inline transform. Animate
+      // a child so the flash cannot override that transform and jump away
+      // from the pixel it is confirming.
+      const anchor = document.createElement("div");
+      anchor.className = "wc-placement-flash-anchor";
+      anchor.append(element);
+      const center = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
+      const marker = new Marker({ element: anchor, anchor: "center" }).setLngLat([center.lng, center.lat]).addTo(map);
+      placementMarkers.add(marker);
+      const timer = window.setTimeout(() => {
+        placementTimers.delete(timer);
+        placementMarkers.delete(marker);
+        marker.remove();
+      }, duration);
+      placementTimers.add(timer);
     };
 
     const emitViewport = () => {
@@ -266,7 +290,7 @@ export function GlobeCanvas({
 
     map.once("load", () => {
       emitViewport();
-      cb.current.onReady({ applyPixels, flyTo, getView, refreshTiles });
+      cb.current.onReady({ applyPixels, flyTo, flashPixel, getView, refreshTiles });
     });
 
     const unsubscribe = useStore.subscribe((next) => {
@@ -289,6 +313,8 @@ export function GlobeCanvas({
       unsubscribe();
       if (refreshTimer !== null) window.clearTimeout(refreshTimer);
       if (clearTimer !== null) window.clearTimeout(clearTimer);
+      for (const timer of placementTimers) window.clearTimeout(timer);
+      for (const marker of placementMarkers) marker.remove();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", stopShiftPaint);

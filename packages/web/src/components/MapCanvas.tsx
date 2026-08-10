@@ -38,6 +38,7 @@ import {
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
+import { createPlacementFlashElement } from "../canvas/placementFlash.js";
 import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
 import { normalizeHistoryAt } from "../history.js";
@@ -51,6 +52,8 @@ export interface MapHandle {
   refreshTiles: () => void;
   /** Animate to a pixel coordinate. Used by country pages to fly to a hotspot. */
   flyTo: (x: number, y: number, z?: number) => void;
+  /** Brief visual confirmation for a server-confirmed local placement. */
+  flashPixel: (x: number, y: number) => void;
   /** Frame a complete template in the usable part of the viewport. */
   fitTemplate: (x: number, y: number, w: number, h: number) => void;
   /** Rectangle selection, for admin regions and revert-by-area. */
@@ -120,6 +123,30 @@ export function MapCanvas({
       boxZoom: false,
     });
     mapRef.current = map;
+
+    const placementMarkers = new Set<L.Marker>();
+    const placementTimers = new Set<number>();
+    const flashPixel = (x: number, y: number) => {
+      const { element, duration } = createPlacementFlashElement();
+      const center = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
+      const marker = L.marker([center.lat, center.lng], {
+        interactive: false,
+        keyboard: false,
+        icon: L.divIcon({
+          className: "wc-placement-flash-anchor",
+          html: element,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
+        }),
+      }).addTo(map);
+      placementMarkers.add(marker);
+      const timer = window.setTimeout(() => {
+        placementTimers.delete(timer);
+        placementMarkers.delete(marker);
+        marker.remove();
+      }, duration);
+      placementTimers.add(timer);
+    };
 
     // Always on — see the file doc comment's layer 1. zIndex 0 pins it
     // under both the OSM overlay and the pixel canvas.
@@ -485,7 +512,7 @@ export function MapCanvas({
     const point = new PointPick(map);
     const template = new TemplateLayer(map);
     applyHistory();
-    cb.current.onReady({ map, overlay, refreshTiles, flyTo, fitTemplate, bbox, point, template });
+    cb.current.onReady({ map, overlay, refreshTiles, flyTo, flashPixel, fitTemplate, bbox, point, template });
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
     // and the corruption zone changes on its own 1Hz WS push, not a map event.
@@ -508,6 +535,8 @@ export function MapCanvas({
       point.destroy();
       template.destroy();
       overlay.destroy();
+      for (const timer of placementTimers) window.clearTimeout(timer);
+      for (const marker of placementMarkers) marker.remove();
       map.remove();
       mapRef.current = null;
     };
