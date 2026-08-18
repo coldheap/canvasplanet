@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Worldcanvas</title>
+<meta name="description" content="What Worldcanvas stores about you, why it stores it, who else sees it, and how to have it erased." />
+<link rel="icon" href="/favicon.svg" />
+<link rel="stylesheet" href="/legal.css" />
+<!--
+  Written from the schema, not from a template. Each row of the table in
+  section 2 names real columns; if you add a column that holds personal
+  data, add a row. The current source of truth:
+
+    sessions            migrations/0001_init.sql
+    users               migrations/0009_users.sql, 0012_users_discord.sql
+    user_avatars        migrations/0017_user_avatars.sql
+    chat_messages       migrations/0019_global_chat.sql
+    pixel_events.ip     migrations/0001_init.sql
+    deletion            migrations/0024_user_deletion.sql,
+                        routes/auth.ts DELETE /api/auth/me
+
+  The third parties in section 4 are the ones the code actually contacts —
+  three of them from the browser itself (Turnstile in web/turnstile.ts,
+  OpenStreetMap tiles in MapCanvas/GlobeCanvas/EmbedApp, the Discord widget
+  in DiscordPanel.tsx) and two from the server (Discord OAuth and the SMTP
+  relay in email/mailer.ts).
+-->
+</head>
+<body>
+<main>
+
+<div class="brand">
+  <a href="/">Worldcanvas</a>
+  <span>Privacy Policy</span>
+</div>
+
+<h1>Privacy Policy</h1>
+<p class="updated">Last updated 18 August 2026</p>
+
+<div class="summary">
+  <h2>The short version</h2>
+  <ul>
+    <li>You can paint without an account. Doing so still stores a cookie, your IP address, and your network provider.</li>
+    <li>An account adds your email address (or Discord ID), a display name, and an optional profile picture.</li>
+    <li><strong>We log IP addresses</strong>, both on your session and on every pixel painted. This is how bans, rate limits, and bot attacks are handled.</li>
+    <li>We do not sell your data, run advertising, or use third-party analytics or tracking pixels.</li>
+    <li>Deleted chat messages are hidden, not erased — moderators keep them as evidence.</li>
+    <li>You can erase your account yourself from the Account panel.</li>
+  </ul>
+  <p>This box is a summary for convenience. The numbered sections below are the actual policy.</p>
+</div>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#who">Who this is about</a></li>
+    <li><a href="#what">What we store</a></li>
+    <li><a href="#why">Why we store it</a></li>
+    <li><a href="#third-parties">Who else sees it</a></li>
+    <li><a href="#cookies">Cookies</a></li>
+    <li><a href="#public">What is public</a></li>
+    <li><a href="#deletion">Deleting your account</a></li>
+    <li><a href="#rights">Your rights</a></li>
+    <li><a href="#contact">Contact and changes</a></li>
+  </ol>
+</nav>
+
+<section id="who">
+  <h2 class="section">1. Who this is about</h2>
+  <p>This policy covers Worldcanvas — the canvas at this domain, the embeddable widget, and the status page. It applies whether or not you have an account.</p>
+  <p>Worldcanvas is run by a small independent operator, not a company with a data-protection department. That is worth knowing when you decide what to put here.</p>
+</section>
+
+<section id="what">
+  <h2 class="section">2. What we store</h2>
+  <p>The table below is the complete list. It is written from the database schema rather than from a template, so it names what is actually there.</p>
+
+  <h3>Everyone, including anonymous visitors</h3>
+  <div class="table-scroll">
+  <table class="data-table">
+    <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>A session token</td>
+        <td>Identifies your browser so your charge bank persists. Stored hashed, never in the clear.</td>
+        <td>Until the session expires</td>
+      </tr>
+      <tr>
+        <td>Your IP address</td>
+        <td>Rate limiting, ban enforcement, and stopping one person from farming charges across many sessions.</td>
+        <td>Life of the session record</td>
+      </tr>
+      <tr>
+        <td>Your network operator (ASN)</td>
+        <td>Derived from the IP. Lets us throttle a hosting provider or proxy network during an attack without blocking a whole country of ordinary users.</td>
+        <td>Life of the session record</td>
+      </tr>
+      <tr>
+        <td>A hash of your browser's user-agent</td>
+        <td>Detecting one script pretending to be many browsers. We store the hash, not the user-agent itself.</td>
+        <td>Life of the session record</td>
+      </tr>
+      <tr>
+        <td>Charge balance, total paints, last-seen time, and the last country you painted in</td>
+        <td>Running the game.</td>
+        <td>Life of the session record</td>
+      </tr>
+      <tr>
+        <td>Ban expiry, if you are banned</td>
+        <td>Enforcing the ban.</td>
+        <td>Life of the session record</td>
+      </tr>
+      <tr>
+        <td><strong>An IP address on every pixel you paint</strong></td>
+        <td>Investigating vandalism and bot attacks after the fact, and reverting them accurately.</td>
+        <td>Kept with the canvas history</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>If you create an account</h3>
+  <div class="table-scroll">
+  <table class="data-table">
+    <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Email address</td>
+        <td>Verifying the account, password resets, and contacting you about your account. We do not send marketing email.</td>
+        <td>Until you delete the account</td>
+      </tr>
+      <tr>
+        <td>Password</td>
+        <td>Signing in. Stored only as an argon2id hash — we cannot read your password, and neither can anyone who obtains the database.</td>
+        <td>Until you delete the account</td>
+      </tr>
+      <tr>
+        <td>Display name</td>
+        <td>Public identity on the leaderboard, in chat, and on your pixels.</td>
+        <td>Until you delete the account</td>
+      </tr>
+      <tr>
+        <td>Discord account ID, if you sign in with Discord</td>
+        <td>Linking that Discord account to this one at each sign-in.</td>
+        <td>Until you delete the account</td>
+      </tr>
+      <tr>
+        <td>Profile picture, if you upload one</td>
+        <td>Shown next to your name. Converted to a small square image and stored in our own database, not a third-party host.</td>
+        <td>Until you replace or remove it</td>
+      </tr>
+      <tr>
+        <td>Paint totals, streaks, and last paint date</td>
+        <td>The leaderboard and the streak counter.</td>
+        <td>Until you delete the account</td>
+      </tr>
+      <tr>
+        <td>Chat messages you send</td>
+        <td>Showing them to other players, and moderation. See section 6.</td>
+        <td>Indefinitely</td>
+      </tr>
+      <tr>
+        <td>Sign-in sessions and one-time email tokens</td>
+        <td>Keeping you signed in; verification and password-reset links. All stored hashed.</td>
+        <td>Until they expire or are used</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p><strong>What we do not collect:</strong> we do not run advertising, third-party analytics, or tracking pixels. There is no payment mechanism, so we never hold card or billing details. We do not ask for your real name, date of birth, or location beyond the country an IP address resolves to.</p>
+</section>
+
+<section id="why">
+  <h2 class="section">3. Why we store it</h2>
+  <p>Everything above exists for one of four reasons: to make the game work at all (charges, attribution, leaderboards), to keep you signed in, to stop abuse (IP addresses, ASNs, user-agent hashes, ban records, the anti-bot check), or to moderate content people report.</p>
+  <p>The abuse-prevention data is the part people are most likely to object to, so to be plain about it: <strong>a shared canvas that anyone can paint on without an account cannot be defended from scripted attacks without knowing where paints come from.</strong> That is the whole reason the IP address is on the session and on the pixel. It is not used for anything else — not profiling, not analytics, not advertising.</p>
+  <p>Where a legal basis is required of us, we rely on the necessity of performing the service you asked for, and on our legitimate interest in keeping that service usable and safe.</p>
+</section>
+
+<section id="third-parties">
+  <h2 class="section">4. Who else sees it</h2>
+  <p>We do not sell your data, and we do not share it for anyone else's marketing. These are the only third parties involved, and what each one receives:</p>
+  <div class="table-scroll">
+  <table class="data-table">
+    <thead><tr><th>Who</th><th>What they get</th><th>When</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Cloudflare</td>
+        <td>Your IP address and connection metadata, as the CDN and proxy in front of the site. Their Turnstile anti-bot check also loads in your browser and performs its own device checks.</td>
+        <td>Every request; Turnstile on your first paint of a session</td>
+      </tr>
+      <tr>
+        <td>OpenStreetMap</td>
+        <td>Your IP address, because map tiles are fetched by your browser directly from their servers.</td>
+        <td>Only while the street map overlay is switched on in Settings</td>
+      </tr>
+      <tr>
+        <td>Discord</td>
+        <td>The OAuth exchange when you choose "Continue with Discord" — they tell us your account ID and email; we tell them nothing about your canvas activity. The Discord panel in the app also asks their servers for public server information, which reveals your IP to them.</td>
+        <td>At Discord sign-in; when you open the Discord panel</td>
+      </tr>
+      <tr>
+        <td>Our email provider</td>
+        <td>Your email address and the contents of the message, in order to deliver verification and password-reset links.</td>
+        <td>Only when such an email is sent</td>
+      </tr>
+      <tr>
+        <td>Our hosting provider</td>
+        <td>Holds the server and database on our behalf, so technically holds everything in section 2.</td>
+        <td>Continuously</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>We may also disclose data where we are legally required to, or where it is necessary to investigate a serious threat to the service or to someone's safety.</p>
+</section>
+
+<section id="cookies">
+  <h2 class="section">5. Cookies</h2>
+  <p>Worldcanvas sets cookies that are strictly necessary to work. There are no advertising or analytics cookies, which is why there is no cookie banner.</p>
+  <ul>
+    <li>a session cookie, which holds your charge bank and is set the first time you load the canvas;</li>
+    <li>a sign-in cookie, only if you have an account and are signed in;</li>
+    <li>a short-lived cookie during Discord sign-in, to protect that exchange from being forged.</li>
+  </ul>
+  <p>Cloudflare Turnstile may set its own cookie in your browser when it runs the anti-bot check. Settings such as dark mode and grid lines are kept in your browser's local storage and are never sent to us.</p>
+</section>
+
+<section id="public">
+  <h2 class="section">6. What is public</h2>
+  <p>Some of what you do here is visible to everyone, permanently. Specifically: your display name and profile picture, your position and totals on the player leaderboard, your streak, any alliance you join, and the fact that a given pixel was painted by your account.</p>
+  <p><strong>Chat is kept even after it disappears.</strong> When a message is deleted — by you or by a moderator — it stops being shown, but the original text is retained along with who deleted it and why. This is deliberate: it is the evidence behind moderation decisions and behind reports that may still be open. Please treat chat as a permanent record.</p>
+  <p>Reports you file about an area or a message are visible to moderators, including the fact that you filed them.</p>
+  <p>Your email address, IP address, and network provider are <em>never</em> shown publicly. They are visible only to the operator and to moderators using the admin tools.</p>
+</section>
+
+<section id="deletion">
+  <h2 class="section">7. Deleting your account</h2>
+  <p>Open the Account panel, choose <strong>Delete account</strong>, and type your display name to confirm. It takes effect immediately, and it cannot be undone.</p>
+  <p>When you do this we:</p>
+  <ul>
+    <li>erase your email address, password, and Discord ID;</li>
+    <li>replace your display name with an anonymous placeholder;</li>
+    <li>delete your profile picture, all sign-in sessions, and any outstanding verification or reset links;</li>
+    <li>detach every pixel you have ever painted from your account, which also removes you from the player leaderboard;</li>
+    <li>unlink the account from the browser session, so you can carry on painting anonymously.</li>
+  </ul>
+  <div class="note">
+    <p><strong>Two things deletion does not do, and cannot.</strong></p>
+    <p>Your <strong>pixels stay on the canvas</strong>. They become unattributed, but they are not erased — by the time you delete your account they may be part of artwork many other people have built around, and removing them would vandalise that work rather than protect your privacy.</p>
+    <p>Your <strong>chat messages stay in the log</strong>, shown under the anonymous placeholder rather than your name. They are part of other people's conversations and part of the moderation record, for the reasons in section 6.</p>
+  </div>
+  <p>Backups taken before deletion are overwritten on their normal rotation rather than edited individually.</p>
+  <p>If you have never created an account, there is nothing to delete: clearing your cookies for this site is what ends the anonymous session, and the record behind it expires on its own.</p>
+</section>
+
+<section id="rights">
+  <h2 class="section">8. Your rights</h2>
+  <p>Depending on where you live, you may have the right to ask for a copy of your data, to have it corrected, to have it erased, to object to how it is used, or to complain to a data protection authority.</p>
+  <p>Erasure is built into the product — see section 7 — so you never have to ask us for it. For anything else, write to the address below and we will do our best to answer within 30 days. We will ask you to prove control of the account before acting on a request about it, since otherwise the request itself becomes a way to attack someone.</p>
+  <p>We may keep a limited amount of data despite an erasure request where we have to: an active ban record, or material relating to an unresolved abuse report, so that deleting an account cannot be used to escape moderation.</p>
+</section>
+
+<section id="contact">
+  <h2 class="section">9. Contact and changes</h2>
+  <!-- CONTACT ADDRESS - repeated in terms.html section 15. Change both together. -->
+  <p>Privacy questions, data requests, and anything else about this policy: <a href="mailto:support@worldcanvas.live">support@worldcanvas.live</a>.</p>
+  <p>If we change this policy we will update the "last updated" date above, and for a change that materially affects what we collect or who we share it with, we will say so in the app rather than relying on you noticing the date.</p>
+</section>
+
+<footer>
+  <a href="/">← Back to the canvas</a>
+  <a href="/terms.html">Terms of Service</a>
+</footer>
+
+</main>
+</body>
+</html>

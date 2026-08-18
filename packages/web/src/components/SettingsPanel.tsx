@@ -8,6 +8,7 @@
 
 import { Settings as SettingsIcon, ShieldCheck, Link2, Radio } from "lucide-react";
 import { useStore } from "../store.js";
+import { LegalFooter } from "./LegalFooter.js";
 
 export function SettingsPanel() {
   const { settings, updateSettings, staff, setPanel } = useStore();
@@ -96,6 +97,8 @@ export function SettingsPanel() {
           {`Admin (${staff.role})`}
         </button>
       )}
+
+      <LegalFooter />
     </div>
   );
 }

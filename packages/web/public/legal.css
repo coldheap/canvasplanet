@@ -1,0 +1,216 @@
+/*
+ * Shared styling for the two standalone legal pages (terms.html,
+ * privacy.html).
+ *
+ * These live in web/public/ rather than in the SPA: they are copied to the
+ * build output verbatim, with no bundler, no framework and no JS, so a
+ * lawyer, a regulator or an app-store reviewer can open the raw file and
+ * read exactly what is served. Following status/index.html's precedent — no
+ * CDN, no web font — for the same reason it does: a page whose job is to be
+ * readable should not have dependencies that can fail.
+ *
+ * One stylesheet rather than two inlined copies, because the whole risk with
+ * a pair of legal documents is that they drift apart.
+ */
+
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --border: rgba(11, 11, 11, 0.1);
+  --rule: #e1e0d9;
+  --accent: #0b0b0b;
+  --note: rgba(250, 178, 25, 0.1);
+  --note-border: rgba(250, 178, 25, 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --border: rgba(255, 255, 255, 0.1);
+    --rule: #2c2c2a;
+    --accent: #ffffff;
+    --note: rgba(250, 178, 25, 0.09);
+    --note-border: rgba(250, 178, 25, 0.35);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px 96px;
+}
+
+a { color: inherit; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+
+/* ---- masthead --------------------------------------------------------- */
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 28px;
+  font-size: 14px;
+}
+.brand a { font-weight: 700; font-size: 17px; text-decoration: none; }
+.brand span { color: var(--muted); }
+
+h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+.updated {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 28px;
+}
+
+/* ---- the plain-language summary --------------------------------------- */
+/* Deliberately first and deliberately not authoritative — see the note it
+   carries. Most people will read only this box, so it has to be true. */
+.summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  margin-bottom: 36px;
+}
+.summary h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.summary ul { margin: 0; padding-left: 20px; }
+.summary li { margin-bottom: 6px; }
+.summary li:last-child { margin-bottom: 0; }
+.summary p {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* ---- contents --------------------------------------------------------- */
+nav.toc { margin-bottom: 40px; }
+nav.toc h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+nav.toc ol {
+  margin: 0;
+  padding-left: 22px;
+  columns: 2;
+  column-gap: 28px;
+  font-size: 14.5px;
+}
+nav.toc li { margin-bottom: 4px; break-inside: avoid; }
+@media (max-width: 560px) { nav.toc ol { columns: 1; } }
+
+/* ---- body ------------------------------------------------------------- */
+section { margin-bottom: 34px; scroll-margin-top: 20px; }
+h2.section {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+h3 {
+  font-size: 15.5px;
+  margin: 22px 0 6px;
+}
+p { margin: 0 0 12px; color: var(--ink-2); }
+li { color: var(--ink-2); }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin-bottom: 5px; }
+strong { color: var(--ink); font-weight: 600; }
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ---- data table ------------------------------------------------------- */
+/* The privacy policy's core: what is stored, why, and for how long. A table
+   because three parallel facts per row is exactly what a table is for, and
+   prose would let one of the three go quietly missing. */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  margin: 0 0 16px;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.data-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom-color: var(--border);
+}
+.data-table td { color: var(--ink-2); }
+.data-table td:first-child { color: var(--ink); font-weight: 500; width: 30%; }
+.table-scroll { overflow-x: auto; }
+@media (max-width: 560px) {
+  .data-table { min-width: 480px; }
+}
+
+/* ---- callout ---------------------------------------------------------- */
+.note {
+  background: var(--note);
+  border: 1px solid var(--note-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  font-size: 14.5px;
+}
+.note p { margin: 0; color: var(--ink-2); }
+.note p + p { margin-top: 8px; }
+
+/* ---- footer ----------------------------------------------------------- */
+footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+footer a { color: var(--ink-2); }
