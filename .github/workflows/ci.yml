@@ -1,0 +1,103 @@
+# Builds every push and pull request from a CLEAN CHECKOUT.
+#
+# That phrase is the whole point of this file, not boilerplate. Commit
+# cd6581b fixed a main branch that could not compile: two commits had landed
+# files importing `avatars/image.ts`, and a third had landed a verify script
+# for an endpoint, while the module and the endpoint both sat uncommitted in
+# one developer's working tree. Every local check passed — `pnpm typecheck`,
+# `pnpm test` and `pnpm build` were all green — because the missing pieces
+# were on disk. They were never in the repository, which is the only place a
+# deploy looks. With more than one session committing to a single checkout
+# that failure mode is not unlikely, it is expected.
+#
+# So the guarantee here is deliberately narrow and worth stating plainly:
+# if this job passes, `git clone && pnpm install && pnpm build` works for
+# somebody who is not you.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+
+    env:
+      # The unit suite never opens a connection — but `src/env.ts` calls
+      # req() at module load and throws on a missing var, so importing any
+      # module in the server's dependency chain needs these two present.
+      # Locally they arrive from a gitignored .env, which is exactly the kind
+      # of invisible local state this workflow exists to stop trusting.
+      # Dummy values on purpose: if a test ever genuinely reaches Postgres,
+      # it should fail loudly here rather than quietly passing against
+      # somebody's dev database.
+      DATABASE_URL: postgres://ci:ci@127.0.0.1:5432/ci
+      SESSION_SECRET: ci-only-session-secret-0000000000000000000000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # Matches `packageManager` in the root package.json. Pinned rather
+          # than floating so a pnpm release can never be the thing that
+          # broke the build.
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          # 24 is what every test, typecheck and verify run actually happens
+          # on. Note that packages/server/Dockerfile still pins node:20-alpine,
+          # which left maintenance on 2026-04-30 — so production currently
+          # ships a runtime this job does not cover. Bump the Dockerfile and
+          # this comment stops being true; until then it is a known gap, not
+          # an oversight.
+          node-version: 24
+          cache: pnpm
+
+      # --frozen-lockfile is the second half of the clean-checkout guarantee:
+      # it fails if pnpm-lock.yaml disagrees with the package.json files
+      # instead of silently resolving something newer. A dependency added
+      # locally without committing the lockfile is the same class of bug as
+      # the one that motivated this file.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm -r typecheck
+
+      - run: pnpm -r test
+
+      - run: pnpm -r build
+
+      # `pnpm verify` is deliberately NOT run here. It needs a live server,
+      # a real Postgres, ffmpeg, a maildev inbox and admin credentials, and
+      # several of its scripts exit 0 with a SKIP when those are absent — so
+      # running it in this job would report success while proving nothing.
+      # It stays a manual pre-deploy gate until those skips fail loudly.
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    # Advisory only. A new advisory against a transitive dev dependency is
+    # worth seeing on the next push; it is not worth blocking an unrelated
+    # bugfix from merging at 2am.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
