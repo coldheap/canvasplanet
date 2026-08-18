@@ -25,22 +25,22 @@ describe("PlayerStore.applyPaint", () => {
   it("increments cumulative and held on a first paint", () => {
     const s = fresh();
     s.applyPaint(1, null);
-    expect(s.rows()).toEqual([[1, "", 1, 1, 1]]);
+    expect(s.rows()).toEqual([[1, "", 1, 1, 1, null]]);
   });
 
   it("increments cumulative but not held on a same-owner repaint", () => {
     const s = fresh();
     s.applyPaint(1, null);
     s.applyPaint(1, 1);
-    expect(s.rows()).toEqual([[1, "", 2, 1, 1]]);
+    expect(s.rows()).toEqual([[1, "", 2, 1, 1, null]]);
   });
 
   it("moves held from the previous player to the new one on overpaint", () => {
     const s = fresh();
     s.applyPaint(1, null); // player 1 paints an empty pixel
     s.applyPaint(2, 1); // player 2 overpaints it
-    expect(s.rows().find((r) => r[0] === 1)).toEqual([1, "", 1, 0, 1]);
-    expect(s.rows().find((r) => r[0] === 2)).toEqual([2, "", 1, 1, 1]);
+    expect(s.rows().find((r) => r[0] === 1)).toEqual([1, "", 1, 0, 1, null]);
+    expect(s.rows().find((r) => r[0] === 2)).toEqual([2, "", 1, 1, 1, null]);
   });
 
   it("never lets held go negative", () => {
@@ -55,7 +55,7 @@ describe("PlayerStore.applyPaint", () => {
     const s = fresh();
     s.applyPaint(1, null);
     s.applyPaint(null, 1); // a session with no account repaints it
-    expect(s.rows().find((r) => r[0] === 1)).toEqual([1, "", 1, 0, 1]);
+    expect(s.rows().find((r) => r[0] === 1)).toEqual([1, "", 1, 0, 1, null]);
   });
 });
 
@@ -111,14 +111,14 @@ describe("PlayerStore.register", () => {
     const s = fresh();
     s.register(1, "Alice");
     s.applyPaint(1, null);
-    expect(s.rows()).toEqual([[1, "Alice", 1, 1, 1]]);
+    expect(s.rows()).toEqual([[1, "Alice", 1, 1, 1, null]]);
   });
 
   it("does not overwrite stats already loaded for that id", () => {
     const s = fresh();
     s.applyPaint(1, null); // simulates a paint already reflected in the map
     s.register(1, "Alice"); // a duplicate/late registration must not reset it
-    expect(s.rows()).toEqual([[1, "", 1, 1, 1]]);
+    expect(s.rows()).toEqual([[1, "", 1, 1, 1, null]]);
   });
 
   it("does not itself mark the store dirty — nothing rank-worthy changed yet", () => {
@@ -147,12 +147,27 @@ describe("PlayerStore.rows/rankOf", () => {
   });
 });
 
+describe("PlayerStore.setAvatar", () => {
+  it("updates the public row and emits one leaderboard frame", () => {
+    const s = fresh();
+    s.register(1, "Alice");
+    s.applyPaint(1, null, DAY1);
+    s.tick();
+    s.setAvatar(1, "55ea2ca4-9dc0-4fd7-baba-e19058d5a959");
+    expect(s.tick()).toEqual({
+      t: "plb",
+      rows: [[1, "Alice", 1, 1, 1, "55ea2ca4-9dc0-4fd7-baba-e19058d5a959"]],
+    });
+    expect(s.tick()).toBeNull();
+  });
+});
+
 describe("PlayerStore.tick", () => {
   it("returns null when nothing changed, and a frame exactly once per change", () => {
     const s = fresh();
     expect(s.tick()).toBeNull();
     s.applyPaint(1, null, DAY1);
-    expect(s.tick()).toEqual({ t: "plb", rows: [[1, "", 1, 1, 1]] });
+    expect(s.tick()).toEqual({ t: "plb", rows: [[1, "", 1, 1, 1, null]] });
     expect(s.tick()).toBeNull();
   });
 });

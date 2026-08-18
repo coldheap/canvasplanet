@@ -256,6 +256,12 @@ Logging in attaches the browser's current anonymous session to the account
 (`sessions.user_id`), so paint attribution to `user_stats` starts
 immediately.
 
+Signed-in players can upload a JPEG, PNG, or WebP profile picture from the
+Account panel. The server strips metadata, crops it square, and stores a
+256px WebP alongside the account data in Postgres; removing it restores the
+display-name initial. Pictures appear in the account rail and player
+leaderboard, and moderators can remove them from the Users tab.
+
 Email verification is required before login works — a signup with no working
 inbox behind it just sits unverified. That means outbound email has to work
 even on a Docker-less dev box:

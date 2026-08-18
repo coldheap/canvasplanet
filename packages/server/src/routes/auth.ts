@@ -30,6 +30,7 @@ import {
 } from "@worldcanvas/shared";
 import argon2 from "argon2";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { importDiscordAvatar } from "../avatars/discord.js";
 import { pool, tx } from "../db/pool.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../email/mailer.js";
 import { env } from "../env.js";
@@ -189,12 +190,21 @@ export async function getUserDTO(
     held: number;
     streak_days: number;
     best_streak: number;
-  }>(`SELECT cumulative, held, streak_days, best_streak FROM user_stats WHERE user_id = $1`, [userId]);
+    avatar_revision: string | null;
+  }>(
+    `SELECT s.cumulative, s.held, s.streak_days, s.best_streak,
+            a.revision::text AS avatar_revision
+       FROM user_stats s
+       LEFT JOIN user_avatars a ON a.user_id = s.user_id
+      WHERE s.user_id = $1`,
+    [userId],
+  );
   const s = rows[0];
   return {
     id: userId,
     email,
     displayName,
+    avatarRevision: s?.avatar_revision ?? null,
     cumulative: s?.cumulative ?? 0,
     held: s?.held ?? 0,
     streakDays: s?.streak_days ?? 0,
@@ -231,6 +241,9 @@ export interface DiscordProfile {
   username: string;
   email?: string | null;
   verified?: boolean;
+  /** Hash of the picture the account set on Discord, or null when it never
+   *  set one — see avatars/discord.ts. */
+  avatar?: string | null;
 }
 
 /**
@@ -240,11 +253,18 @@ export interface DiscordProfile {
  * ownership, so this links rather than bouncing off the email UNIQUE
  * constraint with a 409 that would strand the same person with no way
  * forward); or nobody home, so a brand-new password-less account is created.
+ *
+ * Every path refreshes discord_username, which exists only so staff can tell
+ * who a Discord-only account belongs to. The avatar import is deliberately
+ * on the creation path alone (avatars/discord.ts explains why).
  */
 export async function findOrCreateDiscordUser(profile: DiscordProfile): Promise<number> {
+  // An UPDATE ... RETURNING rather than a SELECT: the repeat-login lookup
+  // and the handle refresh are the same single-row hit on discord_id's
+  // unique index, so folding them together costs nothing.
   const { rows: byDiscord } = await pool.query<{ id: number }>(
-    `SELECT id FROM users WHERE discord_id = $1`,
-    [profile.id],
+    `UPDATE users SET discord_username = $2 WHERE discord_id = $1 RETURNING id`,
+    [profile.id, profile.username],
   );
   if (byDiscord[0]) return byDiscord[0].id;
 
@@ -256,9 +276,10 @@ export async function findOrCreateDiscordUser(profile: DiscordProfile): Promise<
     ]);
     if (byEmail[0]) {
       await pool.query(
-        `UPDATE users SET discord_id = $2, email_verified_at = COALESCE(email_verified_at, now())
+        `UPDATE users SET discord_id = $2, discord_username = $3,
+                email_verified_at = COALESCE(email_verified_at, now())
           WHERE id = $1`,
-        [byEmail[0].id, profile.id],
+        [byEmail[0].id, profile.id, profile.username],
       );
       return byEmail[0].id;
     }
@@ -266,13 +287,16 @@ export async function findOrCreateDiscordUser(profile: DiscordProfile): Promise<
 
   const displayName = await uniqueDisplayNameFrom(profile.username);
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO users (email, password_hash, display_name, discord_id, email_verified_at)
-     VALUES ($1, NULL, $2, $3, $4) RETURNING id`,
-    [email, displayName, profile.id, email ? new Date() : null],
+    `INSERT INTO users (email, password_hash, display_name, discord_id, discord_username, email_verified_at)
+     VALUES ($1, NULL, $2, $3, $4, $5) RETURNING id`,
+    [email, displayName, profile.id, profile.username, email ? new Date() : null],
   );
   const userId = rows[0]!.id;
   await pool.query(`INSERT INTO user_stats (user_id) VALUES ($1)`, [userId]);
-  players.register(userId, displayName);
+  // Best-effort and never fatal: a player whose picture could not be
+  // imported just starts on the default one, same as an email signup.
+  const avatarRevision = await importDiscordAvatar(userId, profile.id, profile.avatar);
+  players.register(userId, displayName, avatarRevision);
   return userId;
 }
 
@@ -629,6 +653,81 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       if (token) await c.query(`DELETE FROM user_sessions WHERE token_hash = $1`, [hash(token)]);
       if (session) await c.query(`UPDATE sessions SET user_id = NULL WHERE id = $1`, [session.id]);
     });
+    reply.clearCookie(USER_COOKIE, { path: "/" });
+    return reply.send({ ok: true });
+  });
+
+  /**
+   * Self-service account deletion — erasure by anonymisation, not a row
+   * delete. See migrations/0024_user_deletion.sql for why a hard DELETE is
+   * permanently off the table (NOT NULL references from chat and audit_log),
+   * and web/public/privacy.html for what this is promising in words.
+   *
+   * Confirmation is the typed display name rather than the password: a
+   * Discord-only account has `password_hash IS NULL` and could not satisfy a
+   * password check at all, so re-prompting would either lock those accounts
+   * out of deletion or degrade to a bare "are you sure" for exactly the
+   * accounts a hijacker is most likely to be sitting on.
+   */
+  app.delete<{ Body: { confirm?: string } }>("/api/auth/me", async (req, reply) => {
+    const user = await getAuthUser(req);
+    if (!user) return reply.code(401).send({ error: "not signed in" });
+
+    // Compare on the trimmed, case-folded form: display_name is CITEXT, so
+    // "worldpainter" is already the same account as "WorldPainter" and
+    // demanding the exact casing back would be friction with no security value.
+    const confirm = typeof req.body?.confirm === "string" ? req.body.confirm.trim() : "";
+    if (confirm.toLowerCase() !== user.displayName.toLowerCase()) {
+      return reply.code(400).send({ error: "type your display name exactly to confirm" });
+    }
+
+    await tx(async (c) => {
+      // Scrub every identifier off the row. The id and created_at survive so
+      // chat scrollback and the audit trail keep resolving; nothing personal
+      // does. disabled_at is set alongside deleted_at because every existing
+      // login/session check already reads it — deleted_at only distinguishes
+      // this from a moderator disable.
+      await c.query(
+        `UPDATE users
+            SET email             = NULL,
+                password_hash     = NULL,
+                discord_id        = NULL,
+                display_name      = 'Deleted player #' || id,
+                email_verified_at = NULL,
+                disabled_at       = now(),
+                deleted_at        = now()
+          WHERE id = $1`,
+        [user.id],
+      );
+
+      // Credentials and anything that could re-open the account.
+      await c.query(`DELETE FROM user_avatars WHERE user_id = $1`, [user.id]);
+      await c.query(`DELETE FROM user_sessions WHERE user_id = $1`, [user.id]);
+      await c.query(`DELETE FROM email_verifications WHERE user_id = $1`, [user.id]);
+      await c.query(`DELETE FROM password_resets WHERE user_id = $1`, [user.id]);
+
+      // Unlink the anonymous session so the browser keeps its charge bank and
+      // can keep painting — deleting an account is not a ban.
+      await c.query(`UPDATE sessions SET user_id = NULL WHERE user_id = $1`, [user.id]);
+
+      // Detach the canvas history. The pixels stay exactly where they are —
+      // erasing them would silently vandalise whatever they are now part of —
+      // but they stop being attributed to anyone, which is also what drops the
+      // account off the player leaderboard (rows() filters on cumulative > 0).
+      await c.query(`UPDATE pixels SET user_id = NULL WHERE user_id = $1`, [user.id]);
+      await c.query(`UPDATE pixel_events SET user_id = NULL WHERE user_id = $1`, [user.id]);
+      await c.query(
+        `UPDATE user_stats
+            SET cumulative = 0, held = 0, streak_days = 0, best_streak = 0, last_paint_date = NULL
+          WHERE user_id = $1`,
+        [user.id],
+      );
+    });
+
+    // The in-memory mirror would otherwise keep broadcasting the old name and
+    // totals until the next restart (players/store.ts loads once at boot).
+    players.forget(user.id);
+
     reply.clearCookie(USER_COOKIE, { path: "/" });
     return reply.send({ ok: true });
   });

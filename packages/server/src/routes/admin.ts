@@ -19,6 +19,7 @@ import { events } from "../events/engine.js";
 import { geo } from "../geo/index.js";
 import { eventLoopLag, resetEventLoopLag, tileEncodeTime, tileQueryTime } from "../metrics.js";
 import { leaderboard } from "../leaderboard/store.js";
+import { players } from "../players/store.js";
 import { alliances } from "../alliances/store.js";
 import * as scoring from "../security/score.js";
 import { cacheStats } from "../tiles/cache.js";
@@ -379,11 +380,14 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (!(await mod(req, reply))) return;
     const q = (req.query.q ?? "").trim();
     const { rows } = await pool.query(
-      `SELECT u.id, u.email, u.display_name, u.email_verified_at, u.disabled_at, u.created_at, u.role,
+      `SELECT u.id, u.email, u.display_name, u.discord_username, u.email_verified_at,
+              u.disabled_at, u.created_at, u.role, a.revision::text AS avatar_revision,
               COALESCE(s.cumulative, 0) AS cumulative, COALESCE(s.held, 0) AS held
          FROM users u
          LEFT JOIN user_stats s ON s.user_id = u.id
+         LEFT JOIN user_avatars a ON a.user_id = u.id
         WHERE $1 = '' OR u.email ILIKE '%' || $1 || '%' OR u.display_name ILIKE '%' || $1 || '%'
+           OR u.discord_username ILIKE '%' || $1 || '%'
         ORDER BY u.disabled_at IS NOT NULL, u.created_at DESC
         LIMIT 50`,
       [q],
@@ -419,6 +423,20 @@ export function registerAdminRoutes(app: FastifyInstance): void {
       return reply.send({ ok: true });
     },
   );
+
+  app.delete<{ Params: { id: string } }>("/api/admin/users/:id/avatar", async (req, reply) => {
+    const staff = await mod(req, reply);
+    if (!staff) return;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return reply.code(400).send({ error: "id must be a valid user id" });
+    }
+    const { rows } = await pool.query(`DELETE FROM user_avatars WHERE user_id = $1 RETURNING user_id`, [id]);
+    if (!rows[0]) return reply.code(404).send();
+    players.setAvatar(id, null);
+    await audit(staff.id, "user.avatar.remove", { id }, null);
+    return reply.send({ ok: true });
+  });
 
   // ---- staff role (admin only) ---------------------------------------------
   // Staff is a role on an existing player account, not a separate account —

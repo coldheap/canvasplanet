@@ -128,7 +128,7 @@ if (!maildevUp) {
     const boot = await fetch(`${BASE}/api/bootstrap`, { headers: { cookie: jar } }).then((r) => r.json());
     const row = boot.playerLeaderboard.find((r) => r[0] === userId);
     check(
-      "playerLeaderboard's [userId, name, cumulative, held, streakDays] tuple matches",
+      "playerLeaderboard's [userId, name, cumulative, held, streakDays, avatarRevision] tuple matches",
       Boolean(row) && row[4] === 1,
       JSON.stringify(row),
     );

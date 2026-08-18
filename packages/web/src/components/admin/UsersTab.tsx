@@ -12,8 +12,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Ban, RotateCcw, Search, UserCog } from "lucide-react";
+import { Ban, RotateCcw, Search, Trash2, UserCog } from "lucide-react";
 import { api, type AdminUser } from "../../api.js";
+import { UserAvatar } from "../UserAvatar.js";
 
 export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
   const [rows, setRows] = useState<AdminUser[] | null>(null);
@@ -50,7 +51,7 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
         }}
       >
         <input
-          placeholder="Search by email or display name…"
+          placeholder="Search by email, display name, or Discord handle…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -72,13 +73,22 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
         <ul className="wc-staff-list">
           {rows.map((u) => {
             const disabled = u.disabled_at !== null;
+            // The Discord handle is what identifies a Discord-only account
+            // to support — it replaces the bare "Discord only" label rather
+            // than trailing it, so the ellipsis never eats the useful half.
+            const contact =
+              [u.email, u.discord_username && `@${u.discord_username}`].filter(Boolean).join(" · ") ||
+              "Discord only";
             return (
               <li key={u.id} className={disabled ? "wc-staff-off" : undefined}>
+                <UserAvatar userId={u.id} name={u.display_name} revision={u.avatar_revision} size={24} />
                 <span className="wc-staff-name">
                   {u.display_name}
                   {!u.email_verified_at && <em className="wc-hint"> (unverified)</em>}
                 </span>
-                <span className="wc-hint">{u.email ?? "Discord only"}</span>
+                <span className="wc-hint" title={contact}>
+                  {contact}
+                </span>
                 <span className="wc-role">{u.cumulative.toLocaleString()} painted</span>
                 {isAdmin && (
                   <select
@@ -95,6 +105,19 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                     <option value="mod">Mod</option>
                     <option value="admin">Admin</option>
                   </select>
+                )}
+                {u.avatar_revision && (
+                  <button
+                    className="wc-mini-danger"
+                    title="Remove profile picture"
+                    aria-label={`Remove ${u.display_name}'s profile picture`}
+                    onClick={async () => {
+                      await api.admin.removeUserAvatar(u.id);
+                      await load(query);
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 )}
                 <button
                   className={disabled ? "wc-mini" : "wc-mini-danger"}

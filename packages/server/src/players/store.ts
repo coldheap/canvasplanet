@@ -13,6 +13,7 @@ import { pool } from "../db/pool.js";
 
 interface Stat {
   displayName: string;
+  avatarRevision: string | null;
   cumulative: number;
   held: number;
   /** UTC date string ("YYYY-MM-DD") of this player's last paint, or null if
@@ -52,19 +53,23 @@ export class PlayerStore {
     const { rows } = await pool.query<{
       user_id: number;
       display_name: string;
+      avatar_revision: string | null;
       cumulative: number;
       held: number;
       last_paint_date: string | null;
       streak_days: number;
     }>(
-      `SELECT us.user_id, u.display_name, us.cumulative, us.held,
+      `SELECT us.user_id, u.display_name, a.revision::text AS avatar_revision, us.cumulative, us.held,
               to_char(us.last_paint_date, 'YYYY-MM-DD') AS last_paint_date, us.streak_days
-         FROM user_stats us JOIN users u ON u.id = us.user_id`,
+         FROM user_stats us
+         JOIN users u ON u.id = us.user_id
+         LEFT JOIN user_avatars a ON a.user_id = u.id`,
     );
     this.stats.clear();
     for (const r of rows) {
       this.stats.set(r.user_id, {
         displayName: r.display_name,
+        avatarRevision: r.avatar_revision,
         cumulative: r.cumulative,
         held: r.held,
         lastPaintDate: r.last_paint_date,
@@ -84,10 +89,19 @@ export class PlayerStore {
    * way (ROADMAP.md §5.1 — signup is a fresh start), so this does not mark
    * the store dirty; nothing rank-worthy has changed yet.
    */
-  register(userId: number, displayName: string): void {
+  register(userId: number, displayName: string, avatarRevision: string | null = null): void {
     if (!this.stats.has(userId)) {
-      this.stats.set(userId, { displayName, cumulative: 0, held: 0, lastPaintDate: null, streakDays: 0 });
+      this.stats.set(userId, { displayName, avatarRevision, cumulative: 0, held: 0, lastPaintDate: null, streakDays: 0 });
     }
+  }
+
+  /** Changes appearance without touching ranking arithmetic. Marking dirty
+   *  pushes the new revision to every open leaderboard on the next hub tick. */
+  setAvatar(userId: number, avatarRevision: string | null): void {
+    const s = this.stats.get(userId);
+    if (!s || s.avatarRevision === avatarRevision) return;
+    s.avatarRevision = avatarRevision;
+    this.dirty = true;
   }
 
   /** Mirrors exactly what the paint transaction did to user_stats. A session
@@ -98,6 +112,7 @@ export class PlayerStore {
     if (userId !== null) {
       const s = this.stats.get(userId) ?? {
         displayName: "",
+        avatarRevision: null,
         cumulative: 0,
         held: 0,
         lastPaintDate: null,
@@ -125,12 +140,27 @@ export class PlayerStore {
     }
   }
 
+  /**
+   * Drops a player from the leaderboard mirror entirely — account deletion
+   * (routes/auth.ts's DELETE /api/auth/me), which has just zeroed the same
+   * row in `user_stats` and detached the pixels behind it.
+   *
+   * Deleting the entry rather than zeroing it in place matters: a zeroed
+   * entry survives here holding the pre-deletion display name, and the very
+   * next paint that overpaints one of their old pixels would resurrect it
+   * into `rows()` under that name (applyPaint reuses an existing entry when
+   * it finds one).
+   */
+  forget(userId: number): void {
+    if (this.stats.delete(userId)) this.dirty = true;
+  }
+
   /** Ranked, and only players who have actually painted under their account
    *  — an account that only ever signed up has nothing to rank. */
   rows(): UserLbRow[] {
     return [...this.stats.entries()]
       .filter(([, s]) => s.cumulative > 0)
-      .map(([id, s]) => [id, s.displayName, s.cumulative, s.held, s.streakDays] as UserLbRow)
+      .map(([id, s]) => [id, s.displayName, s.cumulative, s.held, s.streakDays, s.avatarRevision] as UserLbRow)
       .sort((a, b) => b[2] - a[2]);
   }
 

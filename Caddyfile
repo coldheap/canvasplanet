@@ -19,6 +19,12 @@
 		reverse_proxy app:8080
 	}
 
+	# ---- user profile pictures -----------------------------------------
+	# Revisioned URLs are safe to cache; replacements get a new URL.
+	handle /avatars/* {
+		reverse_proxy app:8080
+	}
+
 	# ---- websocket ----------------------------------------------------
 	handle /ws {
 		reverse_proxy app:8080
@@ -39,6 +45,22 @@
 		header Content-Security-Policy "frame-ancestors *"
 		root * /srv/web
 		file_server
+	}
+
+	# ---- legal pages ---------------------------------------------------
+	# terms.html and privacy.html are plain static files in web/public/, so
+	# the SPA block below already serves them at their real paths. This adds
+	# only the extensionless aliases people type and link to — without it
+	# `try_files {path} /index.html` would swallow /terms and hand back the
+	# canvas instead, which is a confusing 200 rather than an honest 404.
+	#
+	# A redirect, not a second way to serve the same bytes: the .html form is
+	# what the app itself links to (see LegalFooter.tsx, which must keep the
+	# extension because Vite's dev server has no equivalent of this block),
+	# so pointing both at one canonical URL keeps that honest.
+	@legal path /terms /privacy
+	handle @legal {
+		redir {path}.html permanent
 	}
 
 	# ---- SPA ----------------------------------------------------------

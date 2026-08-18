@@ -6,11 +6,39 @@
  * starts immediately — nothing about paint eligibility changes either way.
  */
 
-import { useState } from "react";
-import { AlertOctagon, Check, Flame, KeyRound, LogIn, LogOut, Mail, UserCircle, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  AlertOctagon,
+  Camera,
+  Check,
+  Flame,
+  KeyRound,
+  LogIn,
+  LogOut,
+  Mail,
+  Paintbrush,
+  ShieldCheck,
+  Trash2,
+  UserCircle,
+  UserPlus,
+  X,
+} from "lucide-react";
 import type { UserDTO } from "@worldcanvas/shared";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
+import { UserAvatar } from "./UserAvatar.js";
+import { LegalFooter } from "./LegalFooter.js";
+
+/**
+ * Login/logout/reset change both the player account and its optional staff
+ * role.  The auth mutation responses only contain the public player DTO, so
+ * re-read bootstrap before rendering the new session instead of leaving the
+ * store's `staff` field stale until the next page reload.
+ */
+async function refreshSessionState(): Promise<void> {
+  const boot = await api.bootstrap();
+  useStore.getState().hydrate(boot);
+}
 
 /** Lucide has no brand icons — this is Discord's own "Clyde" mark, the one
  *  every official Discord button uses, inlined so the button reads as an
@@ -33,26 +61,80 @@ export function AccountPanel() {
     return (
       <ResetPasswordForm
         token={pendingResetToken}
-        onDone={(u) => {
-          setUser(u);
-          setPendingResetToken(null);
-        }}
+        onDone={() => setPendingResetToken(null)}
         onCancel={() => setPendingResetToken(null)}
       />
     );
   }
 
-  return user ? <AccountSummary user={user} setUser={setUser} /> : <AuthForms setUser={setUser} />;
+  return user ? <AccountSummary user={user} setUser={setUser} /> : <AuthForms />;
 }
 
 function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO | null) => void }) {
   const [busy, setBusy] = useState(false);
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingAvatar) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingAvatar);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingAvatar]);
 
   async function logout(): Promise<void> {
     setBusy(true);
     await api.logout();
-    setUser(null);
+    await refreshSessionState();
     setBusy(false);
+  }
+
+  function chooseAvatar(file: File | undefined): void {
+    setError(null);
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Profile picture must be 2 MB or smaller.");
+      return;
+    }
+    if (![/^image\/jpeg$/, /^image\/png$/, /^image\/webp$/].some((pattern) => pattern.test(file.type))) {
+      setError("Choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+    setPendingAvatar(file);
+  }
+
+  async function saveAvatar(): Promise<void> {
+    if (!pendingAvatar) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.uploadAvatar(pendingAvatar);
+      setUser(result.user);
+      setPendingAvatar(null);
+    } catch (err) {
+      const body = (err as { body?: { error?: string } }).body;
+      setError(body?.error ?? "Could not update your profile picture.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeAvatar(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.removeAvatar();
+      setUser(result.user);
+      setPendingAvatar(null);
+    } catch {
+      setError("Could not remove your profile picture.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -61,26 +143,177 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
         <UserCircle size={16} />
         Account
       </h2>
-      <p className="wc-account-name">{user.displayName}</p>
-      {user.email && <p className="wc-hint">{user.email}</p>}
-      <p className="wc-account-stats">
-        <span>{user.cumulative.toLocaleString()} painted</span>
-        <span>{user.held.toLocaleString()} held</span>
-      </p>
-      {user.streakDays >= 2 && (
-        <p className="wc-account-streak">
-          <Flame size={14} />
-          {user.streakDays}-day streak
-          {user.bestStreak > user.streakDays && (
-            <span className="wc-hint"> · best {user.bestStreak}</span>
-          )}
-        </p>
+      <div className="wc-account-identity">
+        <label
+          className={`wc-avatar-control${busy ? " is-disabled" : ""}`}
+          aria-label="Change profile picture"
+          title="Change profile picture"
+        >
+          <UserAvatar
+            userId={user.id}
+            name={user.displayName}
+            revision={user.avatarRevision}
+            previewUrl={previewUrl}
+            size={72}
+          />
+          <span className="wc-avatar-camera" aria-hidden="true">
+            <Camera size={14} />
+          </span>
+          <input
+            className="wc-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={busy}
+            onChange={(e) => {
+              chooseAvatar(e.target.files?.[0]);
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+        <div className="wc-account-copy">
+          <p className="wc-account-name">{user.displayName}</p>
+          {user.email && <p className="wc-hint">{user.email}</p>}
+          <p className="wc-account-id">Player #{user.id}</p>
+        </div>
+      </div>
+      {pendingAvatar && (
+        <div className="wc-avatar-actions">
+          <button className="wc-btn wc-btn-primary" disabled={busy} onClick={() => void saveAvatar()}>
+            <Check size={15} /> Save picture
+          </button>
+          <button className="wc-btn" disabled={busy} onClick={() => setPendingAvatar(null)} aria-label="Cancel picture change">
+            <X size={15} /> Cancel
+          </button>
+        </div>
       )}
+      {user.avatarRevision && !pendingAvatar && (
+        <button className="wc-link-btn wc-avatar-remove" disabled={busy} onClick={() => void removeAvatar()}>
+          <Trash2 size={13} /> Remove picture
+        </button>
+      )}
+      {error && <p className="wc-error"><AlertOctagon size={14} />{error}</p>}
+      <div className="wc-account-stats" aria-label="Player stats">
+        <div className="wc-account-stat">
+          <Paintbrush size={15} />
+          <strong>{user.cumulative.toLocaleString()}</strong>
+          <span>Painted</span>
+        </div>
+        <div className="wc-account-stat">
+          <ShieldCheck size={15} />
+          <strong>{user.held.toLocaleString()}</strong>
+          <span>Holding</span>
+        </div>
+        <div className="wc-account-stat wc-account-stat-streak">
+          <Flame size={15} />
+          <strong>{user.streakDays}</strong>
+          <span>Day streak</span>
+          {user.bestStreak > user.streakDays && <small>Best {user.bestStreak}</small>}
+        </div>
+      </div>
       <button className="wc-btn" disabled={busy} onClick={() => void logout()}>
         <LogOut size={15} />
         Sign out
       </button>
+
+      <DeleteAccountControl user={user} />
+      <LegalFooter />
     </div>
+  );
+}
+
+/**
+ * Erasing the account. Collapsed to a single quiet link until asked for —
+ * this sits directly below "Sign out", and the two must not look like
+ * neighbouring choices.
+ *
+ * The typed display name is confirmation for both account kinds. A password
+ * prompt would be the stronger check, but a Discord-only account has no
+ * password to prompt for, so it would degrade to a bare "are you sure" on
+ * exactly the accounts most likely to be sitting logged-in on a shared
+ * machine. The server re-checks the typed name regardless (routes/auth.ts).
+ */
+function DeleteAccountControl({ user }: { user: UserDTO }) {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const matches = confirm.trim().toLowerCase() === user.displayName.toLowerCase();
+
+  async function submit(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteAccount(confirm.trim());
+      // Re-read rather than clearing the user locally: deletion also unlinks
+      // the anonymous session, so the charge bank and staff role the store is
+      // holding are both stale now, not just `user`.
+      await refreshSessionState();
+    } catch (err) {
+      const body = (err as { body?: { error?: string } }).body;
+      setError(body?.error ?? "Could not delete your account.");
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button className="wc-link-btn wc-danger-link" onClick={() => setOpen(true)}>
+        <Trash2 size={13} /> Delete account
+      </button>
+    );
+  }
+
+  return (
+    <form className="wc-danger-zone" onSubmit={(e) => void submit(e)}>
+      <p className="wc-danger-title">
+        <AlertOctagon size={14} /> Delete your account
+      </p>
+      <p className="wc-hint">
+        This erases your email, password, profile picture and stats, and drops you off the leaderboard. It cannot
+        be undone. Pixels you painted stay on the canvas but stop being yours — see the{" "}
+        <a href="/privacy.html#deletion" target="_blank" rel="noreferrer">
+          Privacy Policy
+        </a>
+        .
+      </p>
+      <label className="wc-danger-label" htmlFor="wc-delete-confirm">
+        Type <strong>{user.displayName}</strong> to confirm
+      </label>
+      <input
+        id="wc-delete-confirm"
+        autoComplete="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        disabled={busy}
+      />
+      <div className="wc-avatar-actions">
+        <button type="submit" className="wc-btn wc-btn-danger" disabled={busy || !matches}>
+          <Trash2 size={15} /> Delete permanently
+        </button>
+        <button
+          type="button"
+          className="wc-btn"
+          disabled={busy}
+          onClick={() => {
+            setOpen(false);
+            setConfirm("");
+            setError(null);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p className="wc-error">
+          <AlertOctagon size={14} />
+          {error}
+        </p>
+      )}
+    </form>
   );
 }
 
@@ -90,7 +323,7 @@ function ResetPasswordForm({
   onCancel,
 }: {
   token: string;
-  onDone: (user: UserDTO) => void;
+  onDone: () => void;
   onCancel: () => void;
 }) {
   const [password, setPassword] = useState("");
@@ -107,8 +340,9 @@ function ResetPasswordForm({
     setBusy(true);
     setError(null);
     try {
-      const res = await api.resetPassword(token, password);
-      onDone(res.user);
+      await api.resetPassword(token, password);
+      await refreshSessionState();
+      onDone();
     } catch (err) {
       const body = (err as { body?: { error?: string } }).body;
       setError(body?.error ?? "That reset link is invalid or has expired.");
@@ -157,7 +391,7 @@ function ResetPasswordForm({
   );
 }
 
-function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
+function AuthForms() {
   const discordEnabled = useStore((s) => s.discordEnabled);
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
@@ -186,8 +420,8 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.login(identifier, password);
-      setUser(res.user);
+      await api.login(identifier, password);
+      await refreshSessionState();
     } catch (err) {
       const body = (err as { body?: { error?: string } }).body;
       setError(body?.error ?? "Could not sign in.");
@@ -381,12 +615,32 @@ function AuthForms({ setUser }: { setUser: (u: UserDTO | null) => void }) {
         </button>
       )}
 
+      {/* Signup is the one moment in the app where someone actually agrees to
+          anything, so the terms are stated at the button rather than left to
+          the footer link below. Shown for the Discord button too — it sits in
+          this same form and creates an account just as much as submitting. */}
+      {mode === "signup" && (
+        <p className="wc-consent">
+          By creating an account you agree to our{" "}
+          <a href="/terms.html" target="_blank" rel="noreferrer">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy.html" target="_blank" rel="noreferrer">
+            Privacy Policy
+          </a>
+          .
+        </p>
+      )}
+
       {error && (
         <p className="wc-error">
           <AlertOctagon size={14} />
           {error}
         </p>
       )}
+
+      <LegalFooter />
     </form>
   );
 }

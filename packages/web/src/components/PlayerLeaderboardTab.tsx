@@ -14,12 +14,13 @@ import { PLAYER_LEADERBOARD_TOP_N } from "@worldcanvas/shared";
 import { Flame, LogIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
+import { UserAvatar } from "./UserAvatar.js";
 
 export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) {
   const { playerLeaderboard, user, setPanel } = useStore();
   const [expanded, setExpanded] = useState(false);
 
-  // [userId, displayName, cumulative, held]
+  // [userId, displayName, cumulative, held, streakDays, avatarRevision]
   const col = mode === "cumulative" ? 2 : 3;
   const ranked = [...playerLeaderboard].sort((a, b) => b[col] - a[col]);
   const shown = expanded ? ranked : ranked.slice(0, PLAYER_LEADERBOARD_TOP_N);
@@ -51,6 +52,8 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
             value={row[col]}
             name={row[1]}
             streak={row[4]}
+            avatarRevision={row[5]}
+            userId={row[0]}
             you={row[0] === user?.id}
           />
         ))}
@@ -63,6 +66,8 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
             value={ranked[yourIndex]![col]}
             name={ranked[yourIndex]![1]}
             streak={ranked[yourIndex]![4]}
+            avatarRevision={ranked[yourIndex]![5]}
+            userId={ranked[yourIndex]![0]}
             you
           />
         </div>
@@ -83,12 +88,16 @@ function PlayerRow({
   name,
   streak,
   you,
+  userId,
+  avatarRevision,
 }: {
   rank: number;
   value: number;
   name: string;
   streak: number;
   you: boolean;
+  userId: number;
+  avatarRevision: string | null;
 }) {
   // A brief highlight whenever the number moves, mirroring the country/
   // faction rows — the climbing count is the whole point of the panel.
@@ -104,9 +113,7 @@ function PlayerRow({
   return (
     <li className={you ? "wc-lb-row wc-player-row wc-you" : "wc-lb-row wc-player-row"}>
       <span className="wc-rank">{rank}</span>
-      <span className="wc-player-avatar" aria-hidden="true">
-        {name.slice(0, 1).toUpperCase()}
-      </span>
+      <UserAvatar userId={userId} name={name} revision={avatarRevision} />
       <span className="wc-name">
         {name}
         {you && <em> (you)</em>}

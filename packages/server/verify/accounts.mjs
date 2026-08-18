@@ -197,6 +197,51 @@ if (!maildevUp) {
     JSON.stringify(bootAfterPaint.user),
   );
 
+  // ---- profile picture upload, delivery, and removal --------------------------
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const avatarForm = new FormData();
+  avatarForm.append("avatar", new Blob([png], { type: "image/png" }), "avatar.png");
+  const avatarUpload = await fetch(`${BASE}/api/auth/avatar`, {
+    method: "POST",
+    headers: { cookie: jar },
+    body: avatarForm,
+  });
+  const avatarUploadBody = await avatarUpload.json();
+  const avatarRevision = avatarUploadBody.user?.avatarRevision;
+  check(
+    "profile picture upload returns a revision",
+    avatarUpload.status === 200 && typeof avatarRevision === "string",
+    JSON.stringify(avatarUploadBody),
+  );
+
+  if (avatarRevision) {
+    const avatarImage = await fetch(
+      `${BASE}/avatars/${avatarUploadBody.user.id}/${avatarRevision}.webp`,
+    );
+    const avatarBytes = Buffer.from(await avatarImage.arrayBuffer());
+    check(
+      "normalized profile picture is publicly served as WebP",
+      avatarImage.status === 200 &&
+        avatarImage.headers.get("content-type") === "image/webp" &&
+        avatarBytes.subarray(8, 12).toString("ascii") === "WEBP",
+      `HTTP ${avatarImage.status} ${avatarImage.headers.get("content-type")}`,
+    );
+  }
+
+  const removeAvatar = await fetch(`${BASE}/api/auth/avatar`, {
+    method: "DELETE",
+    headers: { cookie: jar },
+  });
+  const removeAvatarBody = await removeAvatar.json();
+  check(
+    "removing the profile picture restores the fallback",
+    removeAvatar.status === 200 && removeAvatarBody.user?.avatarRevision === null,
+    JSON.stringify(removeAvatarBody),
+  );
+
   // ---- logout ----------------------------------------------------------------
   const logout = await post("/api/auth/logout", {}, jar);
   check("logout succeeds", logout.status === 200, `HTTP ${logout.status}`);

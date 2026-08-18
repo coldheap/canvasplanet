@@ -73,6 +73,7 @@ export const api = {
   },
 
   pixel: (x: number, y: number) => fetch(`/api/pixel/${x}/${y}`).then(json<PixelInfo>),
+
   chatMessages: (before?: number) =>
     get<{ messages: ChatMessageDTO[]; hasMore: boolean }>(
       `/api/chat/messages${before === undefined ? "" : `?before=${before}`}`,
@@ -81,7 +82,6 @@ export const api = {
     post<{ message: ChatMessageDTO }>("/api/chat/messages", { body }),
   reportChatMessage: (id: number, reason?: string) =>
     post<{ ok: boolean; counted: boolean }>(`/api/chat/messages/${id}/report`, { reason }),
-
 
   country: (iso: string) => fetch(`/api/country/${iso}`).then(json<Record<string, unknown>>),
 
@@ -152,6 +152,29 @@ export const api = {
     post<{ ok: boolean; message: string }>("/api/auth/request-reset", { email }),
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; user: UserDTO }>("/api/auth/reset", { token, password }),
+  uploadAvatar: (file: File) => {
+    const body = new FormData();
+    body.append("avatar", file);
+    return fetch("/api/auth/avatar", {
+      method: "POST",
+      credentials: "same-origin",
+      body,
+    }).then(json<{ user: UserDTO }>);
+  },
+  removeAvatar: () =>
+    fetch("/api/auth/avatar", { method: "DELETE", credentials: "same-origin" }).then(
+      json<{ user: UserDTO }>,
+    ),
+  /** Irreversible. The server anonymises the account rather than dropping the
+   *  row — see routes/auth.ts's DELETE /api/auth/me for why. `confirm` is the
+   *  display name, typed back by the player. */
+  deleteAccount: (confirm: string) =>
+    fetch("/api/auth/me", {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm }),
+    }).then(json<{ ok: boolean }>),
 
   admin: {
     stats: () => get<AdminStats>("/api/admin/stats"),
@@ -195,6 +218,11 @@ export const api = {
       post<{ ok: boolean }>(`/api/admin/users/${id}/disable`, { disabled }),
     setUserRole: (id: number, role: "mod" | "admin" | null) =>
       post<{ ok: boolean }>(`/api/admin/users/${id}/role`, { role }),
+    removeUserAvatar: (id: number) =>
+      fetch(`/api/admin/users/${id}/avatar`, { method: "DELETE", credentials: "same-origin" }).then(
+        json<{ ok: boolean }>,
+      ),
+
     chatReports: (status: "open" | "all" = "open") =>
       get<AdminChatReport[]>(`/api/admin/chat/reports?status=${status}`),
     deleteChatMessage: (id: number, reason?: string) =>
@@ -206,7 +234,6 @@ export const api = {
       post<{ ok: boolean; until: string | null }>(`/api/admin/chat/users/${id}/mute`, { hours, reason }),
     unmuteChatUser: (id: number) =>
       post<{ ok: boolean }>(`/api/admin/chat/users/${id}/unmute`, {}),
-
 
     events: () => get<{ current: EventStateDTO | null; history: EventHistoryRow[] }>("/api/admin/events"),
     endEvent: () => post<{ ok: boolean }>("/api/admin/events/end", {}),
@@ -303,10 +330,14 @@ export interface AdminUser {
   /** Null for a Discord-only account with no verified email on file. */
   email: string | null;
   display_name: string;
+  /** The linked Discord handle, refreshed at each Discord login; null for an
+   *  account that has never signed in through Discord. */
+  discord_username: string | null;
   email_verified_at: string | null;
   disabled_at: string | null;
   created_at: string;
   role: "mod" | "admin" | null;
+  avatar_revision: string | null;
   cumulative: number;
   held: number;
 }
@@ -325,6 +356,7 @@ export interface AreaReport {
   resolved_by: string | null;
   suspects: Array<{ sessionId: number; ip: string | null; paints: number }>;
 }
+
 export interface AdminChatReport {
   id: number;
   reason: string | null;
@@ -351,7 +383,6 @@ export interface AdminChatMute {
   created_at: string;
   created_by_name: string;
 }
-
 
 export interface EventHistoryRow {
   id: number;

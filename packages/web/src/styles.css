@@ -190,6 +190,22 @@ button {
   background: var(--wc-accent);
 }
 
+/* A modifier on .wc-btn rather than the standalone .wc-danger above, so it
+   sits at the same height as the Cancel button beside it in the delete
+   confirmation. */
+.wc-btn-danger {
+  background: var(--wc-danger);
+  border-color: var(--wc-danger);
+  color: #fff;
+}
+.wc-btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+.wc-btn-danger:disabled {
+  background: var(--wc-danger);
+}
+
 .wc-danger {
   background: var(--wc-danger);
   color: #fff;
@@ -825,16 +841,25 @@ button {
 .wc-player-row {
   grid-template-columns: 22px 22px 1fr auto auto;
 }
-.wc-player-avatar {
+.wc-user-avatar {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
   border-radius: 999px;
   background: var(--wc-accent-soft);
   color: var(--wc-accent);
-  font-size: 11px;
   font-weight: 700;
+  flex: none;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--wc-panel-border);
+}
+.wc-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.wc-rail-btn[aria-pressed="true"] .wc-user-avatar {
+  box-shadow: 0 0 0 2px var(--wc-accent);
 }
 .wc-streak {
   display: inline-flex;
@@ -1073,20 +1098,11 @@ fieldset select {
 
 .wc-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
 
-/* Shared vertical-form styling — the Account sign-in/sign-up/reset forms
- * (AccountPanel.tsx) all use this class, not just admin surfaces. */
-.wc-staff-login {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.wc-staff-login h2 {
-  display: flex;
-  align-items: center;
 .wc-chat-admin-controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1147,6 +1163,16 @@ fieldset select {
 .wc-chat-mute-list > li > div { display: flex; min-width: 0; flex-direction: column; }
 .wc-chat-mute-list .wc-hint { overflow-wrap: anywhere; font-size: 10px; }
 
+/* Shared vertical-form styling — the Account sign-in/sign-up/reset forms
+ * (AccountPanel.tsx) all use this class, not just admin surfaces. */
+.wc-staff-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wc-staff-login h2 {
+  display: flex;
+  align-items: center;
   gap: 8px;
   margin: 0 0 4px;
   font-size: 16px;
@@ -1169,21 +1195,116 @@ fieldset select {
   font-size: 16px;
   font-weight: 600;
 }
-.wc-account-stats {
-  display: flex;
-  gap: 14px;
-  margin: 0;
-  font-size: 13px;
-  color: var(--wc-dim);
-}
-.wc-account-streak {
+.wc-account-identity {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+.wc-account-copy {
+  min-width: 0;
+}
+.wc-account-copy .wc-hint {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.wc-account-id {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--wc-dim);
+}
+.wc-avatar-control {
+  position: relative;
+  display: block;
+  flex: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.wc-avatar-control:focus-within {
+  outline: 2px solid var(--wc-accent);
+  outline-offset: 3px;
+}
+.wc-avatar-control.is-disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.wc-avatar-camera {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 2px solid var(--wc-panel);
+  border-radius: 999px;
+  background: var(--wc-accent);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.24);
+  transition: transform 120ms ease;
+}
+.wc-avatar-control:hover .wc-avatar-camera {
+  transform: scale(1.08);
+}
+.wc-avatar-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.wc-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.wc-avatar-remove {
+  display: inline-flex;
+  align-items: center;
   gap: 5px;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--wc-danger-ink);
+}
+.wc-account-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.wc-account-stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1px 5px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--wc-panel-border);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-panel-soft, rgba(127, 127, 127, 0.06));
+}
+.wc-account-stat svg {
+  grid-row: 1;
+  color: var(--wc-accent);
+}
+.wc-account-stat strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+}
+.wc-account-stat > span,
+.wc-account-stat small {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: var(--wc-dim);
+}
+.wc-account-stat-streak svg {
   color: #e8720c;
+}
+.wc-account-stat small {
+  margin-top: 2px;
 }
 .wc-link-btn {
   align-self: flex-start;
@@ -1202,6 +1323,85 @@ fieldset select {
 }
 .wc-link-btn:hover {
   text-decoration: underline;
+}
+
+/* ---- legal ---------------------------------------------------------------- */
+
+/* Terms/Privacy links, in the panels a player is most likely to be reading
+   when they want them (Settings and Account). Pushed to the bottom of the
+   panel and deliberately quiet — present when looked for, never competing
+   with the controls above it. */
+.wc-legal-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--wc-panel-border);
+  font-size: 12px;
+  color: var(--wc-dim);
+}
+.wc-legal-footer a {
+  color: var(--wc-dim);
+  text-decoration: none;
+}
+.wc-legal-footer a:hover {
+  color: var(--wc-text);
+  text-decoration: underline;
+}
+
+/* The consent line under the signup button. Muted, but the links inside it
+   are not — the whole point is that they are noticed as clickable. */
+.wc-consent {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wc-dim);
+  text-align: center;
+}
+.wc-consent a {
+  color: var(--wc-accent);
+}
+
+/* ---- delete account ------------------------------------------------------- */
+
+/* Collapsed state: a quiet link, not a button. It sits under "Sign out" and
+   must not read as the same kind of choice. */
+.wc-danger-link {
+  color: var(--wc-danger);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wc-danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--wc-danger);
+  border-radius: var(--wc-radius-sm);
+  background: var(--wc-danger-soft);
+}
+.wc-danger-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--wc-danger-ink);
+}
+.wc-danger-zone .wc-hint {
+  margin: 0;
+  line-height: 1.5;
+}
+.wc-danger-label {
+  font-size: 12px;
+  color: var(--wc-text);
+}
+.wc-danger-zone input {
+  width: 100%;
 }
 
 /* ---- misc --------------------------------------------------------------- */

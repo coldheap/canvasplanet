@@ -65,14 +65,14 @@ export interface SAllianceLb {
   rows: AllianceLbRow[];
 }
 
-/** [userId, displayName, cumulative, held, streakDays] — unlike LbRow/
+/** [userId, displayName, cumulative, held, streakDays, avatarRevision] — unlike LbRow/
  *  AllianceLbRow the name rides along in the tuple itself: countries/
  *  alliances are small, static-ish catalogs the client already has indexed
  *  by id from bootstrap, but the players table is neither, so there is no
  *  local catalog to join against. streakDays is the *current* streak
  *  (Phase 6) — a flame badge on the row, not the all-time best, which only
  *  matters on the player's own account panel (see UserDTO.bestStreak). */
-export type UserLbRow = [number, string, number, number, number];
+export type UserLbRow = [number, string, number, number, number, string | null];
 
 export interface SUserLb {
   t: "plb";
@@ -202,6 +202,8 @@ export interface UserDTO {
    *  email through Discord — see routes/auth.ts's Discord callback. */
   email: string | null;
   displayName: string;
+  /** Random cache-busting revision for /avatars/:id/:revision.webp. */
+  avatarRevision: string | null;
   cumulative: number;
   held: number;
   /** Current consecutive-UTC-day paint streak (ROADMAP.md Phase 6). */

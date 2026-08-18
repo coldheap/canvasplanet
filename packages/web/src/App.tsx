@@ -27,6 +27,7 @@ import { AdminPanel } from "./components/AdminPanel.js";
 import { OverlayTool } from "./components/OverlayTool.js";
 import { ReportTool } from "./components/ReportTool.js";
 import { AccountPanel } from "./components/AccountPanel.js";
+import { UserAvatar } from "./components/UserAvatar.js";
 import { EmbedTool } from "./components/EmbedTool.js";
 import { ActivityPanel } from "./components/ActivityPanel.js";
 import { PixelInspector } from "./components/PixelInspector.js";
@@ -535,7 +536,11 @@ export function App() {
           title={user ? user.displayName : "Sign in"}
           onClick={() => togglePanel("account")}
         >
-          <UserCircle size={19} />
+          {user ? (
+            <UserAvatar userId={user.id} name={user.displayName} revision={user.avatarRevision} size={25} />
+          ) : (
+            <UserCircle size={19} />
+          )}
         </button>
         <button
           className="wc-rail-btn"
