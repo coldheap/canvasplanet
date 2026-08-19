@@ -11,6 +11,11 @@
   color: #5865f2;
 }
 
+.cp-dock-btn-discord,
+.cp-dock-btn-discord:hover {
+  color: #5865f2;
+}
+
 .cp-discord-presence {
   display: flex;
   align-items: center;

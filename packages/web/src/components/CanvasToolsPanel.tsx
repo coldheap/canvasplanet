@@ -44,6 +44,8 @@ export function CanvasToolsPanel({ handle }: { handle: MapHandle | null }) {
             role="tab"
             aria-selected={tool === id}
             aria-controls={`cp-tool-pane-${id}`}
+            aria-label={label}
+            title={label}
             tabIndex={tool === id ? 0 : -1}
             onClick={() => setTool(id)}
             onKeyDown={(event) => {
@@ -57,7 +59,6 @@ export function CanvasToolsPanel({ handle }: { handle: MapHandle | null }) {
             }}
           >
             <Icon size={15} />
-            <span>{label}</span>
           </button>
         ))}
       </div>

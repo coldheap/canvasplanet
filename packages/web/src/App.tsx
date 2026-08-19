@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Activity, Trophy, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon, Wrench } from "lucide-react";
+import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
 import {
   COST_BASE,
   ERASED,
@@ -32,7 +32,9 @@ import { CountryPage } from "./components/CountryPage.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
 import { CanvasToolsPanel } from "./components/CanvasToolsPanel.js";
-import { AccountHub } from "./components/AccountHub.js";
+import { AccountPanel } from "./components/AccountPanel.js";
+import { StatusPanel } from "./components/StatusPanel.js";
+import { DiscordIcon, DiscordPanel } from "./components/DiscordPanel.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -464,7 +466,6 @@ export function App() {
           onClick={() => togglePanel("activity")}
         >
           <Activity size={19} />
-          <span className="cp-dock-label">Activity</span>
           <span className={pps > 0 ? "cp-activity-indicator is-live" : "cp-activity-indicator"} aria-hidden />
         </button>
         <button
@@ -474,8 +475,16 @@ export function App() {
           title="Canvas tools"
           onClick={() => togglePanel("tools")}
         >
-          <Wrench size={19} />
-          <span className="cp-dock-label">Tools</span>
+          <LayoutTemplate size={19} />
+        </button>
+        <button
+          className="cp-dock-btn cp-dock-btn-discord"
+          aria-pressed={panel === "discord"}
+          aria-label="Discord community"
+          title="Discord community"
+          onClick={() => togglePanel("discord")}
+        >
+          <DiscordIcon />
         </button>
         <button
           className="cp-dock-btn"
@@ -489,7 +498,6 @@ export function App() {
           ) : (
             <UserCircle size={19} />
           )}
-          <span className="cp-dock-label">Account</span>
         </button>
         <button
           className="cp-dock-btn"
@@ -499,7 +507,6 @@ export function App() {
           onClick={() => togglePanel("settings")}
         >
           <SettingsIcon size={19} />
-          <span className="cp-dock-label">Settings</span>
         </button>
       </nav>
 
@@ -511,7 +518,6 @@ export function App() {
           onClick={viewMode === "globe" ? switchToMap : switchToGlobe}
         >
           {viewMode === "globe" ? <MapIcon size={18} /> : <Globe2 size={18} />}
-          <span>{viewMode === "globe" ? "Map" : "Globe"}</span>
         </button>
         <button
           aria-pressed={panel === "leaderboard"}
@@ -520,7 +526,6 @@ export function App() {
           onClick={() => togglePanel("leaderboard")}
         >
           <Trophy size={18} />
-          <span>Ranks</span>
         </button>
       </div>
 
@@ -575,6 +580,8 @@ export function App() {
       {(panel === "settings" ||
         panel === "admin" ||
         panel === "country" ||
+        panel === "status" ||
+        panel === "discord" ||
         panel === "account") && (
         <div
           className={mapPicking ? "cp-modal-backdrop cp-hidden" : "cp-modal-backdrop"}
@@ -584,7 +591,19 @@ export function App() {
             className="cp-modal cp-card"
             role="dialog"
             aria-modal="true"
-            aria-label={panel === "account" ? "Account" : panel === "country" ? "Country" : panel === "admin" ? "Administration" : "Settings"}
+            aria-label={
+              panel === "account"
+                ? "Account"
+                : panel === "country"
+                  ? "Country"
+                  : panel === "admin"
+                    ? "Administration"
+                    : panel === "discord"
+                      ? "Discord community"
+                      : panel === "status"
+                        ? "System status"
+                        : "Settings"
+            }
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(event) => {
               if (event.key === "Escape") setPanel("none");
@@ -594,7 +613,9 @@ export function App() {
               <X size={18} />
             </button>
             {panel === "settings" && <SettingsPanel />}
-            {panel === "account" && <AccountHub />}
+            {panel === "status" && <StatusPanel />}
+            {panel === "discord" && <DiscordPanel />}
+            {panel === "account" && <AccountPanel />}
             {panel === "admin" && <AdminPanel handle={handle.current} />}
             {panel === "country" && openCountry && (
               <CountryPage
