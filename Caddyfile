@@ -102,10 +102,10 @@
 }
 
 # ---- status subdomain -------------------------------------------------
-# A separate host on purpose: if the main domain, its DNS, or the Cloudflare
-# proxy in front of it is the thing that's down, a status page living under
-# that same host goes down with it. This is a standalone static page plus
-# one proxied JSON route — it depends on nothing from the SPA build.
+# A separate host keeps the status shell independent from the SPA build and
+# the main hostname's routing. It still shares this origin and Cloudflare;
+# use an external monitor in a separate failure domain for outage paging.
+# The shell is static and both live/history JSON routes are proxied below.
 #
 # Needs its own DNS record (status.{$DOMAIN} -> this box); Caddy handles the
 # certificate automatically once that resolves, same as the main block.
@@ -113,7 +113,8 @@ status.{$DOMAIN} {
 	import cloudflare_only
 	encode zstd gzip
 
-	handle /api/status {
+	@status_api path /api/status /api/status/history
+	handle @status_api {
 		header Cache-Control "no-store"
 		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
@@ -122,7 +123,7 @@ status.{$DOMAIN} {
 		root * {$STATUS_ROOT:/srv/status}
 		header Cache-Control "no-cache"
 		header X-Frame-Options "DENY"
-		header Content-Security-Policy "frame-ancestors 'none'"
+		header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 		file_server
 	}
 

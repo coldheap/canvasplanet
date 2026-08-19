@@ -138,9 +138,10 @@ depth, not required for enforcing the game economy. See PLAN.md §8 and §10.
 `status.<your-domain>` needs its own DNS record pointed at the box (a
 separate host on purpose — see `Caddyfile`); Caddy issues its certificate
 automatically once that resolves, same as the main domain. It serves a
-static page from `status/` plus one proxied `/api/status` route, so it stays
-up independent of the SPA build, the main domain's DNS, or Cloudflare being
-the thing that's down.
+static page from `status/` plus proxied `/api/status` and
+`/api/status/history` routes, so the shell stays independent of the SPA
+build. It still shares the same origin and Cloudflare path; use an external
+monitor in a separate failure domain for outage paging.
 
 ## Backups
 

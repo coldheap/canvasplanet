@@ -57,6 +57,8 @@ export interface DayHistory {
   uptimeRatio: number | null;
   samples: number;
   components: Record<ComponentKey, DayState>;
+  /** Fraction of recorded checks where each component was available (operational or degraded). */
+  componentUptimeRatio: Record<ComponentKey, number | null>;
 }
 
 export interface HistoryResult {
@@ -69,37 +71,47 @@ export interface HistoryResult {
 const DAY_SEVERITY: Record<DayState, number> = { nodata: -1, operational: 0, degraded: 1, down: 2 };
 const worstDay = (a: DayState, b: DayState): DayState => (DAY_SEVERITY[b] > DAY_SEVERITY[a] ? b : a);
 
-export async function dailyHistory(daysRequested: number): Promise<HistoryResult> {
-  const days = Math.max(1, Math.min(STATUS_HISTORY_MAX_DAYS, Math.floor(daysRequested) || STATUS_HISTORY_MAX_DAYS));
+export interface StatusHistoryRow {
+  checked_at: Date;
+  ok: boolean;
+  db_ok: boolean;
+  db_latency_ms: number;
+  tile_queue_depth: number;
+  ws_degraded: number;
+}
 
-  const { rows } = await pool.query<{
-    checked_at: Date;
-    ok: boolean;
-    db_ok: boolean;
-    db_latency_ms: number;
-    tile_queue_depth: number;
-    ws_degraded: number;
-  }>(
-    `SELECT checked_at, ok, db_ok, db_latency_ms, tile_queue_depth, ws_degraded
-       FROM status_history
-      WHERE checked_at > now() - ($1 || ' days')::interval
-      ORDER BY checked_at ASC`,
-    [days],
-  );
+/**
+ * Turns persisted checks into UTC calendar-day buckets. Exported so the
+ * date-boundary and ratio logic can be tested without a database.
+ */
+export function buildDailyHistory(
+  days: number,
+  rows: StatusHistoryRow[],
+  now = new Date(),
+): HistoryResult {
+  const dateKeys: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    dateKeys.push(
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i))
+        .toISOString()
+        .slice(0, 10),
+    );
+  }
 
-  const byDay = new Map<string, typeof rows>();
+  const visibleDates = new Set(dateKeys);
+  const byDay = new Map<string, StatusHistoryRow[]>();
+  let since: string | null = null;
   for (const r of rows) {
     const key = r.checked_at.toISOString().slice(0, 10);
+    if (!visibleDates.has(key)) continue;
+    if (since === null) since = r.checked_at.toISOString();
     const list = byDay.get(key);
     if (list) list.push(r);
     else byDay.set(key, [r]);
   }
 
   const history: DayHistory[] = [];
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
-    const key = d.toISOString().slice(0, 10);
+  for (const key of dateKeys) {
     const samples = byDay.get(key);
 
     if (!samples || samples.length === 0) {
@@ -109,6 +121,7 @@ export async function dailyHistory(daysRequested: number): Promise<HistoryResult
         uptimeRatio: null,
         samples: 0,
         components: { canvas: "nodata", realtime: "nodata", database: "nodata" },
+        componentUptimeRatio: { canvas: null, realtime: null, database: null },
       });
       continue;
     }
@@ -119,6 +132,7 @@ export async function dailyHistory(daysRequested: number): Promise<HistoryResult
       realtime: "operational",
       database: "operational",
     };
+    const componentUpCount: Record<ComponentKey, number> = { canvas: 0, realtime: 0, database: 0 };
     let okCount = 0;
     for (const r of samples) {
       if (r.ok) okCount++;
@@ -129,13 +143,39 @@ export async function dailyHistory(daysRequested: number): Promise<HistoryResult
         wsDegraded: r.ws_degraded,
       });
       for (const k of Object.keys(rowComponents) as ComponentKey[]) {
-        components[k] = worstDay(components[k], rowComponents[k]);
+        const state = rowComponents[k];
+        components[k] = worstDay(components[k], state);
+        if (state !== "down") componentUpCount[k]++;
       }
       overall = worstDay(overall, overallOf(rowComponents));
     }
 
-    history.push({ date: key, overall, uptimeRatio: okCount / samples.length, samples: samples.length, components });
+    history.push({
+      date: key,
+      overall,
+      uptimeRatio: okCount / samples.length,
+      samples: samples.length,
+      components,
+      componentUptimeRatio: {
+        canvas: componentUpCount.canvas / samples.length,
+        realtime: componentUpCount.realtime / samples.length,
+        database: componentUpCount.database / samples.length,
+      },
+    });
   }
 
-  return { days, since: rows[0]?.checked_at.toISOString() ?? null, history };
+  return { days, since, history };
+}
+
+export async function dailyHistory(daysRequested: number): Promise<HistoryResult> {
+  const days = Math.max(1, Math.min(STATUS_HISTORY_MAX_DAYS, Math.floor(daysRequested) || STATUS_HISTORY_MAX_DAYS));
+
+  const { rows } = await pool.query<StatusHistoryRow>(
+    `SELECT checked_at, ok, db_ok, db_latency_ms, tile_queue_depth, ws_degraded
+       FROM status_history
+      WHERE checked_at > now() - ($1 || ' days')::interval
+      ORDER BY checked_at ASC`,
+    [days],
+  );
+  return buildDailyHistory(days, rows);
 }
