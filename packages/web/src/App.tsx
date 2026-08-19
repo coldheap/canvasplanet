@@ -51,6 +51,8 @@ export function App() {
   const [globeStart, setGlobeStart] = useState<GlobeView>(readGlobeStart);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
   const [bootError, setBootError] = useState(false);
+  const [uiHidden, setUiHidden] = useState(false);
+  const uiHiddenRef = useRef(false);
   const toastId = useRef(0);
   const showToast = useCallback((text: string) => {
     setToast({ id: ++toastId.current, text });
@@ -62,6 +64,34 @@ export function App() {
   const [chatUnread, setChatUnread] = useState(0);
   const chatOpenRef = useRef(chatOpen);
   useEffect(() => { chatOpenRef.current = chatOpen; }, [chatOpen]);
+
+  // U toggles every piece of interface chrome while leaving the canvas
+  // available for clean viewing and screenshots. Keep the key inert while
+  // typing, and announce both states so the way back is always explicit.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+      const isUiKey = event.code === "KeyU" || event.key.toLowerCase() === "u";
+
+      if (typing || !isUiKey || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+
+      event.preventDefault();
+      const next = !uiHiddenRef.current;
+      uiHiddenRef.current = next;
+      setUiHidden(next);
+      if (next && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      showToast(next ? "UI hidden — press U to show it again." : "UI shown.");
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showToast]);
 
   const ws = useRef<WsClient | null>(null);
   const handle = useRef<MapHandle | null>(null);
@@ -413,7 +443,7 @@ export function App() {
   }
 
   return (
-    <main className="cp-app">
+    <main className={uiHidden ? "cp-app cp-ui-hidden" : "cp-app"}>
       <div className="cp-visually-hidden">
         <h1>CanvasPlanet: a live pixel art world map</h1>
         <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
@@ -422,6 +452,7 @@ export function App() {
       <MapCanvas
         active={viewMode === "map"}
         inactiveZoom={zoom}
+        uiVisible={!uiHidden}
         onPaint={onPaint}
         onHover={onHover}
         onInspect={onInspect}
@@ -448,6 +479,7 @@ export function App() {
         </Suspense>
       )}
 
+      <div className="cp-ui-shell" hidden={uiHidden}>
       <div className="cp-hud">
         {frozen && (
           <div className="cp-frozen-banner">
@@ -647,6 +679,7 @@ export function App() {
           <em className="cp-hint">Esc to cancel</em>
         </div>
       )}
+      </div>
 
       {toast && (
         <div key={toast.id} className="cp-toast cp-card" role="status" onAnimationEnd={() => setToast(null)}>

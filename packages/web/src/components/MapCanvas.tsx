@@ -66,6 +66,7 @@ export interface MapHandle {
 export function MapCanvas({
   active = true,
   inactiveZoom,
+  uiVisible = true,
   onPaint,
   onHover,
   onInspect,
@@ -75,6 +76,8 @@ export function MapCanvas({
   active?: boolean;
   /** Zoom reported by another active renderer while this map is hidden. */
   inactiveZoom?: number;
+  /** Whether canvas-owned interface chrome should be visible. */
+  uiVisible?: boolean;
   onPaint: (x: number, y: number) => void;
   onHover: (pixel: { x: number; y: number } | null) => void;
   /** Right-click / long-press: pin the inspector on a pixel. */
@@ -586,7 +589,7 @@ export function MapCanvas({
   return (
     <>
       <div ref={ref} className={active ? "cp-map" : "cp-map cp-map-inactive"} />
-      <HistoryMode zoom={!active && inactiveZoom !== undefined ? inactiveZoom : zoom} />
+      {uiVisible && <HistoryMode zoom={!active && inactiveZoom !== undefined ? inactiveZoom : zoom} />}
     </>
   );
 }

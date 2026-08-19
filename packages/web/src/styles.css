@@ -114,6 +114,24 @@ select {
   inset: 0;
 }
 
+/* A display:contents shell lets the UI remain mounted (preserving open
+   panels and in-progress tools) while the U shortcut removes all chrome at
+   once. The explicit hidden rule wins over the author-level display value. */
+.cp-ui-shell {
+  display: contents;
+}
+
+.cp-ui-shell[hidden],
+.cp-ui-hidden .leaflet-control-container,
+.cp-ui-hidden .maplibregl-control-container,
+.cp-ui-hidden .cp-globe-credit {
+  display: none;
+}
+
+.cp-ui-hidden .cp-toast {
+  bottom: var(--cp-edge-bottom);
+}
+
 .cp-boot {
   position: absolute;
   inset: 0;
