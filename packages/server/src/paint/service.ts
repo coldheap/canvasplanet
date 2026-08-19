@@ -190,13 +190,12 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
     // ---- Phase 5: write everything, in one round trip ---------------------
     //
     // Canvas, history, both leaderboard counters, the session row and the
-    // tile dirty chain used to be six sequential statements. At 30s-per-charge
-    // that was invisible; after the economy was retuned to one charge per
-    // second the paint rate rose ~4.6x and the round trips became the p99.
-    //
-    // They are all unconditional writes with no data dependency on each
+    // tile dirty chain used to be six sequential statements. They are all
+    // unconditional writes with no data dependency on each
     // other — everything they need was decided above — so they collapse into
-    // one CTE. Ordering inside a CTE is not guaranteed, which is fine here
+    // one CTE. This also keeps bursts from a session's initial full bank from
+    // turning into a chain of avoidable database round trips. Ordering inside
+    // a CTE is not guaranteed, which is fine here
     // precisely because none of them reads what another writes.
     await c.query(
       `WITH px AS (

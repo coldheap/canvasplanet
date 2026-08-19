@@ -35,7 +35,7 @@ import { pool, tx } from "../db/pool.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../email/mailer.js";
 import { env } from "../env.js";
 import { players } from "../players/store.js";
-import { findSession, getOrCreateSession } from "../session/session.js";
+import { clientIp, findSession, getOrCreateSession } from "../session/session.js";
 import type { Role } from "./staff.js";
 
 export interface AuthUser {
@@ -304,7 +304,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   app.post<{ Body: { email?: string; password?: string; displayName?: string } }>(
     "/api/auth/signup",
     async (req, reply) => {
-      if (signupRateLimited(req.ip)) {
+      if (signupRateLimited(clientIp(req))) {
         return reply.code(429).send({ error: "too many attempts, try again later" });
       }
 
@@ -384,7 +384,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   });
 
   app.post<{ Body: { email?: string } }>("/api/auth/resend-verification", async (req, reply) => {
-    if (emailActionRateLimited(req.ip)) {
+    if (emailActionRateLimited(clientIp(req))) {
       return reply.code(429).send({ error: "too many attempts, try again later" });
     }
 
@@ -423,7 +423,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   // query param (App.tsx picks it up and shows the "choose a new password"
   // form) rather than through a server redirect route.
   app.post<{ Body: { email?: string } }>("/api/auth/request-reset", async (req, reply) => {
-    if (emailActionRateLimited(req.ip)) {
+    if (emailActionRateLimited(clientIp(req))) {
       return reply.code(429).send({ error: "too many attempts, try again later" });
     }
 
@@ -506,7 +506,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   });
 
   app.post<{ Body: { identifier?: string; password?: string } }>("/api/auth/login", async (req, reply) => {
-    if (loginRateLimited(req.ip)) {
+    if (loginRateLimited(clientIp(req))) {
       return reply.code(429).send({ error: "too many attempts, try again later" });
     }
 

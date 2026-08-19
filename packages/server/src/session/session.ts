@@ -12,6 +12,7 @@
  */
 
 import { createHash, randomBytes } from "node:crypto";
+import { isIP } from "node:net";
 import {
   CHARGE_START,
   SESSION_COOKIE,
@@ -60,9 +61,12 @@ const SEEN_REFRESH_MS = 5 * 60_000;
 export function clientIp(req: FastifyRequest): string {
   if (env.trustCfConnectingIp) {
     const cf = req.headers["cf-connecting-ip"];
-    if (typeof cf === "string" && cf.length > 0) return cf;
+    if (typeof cf === "string" && isIP(cf) !== 0) return cf;
   }
-  return req.ip;
+  // Use the socket peer rather than req.ip. Fastify may derive req.ip from a
+  // forwarded header when trustProxy is enabled, and a direct client can
+  // forge that header. The socket address is not client-controlled.
+  return req.raw.socket.remoteAddress ?? "0.0.0.0";
 }
 
 export async function getOrCreateSession(

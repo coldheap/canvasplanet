@@ -14,6 +14,7 @@ import { leaderboard } from "../leaderboard/store.js";
 import { paint } from "../paint/service.js";
 import { players } from "../players/store.js";
 import * as score from "../security/score.js";
+import { paintRequestRateLimiter } from "../security/requestRateLimit.js";
 import * as turnstile from "../security/turnstile.js";
 import { clientIp, getOrCreateSession } from "../session/session.js";
 import { hub } from "../ws/hub.js";
@@ -21,6 +22,18 @@ import { getStaff } from "./staff.js";
 
 export function registerPaintRoutes(app: FastifyInstance): void {
   app.post<{ Body: PaintRequest }>("/api/paint", async (req, reply) => {
+    const ip = clientIp(req);
+    const requestLimit = paintRequestRateLimiter.take(ip);
+    if (!requestLimit.allowed) {
+      reply.header("Retry-After", String(Math.max(1, Math.ceil(requestLimit.retryAfterMs / 1000))));
+      return reply.code(429).send({
+        ok: false,
+        reason: PaintRefusal.IpBudget,
+        message: "Too many paint requests. Slow down.",
+        retryAfterMs: requestLimit.retryAfterMs,
+      } satisfies PaintError);
+    }
+
     const { x, y, color, turnstileToken } = req.body ?? ({} as PaintRequest);
 
     // Register before any awaited gate or paint DB work. At the deadline the
@@ -38,7 +51,6 @@ export function registerPaintRoutes(app: FastifyInstance): void {
     try {
       const session = await getOrCreateSession(req, reply);
       const staff = await getStaff(req);
-      const ip = clientIp(req);
       const originCountryId = leaderboard.countryIdForIso(clientCountryIso(req));
 
       // ---- Turnstile gate: once per session, before its first pixel --------
