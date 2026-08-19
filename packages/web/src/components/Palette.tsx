@@ -6,8 +6,8 @@
  * on a guess, so the UI refuses rather than letting people misfire.
  */
 
-import { useEffect } from "react";
-import { MapPinOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronUp, MapPinOff } from "lucide-react";
 import {
   BASEMAP_LAND_COLOR_INDEX,
   BASEMAP_WATER_COLOR_INDEX,
@@ -31,6 +31,8 @@ const DISPLAY_SWATCHES = [...LAND_SWATCHES, ...WATER_SWATCHES];
 
 export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPaint: () => void }) {
   const { selectedColor, select } = useStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const selectedSwatch = PALETTE[selectedColor] ?? PALETTE[0]!;
 
   // 1-9, 0 pick the original first 10 swatches (the neutrals/reds — the rest
   // of the palette stays click-only). Ignored while typing anywhere else
@@ -49,6 +51,19 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [zoom, select]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (zoom < MIN_PAINT_ZOOM) setMobileOpen(false);
+  }, [zoom]);
+
   if (zoom < MIN_PAINT_ZOOM) {
     return (
       <button type="button" className="cp-palette cp-palette-locked cp-card" onClick={onZoomToPaint}>
@@ -59,14 +74,36 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
   }
 
   return (
-    <div className="cp-palette cp-card">
-      <div className="cp-swatches">
+    <div className={mobileOpen ? "cp-palette cp-palette-open" : "cp-palette"}>
+      <div className="cp-swatches cp-palette-grid cp-card" id="paint-colors">
         <div className="cp-swatch-group">
           {DISPLAY_SWATCHES.map((s) => (
-            <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
+            <Swatch
+              key={s.i}
+              i={s.i}
+              hex={s.hex}
+              name={s.name}
+              on={s.i === selectedColor}
+              pick={(i) => {
+                select(i);
+                setMobileOpen(false);
+              }}
+            />
           ))}
         </div>
       </div>
+      <button
+        type="button"
+        className="cp-palette-trigger cp-card"
+        aria-controls="paint-colors"
+        aria-expanded={mobileOpen}
+        aria-label={`Choose paint color. ${selectedSwatch.name} selected`}
+        title={`Paint color: ${selectedSwatch.name}`}
+        onClick={() => setMobileOpen((open) => !open)}
+      >
+        <span className="cp-palette-current" style={{ background: selectedSwatch.hex }} aria-hidden />
+        <ChevronUp size={18} aria-hidden />
+      </button>
     </div>
   );
 }
@@ -86,6 +123,7 @@ function Swatch({
 }) {
   return (
     <button
+      type="button"
       className={on ? "cp-swatch cp-on" : "cp-swatch"}
       onClick={() => pick(i)}
       title={name}

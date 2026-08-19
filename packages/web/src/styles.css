@@ -412,8 +412,15 @@ button {
   bottom: var(--cp-gap);
   left: 50%;
   transform: translateX(-50%);
-  padding: 8px 12px 10px;
   max-width: min(620px, calc(100vw - 2 * var(--cp-gap)));
+}
+
+.cp-palette-grid {
+  padding: 8px 12px 10px;
+}
+
+.cp-palette-trigger {
+  display: none;
 }
 
 .cp-panel-title {
@@ -2853,26 +2860,35 @@ html.cp-motion-reduce * {
     right: auto;
     bottom: calc(var(--cp-edge-bottom) + 58px);
     left: 50%;
-    width: min(320px, calc(100vw - var(--cp-edge-left) - var(--cp-edge-right)));
+    display: flex;
+    width: min(360px, calc(100vw - var(--cp-edge-left) - var(--cp-edge-right)));
     min-width: 0;
     max-width: none;
-    padding: 4px;
-    overflow-x: auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     transform: translateX(-50%);
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
   }
 
-  .cp-palette::-webkit-scrollbar {
+  .cp-palette-grid {
     display: none;
+    width: 100%;
+    padding: 10px;
+  }
+
+  .cp-palette-open .cp-palette-grid {
+    display: block;
   }
 
   .cp-swatches,
   .cp-swatch-group {
-    flex-wrap: nowrap;
+    width: 100%;
   }
 
   .cp-swatch-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 44px);
+    justify-content: center;
     gap: 4px;
   }
 
@@ -2885,6 +2901,7 @@ html.cp-motion-reduce * {
     border: 0;
     outline: 0;
     background: transparent;
+    touch-action: manipulation;
   }
 
   .cp-swatch-chip {
@@ -2903,6 +2920,41 @@ html.cp-motion-reduce * {
   .cp-swatch.cp-on .cp-swatch-chip {
     box-shadow: 0 0 0 3px var(--cp-panel), 0 0 0 5px var(--cp-accent);
     transform: scale(1.04);
+  }
+
+  .cp-swatch:active .cp-swatch-chip {
+    transform: scale(0.9);
+  }
+
+  .cp-palette-trigger {
+    display: flex;
+    width: 72px;
+    min-height: 52px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--cp-dim);
+    touch-action: manipulation;
+  }
+
+  .cp-palette-trigger:active {
+    background: var(--cp-subtle);
+  }
+
+  .cp-palette-trigger svg {
+    transition: transform 0.18s ease;
+  }
+
+  .cp-palette-open .cp-palette-trigger svg {
+    transform: rotate(180deg);
+  }
+
+  .cp-palette-current {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--cp-panel);
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--cp-panel-border);
   }
 
   .cp-palette-locked {
@@ -2960,7 +3012,27 @@ html.cp-motion-reduce * {
     left: calc(var(--cp-edge-left) + 154px);
     width: auto;
     max-width: none;
+    flex-direction: row;
+    justify-content: flex-end;
     transform: none;
+  }
+
+  .cp-palette-open .cp-palette-grid {
+    min-width: 0;
+    overflow-x: auto;
+    padding: 4px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .cp-palette-open .cp-palette-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cp-palette-open .cp-swatch-group {
+    display: flex;
+    width: max-content;
+    flex-wrap: nowrap;
   }
 
   .cp-map .leaflet-top.leaflet-right {
