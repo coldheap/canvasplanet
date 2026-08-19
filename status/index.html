@@ -3,108 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Live service health and recorded uptime for CanvasPlanet." />
+  <meta name="description" content="Current service status and uptime history for CanvasPlanet." />
   <title>CanvasPlanet Status</title>
-  <link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233556e8'/%3E%3Crect x='8' y='8' width='7' height='7' rx='1' fill='white'/%3E%3Crect x='17' y='8' width='7' height='7' rx='1' fill='white' opacity='.7'/%3E%3Crect x='8' y='17' width='7' height='7' rx='1' fill='white' opacity='.7'/%3E%3Crect x='17' y='17' width='7' height='7' rx='1' fill='white'/%3E%3C/svg%3E" />
+  <link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236b7280'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/status.css" />
   <script src="/status.js" defer></script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="shell header-inner">
-      <a class="brand" id="brand-home" href="/" aria-label="CanvasPlanet home">
-        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-        <span class="brand-name">CanvasPlanet</span>
-        <span class="brand-divider" aria-hidden="true"></span>
-        <span class="brand-section">Status</span>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="https://canvasplanet.net/" aria-label="CanvasPlanet home">
+        <strong>CanvasPlanet</strong><span>Status</span>
       </a>
-      <a class="canvas-link" id="canvas-link" href="/">Open Canvas <span aria-hidden="true">&#8599;</span></a>
+      <a class="canvas-link" href="https://canvasplanet.net/">Open Canvas</a>
     </div>
   </header>
 
-  <main class="shell">
-    <section class="overall-card is-loading" id="overall-card" aria-labelledby="overall-title" aria-live="polite">
-      <div class="overall-main">
-        <div class="eyebrow-row"><span class="live-dot" aria-hidden="true"></span><span id="overall-kicker">Checking current status</span></div>
-        <h1 id="overall-title">Connecting to CanvasPlanet</h1>
-        <p id="overall-message">Requesting the latest health check.</p>
-      </div>
-      <div class="overall-meta">
-        <span id="status-age">Waiting for response</span>
-        <span class="meta-separator" aria-hidden="true"></span>
-        <span>Refreshes every 15 seconds</span>
-      </div>
-      <button class="retry-button" id="status-retry" type="button" hidden>Retry now</button>
+  <main class="wrap">
+    <section class="status-banner unknown" id="status-banner" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <h1 id="status-title">Checking system status</h1>
+      <span id="status-age">Connecting…</span>
+      <p id="status-detail" hidden></p>
     </section>
 
-    <section class="uptime-summary" aria-labelledby="uptime-summary-title">
-      <div class="section-heading summary-heading">
-        <div><p class="section-kicker">Availability</p><h2 id="uptime-summary-title"><span id="summary-range">90</span>-day recorded uptime</h2></div>
-        <span class="method-chip">5-minute checks</span>
+    <section aria-labelledby="systems-title">
+      <div class="section-heading">
+        <h2 id="systems-title">Uptime over the past 90 days</h2>
+        <span id="coverage"></span>
       </div>
-      <div class="summary-grid" id="summary-grid" aria-live="polite">
-        <article class="summary-card"><span class="summary-label">Recorded uptime</span><strong class="summary-value" id="overall-uptime">&#8212;</strong><span class="summary-detail">Successful recorded checks</span></article>
-        <article class="summary-card"><span class="summary-label">Days monitored</span><strong class="summary-value" id="monitored-days">&#8212;</strong><span class="summary-detail" id="monitored-days-detail">Within this window</span></article>
-        <article class="summary-card"><span class="summary-label">Checks recorded</span><strong class="summary-value" id="recorded-checks">&#8212;</strong><span class="summary-detail">Health samples received</span></article>
-      </div>
-    </section>
-
-    <section class="section-block" aria-labelledby="systems-title">
-      <div class="section-heading systems-heading">
-        <div><p class="section-kicker">Services</p><h2 id="systems-title">System status</h2></div>
-        <div class="range-control" id="range-control" role="group" aria-label="Recorded uptime range">
-          <button type="button" data-days="7" aria-pressed="false">7 days</button>
-          <button type="button" data-days="30" aria-pressed="false">30 days</button>
-          <button type="button" data-days="90" aria-pressed="true">90 days</button>
-        </div>
-      </div>
-
-      <div class="inline-notice" id="history-notice" role="status" aria-live="polite">
-        <span class="loading-spinner" aria-hidden="true"></span>
-        <span id="history-notice-text">Loading recorded uptime</span>
-        <button class="text-button" id="history-retry" type="button" hidden>Retry</button>
-      </div>
-
-      <div class="component-list" id="component-list"></div>
-      <div class="history-legend" aria-label="History legend">
-        <span><i class="legend-swatch operational" aria-hidden="true"></i>Operational</span>
-        <span><i class="legend-swatch degraded" aria-hidden="true"></i>Degraded</span>
-        <span><i class="legend-swatch down" aria-hidden="true"></i>Unavailable</span>
-        <span><i class="legend-swatch nodata" aria-hidden="true"></i>No data</span>
+      <p class="error" id="history-error" role="status" hidden>
+        Uptime history is unavailable. <button id="history-retry" type="button">Retry</button>
+      </p>
+      <div class="components" id="component-list"></div>
+      <div class="legend" aria-label="Status legend">
+        <span><i class="operational"></i>Operational</span>
+        <span><i class="degraded"></i>Degraded</span>
+        <span><i class="down"></i>Unavailable</span>
+        <span><i class="nodata"></i>No data</span>
       </div>
     </section>
 
-    <section class="section-block" aria-labelledby="events-title">
-      <div class="section-heading"><div><p class="section-kicker">History</p><h2 id="events-title">Recent disruptions</h2></div></div>
-      <div class="events-card" id="events-list">
-        <div class="empty-state is-loading"><span class="empty-icon" aria-hidden="true"></span><div><strong>Loading history</strong><p>Checking the selected monitoring window.</p></div></div>
-      </div>
+    <section class="incidents" aria-labelledby="incidents-title">
+      <h2 id="incidents-title">Past incidents</h2>
+      <div id="incident-list"><p class="muted">Loading…</p></div>
     </section>
-
-    <section class="section-block" aria-labelledby="telemetry-title">
-      <div class="section-heading telemetry-heading">
-        <div><p class="section-kicker">Live</p><h2 id="telemetry-title">Service telemetry</h2></div>
-        <span class="telemetry-time" id="telemetry-time">Not connected</span>
-      </div>
-      <div class="telemetry-grid" id="telemetry-grid">
-        <article class="telemetry-card"><span>Paint activity</span><strong id="metric-paints">&#8212;</strong><small>per second</small></article>
-        <article class="telemetry-card"><span>Connected clients</span><strong id="metric-clients">&#8212;</strong><small>live sessions</small></article>
-        <article class="telemetry-card" id="metric-db-card"><span>Database response</span><strong id="metric-db">&#8212;</strong><small>milliseconds</small></article>
-        <article class="telemetry-card" id="metric-queue-card"><span>Tile queue</span><strong id="metric-queue">&#8212;</strong><small>pending updates</small></article>
-        <article class="telemetry-card"><span>Process uptime</span><strong id="metric-process">&#8212;</strong><small>since last restart</small></article>
-      </div>
-    </section>
-
-    <aside class="method-note" aria-labelledby="method-title">
-      <span class="method-icon" aria-hidden="true">i</span>
-      <div><h2 id="method-title">How uptime is measured</h2><p>Recorded uptime uses health checks written by the application every five minutes. Missing checks are shown as no data and are never counted as successful uptime. An external monitor should probe <code>/api/status</code> to detect application outages.</p></div>
-    </aside>
   </main>
 
-  <footer class="site-footer">
-    <div class="shell footer-inner"><span>CanvasPlanet service status</span><span id="footer-checked">No successful check yet</span></div>
+  <footer class="wrap">
+    <span id="last-checked">No successful check yet</span>
+    <span>Health is recorded every 5 minutes</span>
   </footer>
 
-  <div class="history-tooltip" id="history-tooltip" role="tooltip" hidden></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
 </body>
 </html>
