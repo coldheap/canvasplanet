@@ -4,6 +4,7 @@ import {
   COST_BASE,
   ERASED,
   MIN_MAP_ZOOM,
+  MIN_PAINT_ZOOM,
   Z_PIXEL,
   WORLD_SIZE,
   type PaintError,
@@ -109,6 +110,11 @@ export function App() {
     setViewMode("map");
     saveViewMode("map");
   }, []);
+
+  const zoomToPaint = useCallback(() => {
+    if (viewMode === "globe") globeHandle.current?.setZoom(MIN_PAINT_ZOOM);
+    else handle.current?.map.setZoom(MIN_PAINT_ZOOM);
+  }, [viewMode]);
 
   // Rectangle and point selection use Leaflet-owned interaction handles.
   // Bring those tools back to their editor as soon as selection begins.
@@ -566,7 +572,7 @@ export function App() {
         />
       )}
 
-      <PalettePanel zoom={zoom} />
+      <PalettePanel zoom={zoom} onZoomToPaint={zoomToPaint} />
 
       {/* Hidden rather than unmounted while picking: unmounting would throw
           away the tab's in-progress state (the loaded image, the typed

@@ -122,6 +122,7 @@ export function MapCanvas({
       boxZoom: false,
     });
     mapRef.current = map;
+    L.control.zoom({ position: "topright" }).addTo(map);
 
     // Always on — see the file doc comment's layer 1. zIndex 0 pins it
     // under both the OSM overlay and the pixel canvas.

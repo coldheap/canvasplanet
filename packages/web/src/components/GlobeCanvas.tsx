@@ -60,6 +60,7 @@ export interface GlobeHandle {
   applyPixels: (pixels: readonly PixelTuple[]) => void;
   flyTo: (x: number, y: number, z?: number) => void;
   getView: () => GlobeView;
+  setZoom: (zoom: number) => void;
   refreshTiles: () => void;
 }
 
@@ -288,6 +289,10 @@ export function GlobeCanvas({
       return { lat: center.lat, lng: center.lng, z: map.getZoom() };
     };
 
+    const setZoom = (zoom: number) => {
+      map.easeTo({ zoom, duration: reducedMotion.matches ? 0 : 300 });
+    };
+
     const flyTo = (x: number, y: number, z = Z_PIXEL) => {
       const target = pixelToLatLng({ x: x + 0.5, y: y + 0.5 });
       map.flyTo({ center: [target.lng, target.lat], zoom: z, duration: 700 });
@@ -454,7 +459,7 @@ export function GlobeCanvas({
 
     map.once("load", () => {
       emitViewport();
-      cb.current.onReady({ applyPixels, flyTo, getView, refreshTiles });
+      cb.current.onReady({ applyPixels, flyTo, getView, setZoom, refreshTiles });
       resumeSpin(600);
     });
 

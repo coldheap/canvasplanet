@@ -1019,6 +1019,48 @@ button {
   align-items: center;
   gap: 8px;
   padding: 12px 18px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.cp-palette-locked:hover {
+  background: var(--cp-subtle);
+  color: var(--cp-text);
+}
+
+/* Leaflet's native zoom control mirrors the globe's built-in +/- control and
+   sits immediately below the top-right explore stack. */
+.cp-map .leaflet-top.leaflet-right {
+  top: calc(var(--cp-gap) + 102px);
+  right: var(--cp-gap);
+}
+.cp-map .leaflet-top.leaflet-right .leaflet-control {
+  margin: 0;
+}
+.cp-map .leaflet-control-zoom {
+  overflow: hidden;
+  border: 1px solid var(--cp-panel-border);
+  border-radius: var(--cp-radius-sm);
+  background: var(--cp-panel);
+  box-shadow: var(--cp-shadow);
+}
+.cp-map .leaflet-control-zoom a {
+  background: var(--cp-panel);
+  border-color: var(--cp-panel-border);
+  color: var(--cp-text);
+}
+.cp-map .leaflet-control-zoom a:hover,
+.cp-map .leaflet-control-zoom a:focus-visible {
+  background: var(--cp-subtle);
+  color: var(--cp-text);
+}
+.cp-map .leaflet-control-zoom a.leaflet-disabled {
+  background: var(--cp-panel);
+  color: var(--cp-dim);
+}
+
+@media (max-width: 640px) {
+  .cp-map .leaflet-top.leaflet-right {
+    top: calc(var(--cp-gap) + 164px);
+  }
 }
 
 /* ---- settings / admin forms ---------------------------------------------- */

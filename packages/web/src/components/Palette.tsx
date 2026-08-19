@@ -11,7 +11,7 @@ import { MapPinOff } from "lucide-react";
 import { MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
-export function PalettePanel({ zoom }: { zoom: number }) {
+export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPaint: () => void }) {
   const { selectedColor, select } = useStore();
 
   // 1-9, 0 pick the first 10 swatches (the neutrals/reds — the rest of the
@@ -33,10 +33,10 @@ export function PalettePanel({ zoom }: { zoom: number }) {
 
   if (zoom < MIN_PAINT_ZOOM) {
     return (
-      <div className="cp-palette cp-palette-locked cp-card">
-        <MapPinOff size={16} />
+      <button type="button" className="cp-palette cp-palette-locked cp-card" onClick={onZoomToPaint}>
+        <MapPinOff size={16} aria-hidden />
         <span>Zoom in to paint</span>
-      </div>
+      </button>
     );
   }
 
