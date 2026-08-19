@@ -244,6 +244,18 @@ button {
   gap: 4px;
 }
 
+.cp-account-dock {
+  position: absolute;
+  z-index: 1150;
+  bottom: var(--cp-gap);
+  left: var(--cp-gap);
+  display: flex;
+  width: 52px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 5px;
+}
+
 .cp-dock-brand {
   display: grid;
   place-items: center;

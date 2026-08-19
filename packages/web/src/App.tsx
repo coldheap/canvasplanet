@@ -477,6 +477,9 @@ export function App() {
         >
           <LayoutTemplate size={19} />
         </button>
+      </nav>
+
+      <nav className="cp-account-dock cp-card" aria-label="Account controls">
         <button
           className="cp-dock-btn cp-dock-btn-discord"
           aria-pressed={panel === "discord"}
