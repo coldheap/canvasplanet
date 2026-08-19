@@ -1,4 +1,17 @@
+(cloudflare_only) {
+	# TRUST_CF_CONNECTING_IP is safe only when direct origin traffic cannot
+	# reach the app. Match the actual TCP peer here (not a forwarded header),
+	# using Cloudflare's published IPv4/IPv6 edge ranges.
+	@direct not remote_ip 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	# Keep this as a handle so Caddy evaluates it before the route-specific
+	# handles below; a top-level respond directive sorts after handle blocks.
+	handle @direct {
+		respond "Forbidden" 403
+	}
+}
+
 {$DOMAIN} {
+	import cloudflare_only
 	encode zstd gzip
 
 	# ---- canvas tiles -------------------------------------------------
@@ -8,7 +21,7 @@
 	# purge is picked up immediately.
 	handle /tiles/* {
 		header Cache-Control "public, max-age=0, s-maxage=86400"
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	# ---- static land/ocean backdrop ------------------------------------
@@ -16,24 +29,24 @@
 	# worker the way /tiles/* is — a long edge TTL is always safe here.
 	handle /basemap/* {
 		header Cache-Control "public, max-age=86400, s-maxage=604800"
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	# ---- user profile pictures -----------------------------------------
 	# Revisioned URLs are safe to cache; replacements get a new URL.
 	handle /avatars/* {
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	# ---- websocket ----------------------------------------------------
 	handle /ws {
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	# ---- api ----------------------------------------------------------
 	handle /api/* {
 		header Cache-Control "no-store"
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	# ---- embeddable widget (ROADMAP.md §4.2) ---------------------------
@@ -43,7 +56,7 @@
 	handle /embed.html {
 		header Cache-Control "no-cache"
 		header Content-Security-Policy "frame-ancestors *"
-		root * /srv/web
+		root * {$WEB_ROOT:/srv/web}
 		file_server
 	}
 
@@ -65,7 +78,7 @@
 
 	# ---- SPA ----------------------------------------------------------
 	handle {
-		root * /srv/web
+		root * {$WEB_ROOT:/srv/web}
 		# Hashed asset filenames are immutable; index.html never is.
 		@assets path /assets/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
@@ -81,6 +94,7 @@
 	}
 
 	header {
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
@@ -96,15 +110,16 @@
 # Needs its own DNS record (status.{$DOMAIN} -> this box); Caddy handles the
 # certificate automatically once that resolves, same as the main block.
 status.{$DOMAIN} {
+	import cloudflare_only
 	encode zstd gzip
 
 	handle /api/status {
 		header Cache-Control "no-store"
-		reverse_proxy app:8080
+		reverse_proxy {$APP_UPSTREAM:app:8080}
 	}
 
 	handle {
-		root * /srv/status
+		root * {$STATUS_ROOT:/srv/status}
 		header Cache-Control "no-cache"
 		header X-Frame-Options "DENY"
 		header Content-Security-Policy "frame-ancestors 'none'"
@@ -112,6 +127,7 @@ status.{$DOMAIN} {
 	}
 
 	header {
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
