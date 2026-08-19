@@ -27,6 +27,8 @@ const WATER_SWATCHES = [
   ...PALETTE.filter((s) => s.family === Family.Water && s.i !== BASEMAP_WATER_COLOR_INDEX),
 ];
 
+const DISPLAY_SWATCHES = [...LAND_SWATCHES, ...WATER_SWATCHES];
+
 export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPaint: () => void }) {
   const { selectedColor, select } = useStore();
 
@@ -60,12 +62,7 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
     <div className="cp-palette cp-card">
       <div className="cp-swatches">
         <div className="cp-swatch-group">
-          {LAND_SWATCHES.map((s) => (
-            <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
-          ))}
-        </div>
-        <div className="cp-swatch-group">
-          {WATER_SWATCHES.map((s) => (
+          {DISPLAY_SWATCHES.map((s) => (
             <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
           ))}
         </div>
