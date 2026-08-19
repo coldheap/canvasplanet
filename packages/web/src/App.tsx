@@ -488,6 +488,7 @@ export function App() {
       </nav>
 
       <nav className="cp-account-dock cp-card" aria-label="Account controls">
+        {activePlayers !== null && <PlayerCounter count={activePlayers} />}
         <button
           className="cp-dock-btn"
           aria-pressed={panel === "account"}
@@ -543,7 +544,6 @@ export function App() {
           onLogin={() => setPanel("account")}
         />
       )}
-      {activePlayers !== null && <PlayerCounter count={activePlayers} />}
       <button
         className="cp-chat-toggle cp-card"
         aria-controls="world-chat-panel"

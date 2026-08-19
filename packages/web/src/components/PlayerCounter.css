@@ -1,18 +1,16 @@
 .cp-player-count {
-  position: absolute;
-  left: calc(var(--cp-gap) + 52px);
-  bottom: var(--cp-gap);
-  z-index: 1051;
   display: inline-flex;
-  min-width: 64px;
+  width: 100%;
   height: 44px;
+  flex: none;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: 5px;
+  border-radius: var(--cp-radius-sm);
+  background: color-mix(in srgb, var(--cp-good) 8%, transparent);
   color: var(--cp-dim);
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   user-select: none;
