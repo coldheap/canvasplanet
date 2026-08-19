@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CHARGE_MAX, CHARGE_REGEN_MS, IP_BUDGET_MAX, IP_BUDGET_REFILL_MS } from "../config.js";
+import {
+  CHARGE_MAX,
+  CHARGE_REGEN_MS,
+  IP_BUDGET_FLAGGED_ASN,
+  IP_BUDGET_MAX,
+  IP_BUDGET_REFILL_MS,
+} from "../config.js";
 import {
   Terrain,
   canAfford,
@@ -187,6 +193,9 @@ describe("IP token bucket", () => {
     // IP_BUDGET_MAX tokens/hr refilling at 1/IP_BUDGET_REFILL_MS == the
     // charge bank's own hourly regen rate. Never a false positive.
     expect((3600_000 / IP_BUDGET_REFILL_MS) | 0).toBe(IP_BUDGET_MAX);
+    expect(CHARGE_REGEN_MS).toBe(30_000);
+    expect(IP_BUDGET_MAX).toBe(120);
+    expect(IP_BUDGET_FLAGGED_ASN).toBe(60);
   });
 
   it("caps a cookie-wipe farm at IP_BUDGET_MAX paints per hour", () => {
