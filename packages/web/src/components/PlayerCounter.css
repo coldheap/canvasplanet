@@ -1,6 +1,6 @@
 .cp-player-count {
   position: absolute;
-  right: calc(var(--cp-gap) + 52px);
+  left: calc(var(--cp-gap) + 52px);
   bottom: var(--cp-gap);
   z-index: 1051;
   display: inline-flex;
@@ -20,5 +20,5 @@
 
 .cp-player-count svg {
   flex: none;
-  color: var(--cp-accent);
+  color: var(--cp-good);
 }
