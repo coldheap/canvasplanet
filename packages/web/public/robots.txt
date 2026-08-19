@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /avatars/
+Disallow: /basemap/
+Disallow: /tiles/
+Disallow: /t/
 
 Sitemap: https://canvasplanet.net/sitemap.xml

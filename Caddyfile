@@ -75,21 +75,45 @@
 	handle @legal {
 		redir {path}.html permanent
 	}
+	@legacy_index path /index.html
+	handle @legacy_index {
+		redir / permanent
+	}
 
 	# ---- SPA ----------------------------------------------------------
+	# Only the homepage and well-formed shared-template URLs are app routes.
+	# Keeping unknown paths out of the SPA fallback gives crawlers an honest
+	# 404 instead of an indexable duplicate of the homepage (a soft 404).
+	@homepage path /
+	handle @homepage {
+		root * {$WEB_ROOT:/srv/web}
+		header Cache-Control "no-cache"
+		header X-Frame-Options "DENY"
+		header Content-Security-Policy "frame-ancestors 'none'"
+		try_files /index.html
+		file_server
+	}
+
+	@shared_template path_regexp shared_template ^/t/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+	handle @shared_template {
+		root * {$WEB_ROOT:/srv/web}
+		header Cache-Control "no-cache"
+		header X-Frame-Options "DENY"
+		header Content-Security-Policy "frame-ancestors 'none'"
+		try_files /index.html
+		file_server
+	}
+
+	# Static files are served only when they exist. Hashed build assets are
+	# immutable; metadata and legal documents remain revalidated.
 	handle {
 		root * {$WEB_ROOT:/srv/web}
-		# Hashed asset filenames are immutable; index.html never is.
 		@assets path /assets/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
 		header Cache-Control "no-cache"
-		# The interactive app (paint, admin, charges) has no reason to ever
-		# run inside someone else's frame — only /embed.html does. Denying
-		# framing here is what makes that carve-out a deliberate exception
-		# rather than an oversight elsewhere.
 		header X-Frame-Options "DENY"
 		header Content-Security-Policy "frame-ancestors 'none'"
-		try_files {path} /index.html
+		try_files {path}
 		file_server
 	}
 

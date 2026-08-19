@@ -413,7 +413,11 @@ export function App() {
   }
 
   return (
-    <div className="cp-app">
+    <main className="cp-app">
+      <div className="cp-visually-hidden">
+        <h1>CanvasPlanet: a live pixel art world map</h1>
+        <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
+      </div>
       <MapCanvas
         active={viewMode === "map"}
         inactiveZoom={zoom}
@@ -649,7 +653,7 @@ export function App() {
           {toast.text}
         </div>
       )}
-    </div>
+    </main>
   );
 }
 

@@ -6,18 +6,20 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>CanvasPlanet — paint the world, one pixel at a time</title>
+    <title>CanvasPlanet — Live Pixel Art World Map</title>
     <meta
       name="description"
-      content="A living pixel canvas on a real world map. Paint one pixel at a time. Nothing ever resets."
+      content="Paint a shared, persistent pixel art canvas on a real-world map. Explore live artwork, collaborate with players worldwide, and leave your mark."
     />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://canvasplanet.net/" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="CanvasPlanet" />
-    <meta property="og:title" content="CanvasPlanet — paint the world, one pixel at a time" />
+    <meta property="og:title" content="CanvasPlanet — Live Pixel Art World Map" />
     <meta
       property="og:description"
-      content="A living pixel canvas on a real world map. Paint one pixel at a time. Nothing ever resets."
+      content="Paint a shared, persistent pixel art canvas on a real-world map. Explore live artwork and collaborate with players worldwide."
     />
     <meta property="og:url" content="https://canvasplanet.net/" />
     <meta property="og:image" content="https://canvasplanet.net/og-canvas.png" />
@@ -25,19 +27,57 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="The live CanvasPlanet world canvas and painting controls" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CanvasPlanet — paint the world, one pixel at a time" />
+    <meta name="twitter:title" content="CanvasPlanet — Live Pixel Art World Map" />
     <meta
       name="twitter:description"
-      content="A living pixel canvas on a real world map. Paint one pixel at a time. Nothing ever resets."
+      content="Paint a shared, persistent pixel art canvas on a real-world map and collaborate with players worldwide."
     />
     <meta name="twitter:image" content="https://canvasplanet.net/og-canvas.png" />
     <meta name="twitter:image:alt" content="The live CanvasPlanet world canvas and painting controls" />
     <meta name="theme-color" content="#0b0f14" />
     <link rel="icon" href="/logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://canvasplanet.net/#website",
+            "url": "https://canvasplanet.net/",
+            "name": "CanvasPlanet",
+            "description": "A shared, persistent pixel art canvas on a real-world map.",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://canvasplanet.net/#application",
+            "url": "https://canvasplanet.net/",
+            "name": "CanvasPlanet",
+            "description": "Paint a shared, persistent pixel art canvas on a real-world map and collaborate with players worldwide.",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript and a modern web browser.",
+            "image": "https://canvasplanet.net/og-canvas.png",
+            "isPartOf": { "@id": "https://canvasplanet.net/#website" },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="cp-static-intro">
+        <img src="/logo.png" alt="" width="72" height="72" />
+        <h1>CanvasPlanet: a live pixel art world map</h1>
+        <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
