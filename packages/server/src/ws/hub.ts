@@ -27,10 +27,12 @@ interface Conn {
   /**
    * Null for an anonymous read-only connection (embeds — see index.ts's
    * `?ro=1`). Those never receive a personal `charges` push and are not
-   * tracked in `bySession`, but still get every broadcast: pixel frames,
+   * tracked as players, but still get every broadcast: pixel frames,
    * leaderboard and pulse are public data regardless of who is watching.
    */
   sessionId: number | null;
+  /** Trusted client IP used only to deduplicate the public player count. */
+  ip: string | null;
   /** Embeds receive canvas broadcasts but never the app's chat stream. */
   receivesChat: boolean;
   tiles: Set<string>;
@@ -57,6 +59,7 @@ class Hub {
   private conns = new Set<Conn>();
   private byTile = new Map<string, Set<Conn>>();
   private bySession = new Map<number, Set<Conn>>();
+  private byIp = new Map<string, Set<Conn>>();
 
   /** Pixels accumulated since the last flush, grouped by subscription tile. */
   private pending = new Map<string, PixelTuple[]>();
@@ -91,7 +94,7 @@ class Hub {
       this.broadcast({
         t: "pulse",
         pps,
-        players: this.bySession.size,
+        players: this.activePlayerCount(),
         history: this.pulseHistory,
         recent: this.recentCountries.slice(-12),
         active: rankActiveCountries(this.countryHistory),
@@ -106,12 +109,17 @@ class Hub {
     if (this.lbTimer) clearInterval(this.lbTimer);
   }
 
-  add(socket: WebSocket, sessionId: number | null, receivesChat = true): Conn {
-    const conn: Conn = { socket, sessionId, receivesChat, tiles: new Set(), degraded: false };
+  add(socket: WebSocket, sessionId: number | null, ip: string | null, receivesChat = true): Conn {
+    const conn: Conn = { socket, sessionId, ip, receivesChat, tiles: new Set(), degraded: false };
     this.conns.add(conn);
     if (sessionId !== null) {
       let set = this.bySession.get(sessionId);
       if (!set) this.bySession.set(sessionId, (set = new Set()));
+      set.add(conn);
+    }
+    if (ip !== null) {
+      let set = this.byIp.get(ip);
+      if (!set) this.byIp.set(ip, (set = new Set()));
       set.add(conn);
     }
     return conn;
@@ -120,10 +128,21 @@ class Hub {
   remove(conn: Conn): void {
     this.conns.delete(conn);
     for (const key of conn.tiles) this.byTile.get(key)?.delete(conn);
-    if (conn.sessionId === null) return;
-    const set = this.bySession.get(conn.sessionId);
-    set?.delete(conn);
-    if (set && set.size === 0) this.bySession.delete(conn.sessionId);
+    if (conn.sessionId !== null) {
+      const set = this.bySession.get(conn.sessionId);
+      set?.delete(conn);
+      if (set && set.size === 0) this.bySession.delete(conn.sessionId);
+    }
+    if (conn.ip !== null) {
+      const set = this.byIp.get(conn.ip);
+      set?.delete(conn);
+      if (set && set.size === 0) this.byIp.delete(conn.ip);
+    }
+  }
+
+  /** One public player per trusted client IP, regardless of tabs or sessions. */
+  activePlayerCount(): number {
+    return this.byIp.size;
   }
 
   /** Replaces the connection's subscription set wholesale. */

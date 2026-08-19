@@ -41,7 +41,7 @@ import { registerPaintRoutes } from "./routes/paint.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerStatusRoutes } from "./routes/status.js";
 import { registerTileRoutes } from "./routes/tiles.js";
-import { findSession } from "./session/session.js";
+import { clientIp, findSession } from "./session/session.js";
 import { startStatusHistory, stopStatusHistory } from "./status/history.js";
 import { loadPolicy } from "./state/policy.js";
 import { startExportWorker, stopExportWorker } from "./export/queue.js";
@@ -177,7 +177,7 @@ async function main(): Promise<void> {
       }
       if (closed) return; // client gave up during the lookup
 
-      conn = hub.add(socket, session?.id ?? null, !readOnly);
+      conn = hub.add(socket, session?.id ?? null, readOnly ? null : clientIp(req), !readOnly);
 
       if (session) {
         // Send the current bank immediately so a reconnecting tab is

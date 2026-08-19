@@ -59,7 +59,7 @@ interface State {
 
   /** Paints per second, from the pulse frame — drives the activity ticker. */
   pps: number;
-  /** Unique player sessions currently connected to the full app. */
+  /** Unique player IPs currently connected to the full app. */
   activePlayers: number | null;
   /** Server-owned rolling minute of paints-per-second samples. */
   pulseHistory: number[];
