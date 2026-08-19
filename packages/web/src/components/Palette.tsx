@@ -69,11 +69,12 @@ function Swatch({
   return (
     <button
       className={on ? "cp-swatch cp-on" : "cp-swatch"}
-      style={{ background: hex }}
       onClick={() => pick(i)}
       title={name}
       aria-label={name}
       aria-pressed={on}
-    />
+    >
+      <span className="cp-swatch-chip" style={{ background: hex }} aria-hidden />
+    </button>
   );
 }

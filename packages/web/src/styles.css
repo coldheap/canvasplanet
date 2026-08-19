@@ -43,7 +43,7 @@
   --cp-edge-right: calc(var(--cp-gap) + env(safe-area-inset-right, 0px));
   --cp-edge-bottom: calc(var(--cp-gap) + env(safe-area-inset-bottom, 0px));
   --cp-edge-left: calc(var(--cp-gap) + env(safe-area-inset-left, 0px));
-  --cp-mobile-controls-clearance: calc(130px + env(safe-area-inset-bottom, 0px));
+  --cp-mobile-controls-clearance: calc(148px + env(safe-area-inset-bottom, 0px));
   --cp-shadow: 0 4px 16px rgba(20, 30, 50, 0.1), 0 1px 3px rgba(20, 30, 50, 0.06);
   --cp-shadow-lg: 0 16px 48px rgba(20, 30, 50, 0.22), 0 2px 8px rgba(20, 30, 50, 0.08);
 }
@@ -967,6 +967,12 @@ button {
   cursor: pointer;
   padding: 0;
   transition: transform 0.12s ease, outline-color 0.12s ease;
+}
+.cp-swatch-chip {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
 }
 .cp-swatch:hover {
   transform: translateY(-1px);
@@ -2817,15 +2823,15 @@ html.cp-motion-reduce * {
   }
 
   .cp-palette {
-    right: var(--cp-edge-right);
+    right: auto;
     bottom: calc(var(--cp-edge-bottom) + 58px);
-    left: var(--cp-edge-left);
-    width: auto;
+    left: 50%;
+    width: min(320px, calc(100vw - var(--cp-edge-left) - var(--cp-edge-right)));
     min-width: 0;
     max-width: none;
-    padding: 6px;
+    padding: 4px;
     overflow-x: auto;
-    transform: none;
+    transform: translateX(-50%);
     scrollbar-width: none;
     overscroll-behavior-x: contain;
   }
@@ -2847,8 +2853,29 @@ html.cp-motion-reduce * {
     width: 44px;
     height: 44px;
     flex: 0 0 44px;
-    border-width: 6px;
-    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    outline: 0;
+    background: transparent;
+  }
+
+  .cp-swatch-chip {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--cp-panel-border);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .cp-swatch.cp-on {
+    outline: 0;
+    transform: none;
+  }
+
+  .cp-swatch.cp-on .cp-swatch-chip {
+    box-shadow: 0 0 0 3px var(--cp-panel), 0 0 0 5px var(--cp-accent);
+    transform: scale(1.04);
   }
 
   .cp-palette-locked {
@@ -2904,6 +2931,9 @@ html.cp-motion-reduce * {
     right: calc(var(--cp-edge-right) + 56px);
     bottom: var(--cp-edge-bottom);
     left: calc(var(--cp-edge-left) + 154px);
+    width: auto;
+    max-width: none;
+    transform: none;
   }
 
   .cp-map .leaflet-top.leaflet-right {
