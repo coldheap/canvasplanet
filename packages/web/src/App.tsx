@@ -34,7 +34,7 @@ import { ChatPanel } from "./components/ChatPanel.js";
 import { CanvasToolsPanel } from "./components/CanvasToolsPanel.js";
 import { AccountPanel } from "./components/AccountPanel.js";
 import { StatusPanel } from "./components/StatusPanel.js";
-import { DiscordIcon, DiscordPanel } from "./components/DiscordPanel.js";
+import { DiscordPanel } from "./components/DiscordPanel.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -480,15 +480,6 @@ export function App() {
       </nav>
 
       <nav className="cp-account-dock cp-card" aria-label="Account controls">
-        <button
-          className="cp-dock-btn cp-dock-btn-discord"
-          aria-pressed={panel === "discord"}
-          aria-label="Discord community"
-          title="Discord community"
-          onClick={() => togglePanel("discord")}
-        >
-          <DiscordIcon />
-        </button>
         <button
           className="cp-dock-btn"
           aria-pressed={panel === "account"}

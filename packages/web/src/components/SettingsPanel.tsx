@@ -8,6 +8,7 @@
 
 import { Settings as SettingsIcon, ShieldCheck, Link2, Radio } from "lucide-react";
 import { useStore } from "../store.js";
+import { DiscordIcon } from "./DiscordPanel.js";
 import { LegalFooter } from "./LegalFooter.js";
 
 export function SettingsPanel() {
@@ -89,6 +90,11 @@ export function SettingsPanel() {
       <button className="cp-btn" onClick={() => setPanel("status")}>
         <Radio size={15} />
         System status
+      </button>
+
+      <button className="cp-btn" onClick={() => setPanel("discord")}>
+        <DiscordIcon size={15} />
+        Discord community
       </button>
 
       {staff && (
