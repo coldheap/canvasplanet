@@ -1414,12 +1414,13 @@ fieldset select {
 
 /* ---- legal ---------------------------------------------------------------- */
 
-/* Terms/Privacy links, in the panels a player is most likely to be reading
+/* Terms/privacy/support links, in the panels a player is most likely to be reading
    when they want them (Settings and Account). Pushed to the bottom of the
    panel and deliberately quiet — present when looked for, never competing
    with the controls above it. */
 .cp-legal-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 4px;
@@ -1431,6 +1432,11 @@ fieldset select {
 .cp-legal-footer a {
   color: var(--cp-dim);
   text-decoration: none;
+}
+.cp-legal-footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .cp-legal-footer a:hover {
   color: var(--cp-text);

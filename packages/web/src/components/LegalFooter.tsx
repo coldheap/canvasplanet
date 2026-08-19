@@ -1,5 +1,5 @@
 /**
- * The legal footer, shared by every panel that should carry it.
+ * The legal and support footer, shared by every panel that should carry it.
  *
  * Plain anchors with `target="_blank"`, not in-app routes: /terms.html and
  * /privacy.html are dependency-free static files in web/public/ (see the
@@ -19,10 +19,16 @@ export function LegalFooter() {
       <a href="/terms.html" target="_blank" rel="noreferrer">
         Terms
       </a>
-      <span aria-hidden="true">·</span>
-      <a href="/privacy.html" target="_blank" rel="noreferrer">
-        Privacy
-      </a>
+      <span className="cp-legal-footer-item">
+        <span aria-hidden="true">·</span>
+        <a href="/privacy.html" target="_blank" rel="noreferrer">
+          Privacy
+        </a>
+      </span>
+      <span className="cp-legal-footer-item">
+        <span aria-hidden="true">·</span>
+        <a href="mailto:support@canvasplanet.net">support@canvasplanet.net</a>
+      </span>
     </footer>
   );
 }
