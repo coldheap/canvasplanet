@@ -120,7 +120,6 @@ k6/                load and abuse tests from the definition of done
 | Terrain rule | 4 charges to place the wrong colour family · **2 to restore** the correct family |
 | Palette | 32 colours, indices 27–31 are the water family |
 | IP ceiling | 3,600 charges/hour (1,800 base-cost placements), shared across every cookie on that IP |
-| Request flood guard | 40-request burst, then 1 request per 2s/IP, before DB work |
 | Painting | z12 and in only |
 
 ## Deployment
@@ -131,9 +130,9 @@ docker compose up -d          # app + Postgres + Caddy
 
 Point Cloudflare at the box with the orange cloud on. `/tiles/*` gets
 edge-cached (the heaviest route never reaches the origin under a flood), and
-Turnstile on first paint plus the origin-side `/api/paint` request limiter are
-the anti-bot front line. A Cloudflare WAF rate limit is optional defence in
-depth, not required for enforcing the game economy. See PLAN.md §8 and §10.
+Turnstile on first paint plus the server-authoritative charge and IP budgets
+are the anti-bot front line. A Cloudflare WAF rate limit is optional defence
+in depth. See PLAN.md §8 and §10.
 
 `status.<your-domain>` needs its own DNS record pointed at the box (a
 separate host on purpose — see `Caddyfile`); Caddy issues its certificate

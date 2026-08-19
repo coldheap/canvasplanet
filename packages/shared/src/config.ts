@@ -80,12 +80,6 @@ export const IP_BUDGET_REFILL_MS = 1_000;
 /** Flagged datacenter/VPN ASNs get half the budget and forced Turnstile. */
 export const IP_BUDGET_FLAGGED_ASN = 1800;
 
-/** Cheap origin-side request flood guard, before any paint-path I/O. */
-export const PAINT_REQUEST_BURST = 40;
-export const PAINT_REQUEST_REFILL_MS = 2_000;
-/** Bounds limiter memory during a distributed or spoofed-source flood. */
-export const PAINT_REQUEST_MAX_IPS = 100_000;
-
 // ---------------------------------------------------------------------------
 // Geographic scope gate
 // ---------------------------------------------------------------------------
