@@ -191,7 +191,7 @@ async function main(): Promise<void> {
           regenMs,
         );
         const nextMs = msUntilNextCharge(bank, now, CHARGE_MAX, regenMs);
-        hub.sendToSession(session.id, {
+        hub.sendToConnection(conn, {
           t: "charges",
           bank: bank.charges,
           max: CHARGE_MAX,

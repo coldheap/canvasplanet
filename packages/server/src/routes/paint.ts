@@ -1,4 +1,5 @@
 import {
+  CHARGE_MAX,
   REFUSAL_MESSAGE,
   REFUSAL_STATUS,
   PaintRefusal,
@@ -96,6 +97,18 @@ export function registerPaintRoutes(app: FastifyInstance): void {
         events.applyPaint(x, y, color, session.id);
         score.record({ sessionId: session.id, x, y, at: Date.now() });
       }
+
+      // Keep every tab for this browser session on the committed balance.
+      // This also ensures the post-paint snapshot follows the WebSocket's
+      // connection-time snapshot, which may have been read just before this
+      // transaction and would otherwise overwrite the paint response with a
+      // stale full bank on a newly opened page.
+      hub.sendToSession(session.id, {
+        t: "charges",
+        bank: result.bank,
+        max: CHARGE_MAX,
+        nextAt: result.nextAt,
+      });
 
       return reply.send({
         ok: true,

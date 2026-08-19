@@ -195,6 +195,11 @@ class Hub {
     for (const conn of set) this.sendRaw(conn, frame, false);
   }
 
+  /** Sends connection bootstrap state without disturbing sibling tabs. */
+  sendToConnection(conn: Conn, msg: ServerMessage): void {
+    this.sendRaw(conn, JSON.stringify(msg), false);
+  }
+
   /**
    * A slow client degrades to "tiles only" — it stops receiving pixel frames
    * but never stops receiving the leaderboard, and it never stalls the hub.
