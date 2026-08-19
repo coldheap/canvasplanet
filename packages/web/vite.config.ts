@@ -47,7 +47,9 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // Local development already has Vite source mapping. Publishing maps in
+    // production exposes the client source tree and adds several megabytes.
+    sourcemap: false,
     rollupOptions: {
       // Vite's default build only emits index.html. embed.html (the
       // read-only widget, ROADMAP.md §4.2) is a deliberately separate entry

@@ -152,6 +152,8 @@ without backups running from day one.
 ```bash
 pnpm backup                              # dump now, prune old dumps
 pnpm backup:restore backups/canvasplanet-20260101.sql.gz   # restore, with a confirm prompt
+pnpm backup:verify backups/canvasplanet-20260101.sql.gz    # restore drill in a disposable database
+pnpm backup:verify:isolated backups/canvasplanet-20260101.sql.gz # Windows: isolated temporary Postgres
 ```
 
 Cron, from the repo root on the VPS:
@@ -163,7 +165,17 @@ Cron, from the repo root on the VPS:
 Retention is 7 daily + 4 weekly (Sundays) + 12 monthly (the 1st), pruned
 automatically on every run. Set `BACKUP_REMOTE` in `.env` to an `rclone`
 destination to copy dumps off the box — without it, dumps are local-only and
-`pnpm backup` says so on every run. **Run `pnpm backup:restore` against a
+`pnpm backup` says so on every run. A small bare-metal install can instead set
+`BACKUP_EMAIL` and `BACKUP_ENCRYPTION_KEY`; each dump is encrypted with
+AES-256-GCM and sent through the configured SMTP relay. Decrypt an attachment
+before restoring it with:
+
+```bash
+pnpm backup:decrypt backup.sql.gz.cpbk backup.sql.gz
+```
+
+Keep the recovery key in a password manager outside both the server and the
+mailbox. **Run `pnpm backup:restore` against a
 throwaway database at least once** before you ever need it for real.
 
 Both scripts auto-detect their environment: with `docker compose` running
@@ -197,6 +209,7 @@ Config (all in `.env`, see `.env.example`):
 |---|---|---|
 | `ALERT_STATUS_URL` | `http://localhost:$PORT/api/status` | what to poll |
 | `ALERT_WEBHOOK_URL` | unset | POSTed `{ text, content }` on every alert — Slack and Discord incoming webhooks both accept this as-is. Unset just logs to stdout. |
+| `ALERT_MENTION` | unset | optional Discord mention for degraded/down alerts, for example `@everyone`; recovery messages never mention |
 | `ALERT_POLL_INTERVAL_MS` | `30000` | |
 | `ALERT_FAIL_THRESHOLD` | `2` | consecutive bad polls before the first alert, so one slow response doesn't page anyone |
 | `ALERT_RENOTIFY_MS` | `900000` | how often to re-surface a *continuing* outage; an escalation from degraded → down always alerts immediately regardless of this |

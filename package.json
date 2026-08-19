@@ -22,6 +22,9 @@
     "mail:dev": "pnpm --filter @canvasplanet/server mail:dev",
     "backup": "bash scripts/backup.sh",
     "backup:restore": "bash scripts/restore.sh",
+    "backup:decrypt": "node packages/server/node_modules/tsx/dist/cli.mjs packages/server/scripts/decrypt-backup.ts",
+    "backup:verify": "bash scripts/verify-backup.sh",
+    "backup:verify:isolated": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-backup-isolated.ps1",
     "load": "k6 run k6/paint-load.js",
     "load:abuse": "k6 run k6/abuse.js"
   },

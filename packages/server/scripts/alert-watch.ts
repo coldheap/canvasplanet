@@ -33,6 +33,7 @@ if (existsSync(envFile)) loadDotenv({ path: envFile, quiet: true });
 
 const STATUS_URL = process.env.ALERT_STATUS_URL || `http://localhost:${process.env.PORT ?? 8080}/api/status`;
 const WEBHOOK_URL = process.env.ALERT_WEBHOOK_URL || "";
+const ALERT_MENTION = process.env.ALERT_MENTION?.trim() || "";
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_INTERVAL_MS) || 30_000;
 // One bad poll can just be a GC pause or a network blip; require a couple
 // in a row before paging anyone.
@@ -80,19 +81,27 @@ async function poll(): Promise<Poll> {
   }
 }
 
-async function notify(text: string): Promise<void> {
+async function notify(text: string, mention = false): Promise<void> {
   const stamp = new Date().toISOString();
   console.log(`[alert-watch] ${stamp} ${text}`);
   if (!WEBHOOK_URL) return;
+  const content = mention && ALERT_MENTION ? `${ALERT_MENTION} ${text}` : text;
   try {
     // Both `text` (Slack incoming webhooks) and `content` (Discord incoming
     // webhooks) so the same payload works against either without config.
-    await fetch(WEBHOOK_URL, {
+    const response = await fetch(WEBHOOK_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, content: text }),
+      body: JSON.stringify({
+        text: content,
+        content,
+        ...(mention && ALERT_MENTION === "@everyone"
+          ? { allowed_mentions: { parse: ["everyone"] } }
+          : {}),
+      }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    if (!response.ok) throw new Error(`webhook returned HTTP ${response.status}`);
   } catch (err) {
     console.error(`[alert-watch] failed to deliver webhook: ${(err as Error).message}`);
   }
@@ -130,7 +139,10 @@ async function tick(): Promise<void> {
   if (!alerting || justEscalated || dueForRenotify) {
     if (!alerting) downSince = now;
     const icon = result.overall === "down" ? "🔴" : "🟡";
-    await notify(`${icon} canvasplanet is ${result.overall}: ${result.detail} (${STATUS_URL})`);
+    await notify(
+      `${icon} canvasplanet is ${result.overall}: ${result.detail} (${STATUS_URL})`,
+      true,
+    );
     lastNotifiedAt = now;
     alerting = true;
   }

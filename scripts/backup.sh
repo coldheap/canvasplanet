@@ -65,15 +65,33 @@ fi
 # or a plain path rclone can reach — e.g. S3, B2, another host over sftp).
 # Deliberately optional rather than required: an unconfigured install should
 # still get local dumps and a loud warning, not a hard failure on every run.
+off_box=0
 if [ -n "${BACKUP_REMOTE:-}" ]; then
   if command -v rclone >/dev/null 2>&1; then
     echo "[backup] copying to $BACKUP_REMOTE"
-    rclone copy "$OUT" "$BACKUP_REMOTE" || echo "[backup] WARNING: off-box copy failed — this dump is local-only"
+    if rclone copy "$OUT" "$BACKUP_REMOTE"; then
+      off_box=1
+    else
+      echo "[backup] WARNING: rclone off-box copy failed"
+    fi
   else
-    echo "[backup] WARNING: BACKUP_REMOTE is set but rclone is not installed — dump is local-only"
+    echo "[backup] WARNING: BACKUP_REMOTE is set but rclone is not installed"
   fi
-else
-  echo "[backup] WARNING: BACKUP_REMOTE is not set — this dump lives only on this box"
+fi
+
+# Small installations can use the configured SMTP relay as their second
+# failure domain. The dump is AES-256-GCM encrypted before it leaves the
+# host; the recovery key must be stored separately from the mailbox.
+if [ -n "${BACKUP_EMAIL:-}" ]; then
+  if node packages/server/node_modules/tsx/dist/cli.mjs packages/server/scripts/email-backup.ts "$OUT"; then
+    off_box=1
+  else
+    echo "[backup] WARNING: encrypted email copy failed"
+  fi
+fi
+
+if [ "$off_box" -eq 0 ]; then
+  echo "[backup] WARNING: no off-box backup succeeded — this dump lives only on this box"
 fi
 
 # ---- retention --------------------------------------------------------
