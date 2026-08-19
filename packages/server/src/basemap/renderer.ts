@@ -1,11 +1,16 @@
 import { PNG } from "pngjs";
-import { TILE_SIZE } from "@canvasplanet/shared";
+import {
+  BASEMAP_LAND_COLOR_INDEX,
+  BASEMAP_WATER_COLOR_INDEX,
+  PALETTE_RGB,
+  TILE_SIZE,
+} from "@canvasplanet/shared";
 import { TerrainBits } from "../geo/bake.js";
 import { geo } from "../geo/index.js";
 
-/** Matches the existing pre-baked basemap exactly. */
-export const WATER_RGB = [170, 211, 223] as const;
-export const LAND_RGB = [242, 239, 233] as const;
+/** Shared with the selectable palette entries for the unpainted map. */
+export const WATER_RGB = PALETTE_RGB[BASEMAP_WATER_COLOR_INDEX]!;
+export const LAND_RGB = PALETTE_RGB[BASEMAP_LAND_COLOR_INDEX]!;
 
 const LRU_MAX = 500;
 const lru = new Map<string, Buffer>();

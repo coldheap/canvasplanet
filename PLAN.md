@@ -27,7 +27,7 @@ original MVP prompt, the reason is noted.
 | 9 | Map library | **Leaflet + OSM raster** |
 | 10 | Ocean | Paintable, attributed to **International Waters** |
 | 11 | Terrain rule | Water-family color on land, or land-family color on sea, = violation |
-| 12 | Palette | **32 colors, 5 tagged water**, other 27 land |
+| 12 | Palette | **34 colors, 6 tagged water**, other 28 land |
 | 13 | Geo data | **NE 1:10m admin_0** for country, **OSM water polygons** for terrain |
 | 14 | WS fan-out | **Viewport subscriptions** (z10 tiles) + global leaderboard tick |
 | 15 | Paint zoom | **z12 and in only**; below that, view-only with a hint |
@@ -104,11 +104,11 @@ Coordinates are stored as plain `INT`. Never store lat/lng — it is derived.
 
 ## 2. Palette and the terrain rule
 
-32 colors, indices `0..31`, stored as `SMALLINT`. Indices `27..31` are the
-**water family**; `0..26` are the **land family**. There is no neutral family
-— black outlines at sea therefore cost 4. That is a deliberate, tunable
-consequence of the 32/5 split; `COLOR_FAMILY` in shared config is the one
-place to change it.
+34 colors, indices `0..33`, stored as `SMALLINT`. The original indices
+`27..31` are the **water family** and `0..26` are the **land family**. Indices
+`32` and `33` are the exact unpainted map land and water colors respectively.
+There is no neutral family — black outlines at sea therefore cost 4. Family
+membership lives on each swatch in the shared palette.
 
 ```
 terrainOf(pixel)  -> 'land' | 'water'      (from the geo index, §4)

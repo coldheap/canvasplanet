@@ -18,6 +18,7 @@ vi.mock("../../state/policy.js", () => ({
   isFrozen: () => false,
 }));
 
+import { BASEMAP_LAND_COLOR_INDEX } from "@canvasplanet/shared";
 import { paint } from "../service.js";
 
 const NOW = 1_700_000_000_000;
@@ -51,7 +52,7 @@ describe("paint identical colour", () => {
         rows: [sessionRow()],
       })
       .mockResolvedValueOnce({
-        rows: [{ color: 7, country_id: 1, alliance_id: 2, user_id: 3 }],
+        rows: [{ color: BASEMAP_LAND_COLOR_INDEX, country_id: 1, alliance_id: 2, user_id: 3 }],
       });
   });
 
@@ -62,7 +63,7 @@ describe("paint identical colour", () => {
       originCountryId: null,
       x: 100,
       y: 100,
-      color: 7,
+      color: BASEMAP_LAND_COLOR_INDEX,
       staff: null,
     });
 

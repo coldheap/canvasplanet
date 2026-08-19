@@ -8,14 +8,30 @@
 
 import { useEffect } from "react";
 import { MapPinOff } from "lucide-react";
-import { MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
+import {
+  BASEMAP_LAND_COLOR_INDEX,
+  BASEMAP_WATER_COLOR_INDEX,
+  Family,
+  MIN_PAINT_ZOOM,
+  PALETTE,
+} from "@canvasplanet/shared";
 import { useStore } from "../store.js";
+
+const LAND_SWATCHES = [
+  PALETTE[BASEMAP_LAND_COLOR_INDEX]!,
+  ...PALETTE.filter((s) => s.family === Family.Land && s.i !== BASEMAP_LAND_COLOR_INDEX),
+];
+
+const WATER_SWATCHES = [
+  PALETTE[BASEMAP_WATER_COLOR_INDEX]!,
+  ...PALETTE.filter((s) => s.family === Family.Water && s.i !== BASEMAP_WATER_COLOR_INDEX),
+];
 
 export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPaint: () => void }) {
   const { selectedColor, select } = useStore();
 
-  // 1-9, 0 pick the first 10 swatches (the neutrals/reds — the rest of the
-  // 32-colour palette stays click-only). Ignored while typing anywhere else
+  // 1-9, 0 pick the original first 10 swatches (the neutrals/reds — the rest
+  // of the palette stays click-only). Ignored while typing anywhere else
   // in the app, and while zoomed out too far to paint at all.
   useEffect(() => {
     if (zoom < MIN_PAINT_ZOOM) return;
@@ -44,7 +60,12 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
     <div className="cp-palette cp-card">
       <div className="cp-swatches">
         <div className="cp-swatch-group">
-          {PALETTE.map((s) => (
+          {LAND_SWATCHES.map((s) => (
+            <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
+          ))}
+        </div>
+        <div className="cp-swatch-group">
+          {WATER_SWATCHES.map((s) => (
             <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
           ))}
         </div>

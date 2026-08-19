@@ -1,8 +1,10 @@
 /**
- * The 32-color palette, and the land/water family split that the terrain
- * rule keys off.
+ * The color palette, and the land/water family split that the terrain rule
+ * keys off.
  *
- * Indices 0..26 are the LAND family, 27..31 are the WATER family.
+ * The original indices 0..31 never move because they are stored in the
+ * database. Indices 32 and 33 expose the exact map land/water colors.
+ * Family membership is explicit on each swatch, not inferred from its index.
  * There is deliberately no neutral family — see PLAN.md §13.1. If black
  * outlines at sea prove too expensive in practice, add `Family.Neutral`
  * here and nothing else in the codebase needs to change.
@@ -20,6 +22,10 @@ export interface Swatch {
   name: string;
   family: Family;
 }
+
+/** Exact colors used by the unpainted land/ocean basemap. */
+export const BASEMAP_LAND_COLOR_INDEX = 32;
+export const BASEMAP_WATER_COLOR_INDEX = 33;
 
 export const PALETTE: readonly Swatch[] = [
   // --- greys & neutrals (LAND family) ---
@@ -60,9 +66,12 @@ export const PALETTE: readonly Swatch[] = [
   { i: 29, hex: "#2563EB", name: "Blue", family: Family.Water },
   { i: 30, hex: "#60A5FA", name: "Sky", family: Family.Water },
   { i: 31, hex: "#7EE8E8", name: "Shallow", family: Family.Water },
+  // --- exact unpainted map colors ---
+  { i: BASEMAP_LAND_COLOR_INDEX, hex: "#F2EFE9", name: "Map Land", family: Family.Land },
+  { i: BASEMAP_WATER_COLOR_INDEX, hex: "#AAD3DF", name: "Map Water", family: Family.Water },
 ] as const;
 
-export const PALETTE_SIZE = PALETTE.length; // 32
+export const PALETTE_SIZE = PALETTE.length; // 34
 
 /** Precomputed family lookup — hot path, called on every paint. */
 const FAMILY: readonly Family[] = PALETTE.map((s) => s.family);

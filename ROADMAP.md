@@ -323,7 +323,7 @@ per session); join/leave (`POST /api/alliances/:id/join`,
 6 minutes) rather than a rolling count — unlike reports or templates, there
 is no natural "N per window" table to count against for something you switch
 rather than repeat. Colour is a palette index (`Swatch.i`), not a free hex
-value, so an alliance renders with one of the canvas's own 32 colours and the
+value, so an alliance renders with one of the canvas's own palette colours and the
 wire format stays as compact as a pixel's.
 
 Moderation reuses the existing pattern exactly: a mod-visible **Alliances**

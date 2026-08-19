@@ -40,7 +40,12 @@ import { existsSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { PNG } from "pngjs";
-import { BASEMAP_MAX_ZOOM } from "@canvasplanet/shared";
+import {
+  BASEMAP_LAND_COLOR_INDEX,
+  BASEMAP_MAX_ZOOM,
+  BASEMAP_WATER_COLOR_INDEX,
+  PALETTE_RGB,
+} from "@canvasplanet/shared";
 import { env } from "../src/env.js";
 import { TerrainBits, rasterizeTile } from "../src/geo/bake.js";
 import { WATER_FILE, buildWaterIndex, loadGeoJson, waterPresent } from "../src/geo/source.js";
@@ -60,8 +65,8 @@ if (!Number.isInteger(SHARD_INDEX) || SHARD_INDEX < 0 || SHARD_INDEX >= SHARD_CO
 const TILE_PX = 256;
 /** Matches the OSM "standard" style's usual land/ocean read closely enough
  *  to feel familiar, without shipping roads or labels. */
-const WATER_RGB: [number, number, number] = [170, 211, 223];
-const LAND_RGB: [number, number, number] = [242, 239, 233];
+const WATER_RGB = PALETTE_RGB[BASEMAP_WATER_COLOR_INDEX]!;
+const LAND_RGB = PALETTE_RGB[BASEMAP_LAND_COLOR_INDEX]!;
 
 function encodeTile(mask: Uint8Array): Buffer {
   const png = new PNG({ width: TILE_PX, height: TILE_PX });

@@ -19,7 +19,13 @@ import {
   spend,
   takeToken,
 } from "../economy.js";
-import { Family, PALETTE, familyOf } from "../palette.js";
+import {
+  BASEMAP_LAND_COLOR_INDEX,
+  BASEMAP_WATER_COLOR_INDEX,
+  Family,
+  PALETTE,
+  familyOf,
+} from "../palette.js";
 
 const BLUE = 29; // water family
 const GREEN = 20; // land family
@@ -27,14 +33,21 @@ const NAVY = 28; // water family
 const BLACK = 0; // land family
 
 describe("palette families", () => {
-  it("tags exactly 5 water colours out of 32", () => {
-    expect(PALETTE).toHaveLength(32);
-    expect(PALETTE.filter((s) => s.family === Family.Water)).toHaveLength(5);
+  it("tags exactly 6 water colours out of 34", () => {
+    expect(PALETTE).toHaveLength(34);
+    expect(PALETTE.filter((s) => s.family === Family.Water)).toHaveLength(6);
   });
 
-  it("puts the water family at the end of the palette", () => {
+  it("preserves the original family indices and tags the map colors", () => {
     for (let i = 27; i < 32; i++) expect(familyOf(i)).toBe(Family.Water);
     for (let i = 0; i < 27; i++) expect(familyOf(i)).toBe(Family.Land);
+    expect(familyOf(BASEMAP_LAND_COLOR_INDEX)).toBe(Family.Land);
+    expect(familyOf(BASEMAP_WATER_COLOR_INDEX)).toBe(Family.Water);
+  });
+
+  it("includes the exact unpainted map colors", () => {
+    expect(PALETTE[BASEMAP_LAND_COLOR_INDEX]?.hex).toBe("#F2EFE9");
+    expect(PALETTE[BASEMAP_WATER_COLOR_INDEX]?.hex).toBe("#AAD3DF");
   });
 });
 

@@ -119,7 +119,7 @@ k6/                load and abuse tests from the definition of done
 | Charges | +1 per second, cap 60, new sessions start full |
 | Placement timing | 2 charges on unclaimed ground (**2s earned time**) · 4 on claimed ground (**4s earned time**) |
 | Terrain rule | 4 charges to place the wrong colour family · **2 to restore** the correct family |
-| Palette | 32 colours, indices 27–31 are the water family |
+| Palette | 34 colours, including the exact unpainted map land and water shades |
 | IP ceiling | 3,600 charges/hour (1,800 base-cost placements), shared across every cookie on that IP |
 | Painting | z12 and in only |
 

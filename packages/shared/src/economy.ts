@@ -19,7 +19,12 @@ import {
   COST_VIOLATION,
   EVENT_BONUS_MULTIPLIER,
 } from "./config.js";
-import { Family, familyOf } from "./palette.js";
+import {
+  BASEMAP_LAND_COLOR_INDEX,
+  BASEMAP_WATER_COLOR_INDEX,
+  Family,
+  familyOf,
+} from "./palette.js";
 
 export const enum Terrain {
   Water = 0,
@@ -33,8 +38,8 @@ export const enum Terrain {
  * ground reads as ocean or ground rather than a hole in the image.
  */
 export const DEFAULT_TERRAIN_COLOR: Record<Terrain, number> = {
-  [Terrain.Water]: 29, // "Blue"
-  [Terrain.Land]: 4, // "White"
+  [Terrain.Water]: BASEMAP_WATER_COLOR_INDEX,
+  [Terrain.Land]: BASEMAP_LAND_COLOR_INDEX,
 };
 
 /** A water-family colour belongs on water; everything else belongs on land. */
