@@ -46,6 +46,7 @@ services:
       CF_PURGE_ENABLED: ${CF_PURGE_ENABLED}
       TURNSTILE_SITEKEY: ${TURNSTILE_SITEKEY}
       TURNSTILE_SECRET: ${TURNSTILE_SECRET}
+      TURNSTILE_HOSTNAMES: ${TURNSTILE_HOSTNAMES}
       TILE_CACHE_DIR: /var/tilecache
       GEO_INDEX_PATH: /var/data/geo-index.bin
       BASEMAP_DIR: /var/data/basemap-tiles

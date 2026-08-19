@@ -17,6 +17,7 @@ interface TurnstileApi {
     el: HTMLElement,
     opts: {
       sitekey: string;
+      action: string;
       callback: (token: string) => void;
       "error-callback": () => void;
       "expired-callback": () => void;
@@ -91,6 +92,7 @@ export async function solveTurnstile(sitekey: string): Promise<string> {
     try {
       widgetId = api.render(host, {
         sitekey,
+        action: "paint",
         theme: "light",
         callback: (token) => {
           cleanup();

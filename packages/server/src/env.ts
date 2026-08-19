@@ -116,6 +116,10 @@ export const env = {
   turnstile: {
     sitekey: process.env.TURNSTILE_SITEKEY ?? "",
     secret: process.env.TURNSTILE_SECRET ?? "",
+    hostnames: (process.env.TURNSTILE_HOSTNAMES ?? "")
+      .split(",")
+      .map((hostname) => hostname.trim().toLowerCase())
+      .filter(Boolean),
     /** Blank keys disable the first-paint challenge entirely (dev default). */
     get enabled() {
       return Boolean(process.env.TURNSTILE_SITEKEY && process.env.TURNSTILE_SECRET);
