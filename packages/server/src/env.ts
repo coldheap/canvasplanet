@@ -122,7 +122,8 @@ export const env = {
       .filter(Boolean),
     /** Blank keys disable the first-paint challenge entirely (dev default). */
     get enabled() {
-      return Boolean(process.env.TURNSTILE_SITEKEY && process.env.TURNSTILE_SECRET);
+      return process.env.TURNSTILE_ENABLED !== "false"
+        && Boolean(process.env.TURNSTILE_SITEKEY && process.env.TURNSTILE_SECRET);
     },
   },
 

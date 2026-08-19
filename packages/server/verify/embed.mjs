@@ -10,7 +10,8 @@
 import { finish } from "./finish.mjs";
 import WebSocket from "ws";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
+const WS_BASE = BASE.replace(/^http/, "ws");
 
 let failures = 0;
 const check = (label, ok, detail = "") => {
@@ -38,7 +39,7 @@ async function open(url, headers = {}) {
 // The refusal happens AFTER the upgrade: the handshake succeeds, then the
 // server closes with 4001. Waiting only for `open` therefore sees a
 // connection that is about to be dropped and calls it accepted.
-const plainWs = new WebSocket("ws://127.0.0.1:8080/ws");
+const plainWs = new WebSocket(`${WS_BASE}/ws`);
 const plainClose = await new Promise((resolve) => {
   plainWs.once("close", (code) => resolve(code));
   plainWs.once("error", () => resolve(-1));
@@ -53,7 +54,7 @@ check(
 // ---- ...but accepted as read-only -----------------------------------------
 let ro;
 try {
-  ro = await open("ws://127.0.0.1:8080/ws?ro=1");
+  ro = await open(`${WS_BASE}/ws?ro=1`);
 } catch (e) {
   check("read-only socket connects with no cookie", false, e.message);
   finish(failures, "embed");
@@ -113,7 +114,11 @@ check(
 const page = await fetch("http://127.0.0.1:5173/embed.html");
 check("embed.html is served", page.status === 200, `HTTP ${page.status}`);
 const html = await page.text();
-check("embed.html loads its own entry point", html.includes("embed-main"), "embed-main script tag");
+check(
+  "embed.html loads its own entry point",
+  html.includes("embed-main") || /src="\/assets\/embed-[^"]+\.js"/.test(html),
+  "development or production embed entry",
+);
 
 // terminate(), not close(): a graceful close waits for the server's reply and
 // keeps the handle alive long enough to trip the finish() watchdog, which

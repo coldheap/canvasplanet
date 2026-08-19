@@ -16,7 +16,7 @@
 import pg from "pg";
 import { finish } from "./finish.mjs";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const MAILDEV = process.env.MAILDEV_URL ?? "http://127.0.0.1:1080";
 const stamp = Date.now();
 const EMAIL = `verify-streaks-${stamp}@example.com`;
@@ -76,7 +76,9 @@ if (!maildevUp) {
     await client.end();
     finish(failures + 1, "streaks");
   } else {
-    const verifyRes = await fetch(linkMatch[1], { redirect: "manual" });
+    const emailedUrl = new URL(linkMatch[1]);
+    const verifyUrl = `${BASE}${emailedUrl.pathname}${emailedUrl.search}`;
+    const verifyRes = await fetch(verifyUrl, { redirect: "manual" });
     const verifyCookies = cookiesOf(verifyRes);
     const userCookie = verifyCookies.find((c) => c.startsWith("cp_user="));
     const sessCookie = verifyCookies.find((c) => c.startsWith("cp_sess="));

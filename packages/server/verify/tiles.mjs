@@ -9,7 +9,7 @@
 import { finish } from "./finish.mjs";
 import { PNG } from "pngjs";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const COLOR = 7; // "Red" #ED1C24
 const EXPECTED_HEX = "#ED1C24";
 

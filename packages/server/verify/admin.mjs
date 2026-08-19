@@ -8,7 +8,7 @@
  * its email/password as VERIFY_ADMIN_EMAIL/VERIFY_ADMIN_PASSWORD.
  */
 import { finish } from "./finish.mjs";
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const EMAIL = process.env.VERIFY_ADMIN_EMAIL ?? "verify@example.com";
 const PASS = process.env.VERIFY_ADMIN_PASSWORD;
 

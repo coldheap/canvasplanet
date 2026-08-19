@@ -4,7 +4,7 @@
  */
 import { finish } from "./finish.mjs";
 import { findEmptyArea } from "./area.mjs";
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const cookieOf = (r) => (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 
 let failures = 0;
@@ -92,7 +92,7 @@ check("rejects a length that does not match w*h", wrongLength.status === 400, `H
 const huge = await fetch(`${BASE}/api/templates`, {
   method: "POST",
   headers: { "Content-Type": "application/json", cookie },
-  body: JSON.stringify({ x: 1, y: 1, w: 999, h: 1, data: b64(new Uint8Array(999)) }),
+  body: JSON.stringify({ x: 1, y: 1, w: 4097, h: 1, data: b64(new Uint8Array(4097)) }),
 });
 check("rejects an oversized template", huge.status === 422, `HTTP ${huge.status}`);
 

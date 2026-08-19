@@ -7,7 +7,7 @@
  * what is on the canvas.
  */
 import { finish } from "./finish.mjs";
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const cookieOf = (r) => (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
 
 let failures = 0;

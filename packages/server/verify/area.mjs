@@ -10,7 +10,7 @@
  * Asking the server is cheap (one bulk region read) and removes the guessing.
  */
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 
 /** Somewhere far from the landmark and from the k6 load-test bands. */
 const MIN = 200_000;

@@ -17,7 +17,7 @@
  */
 import { finish } from "./finish.mjs";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const PUBLIC_URL = process.env.PUBLIC_URL ?? "http://localhost:5173";
 
 let failures = 0;

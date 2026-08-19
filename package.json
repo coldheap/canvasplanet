@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.12.0",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "dev": "pnpm --parallel --filter \"./packages/*\" dev",
     "build": "pnpm -r build",

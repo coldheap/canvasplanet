@@ -27,7 +27,7 @@ loadDotenv({ path: new URL("../../../.env", import.meta.url).pathname.slice(1), 
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const one = async (sql, params) => (await db.query(sql, params)).rows[0];
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const MAILDEV = process.env.MAILDEV_URL ?? "http://127.0.0.1:1080";
 const stamp = Date.now();
 const EMAIL = `verify-deletion-${stamp}@example.com`;
@@ -89,7 +89,9 @@ if (!maildevUp) {
   let userCookie = "";
   let sessCookie = "";
   if (linkMatch) {
-    const verified = await fetch(linkMatch[1], { redirect: "manual" });
+    const emailedUrl = new URL(linkMatch[1]);
+    const verifyUrl = `${BASE}${emailedUrl.pathname}${emailedUrl.search}`;
+    const verified = await fetch(verifyUrl, { redirect: "manual" });
     const cookies = cookiesOf(verified);
     userCookie = cookies.find((c) => c.startsWith("cp_user=")) ?? "";
     sessCookie = cookies.find((c) => c.startsWith("cp_sess=")) ?? "";

@@ -12,7 +12,7 @@
  */
 import { finish } from "./finish.mjs";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
 const MAILDEV = process.env.MAILDEV_URL ?? "http://127.0.0.1:1080";
 const PUBLIC_URL = process.env.PUBLIC_URL ?? "http://localhost:5173";
 const stamp = Date.now();
@@ -104,7 +104,10 @@ if (!maildevUp) {
   let userCookie = "";
   let verifySessCookie = "";
   if (linkMatch) {
-    const verifyRes = await fetch(linkMatch[1], { redirect: "manual" });
+    const emailedUrl = new URL(linkMatch[1]);
+    check("the verification link uses PUBLIC_URL", emailedUrl.origin === PUBLIC_URL, emailedUrl.origin);
+    const verifyUrl = `${BASE}${emailedUrl.pathname}${emailedUrl.search}`;
+    const verifyRes = await fetch(verifyUrl, { redirect: "manual" });
     check(
       "the real link redirects to ?verified=1",
       verifyRes.status === 302 && verifyRes.headers.get("location") === `${PUBLIC_URL}/?verified=1`,
@@ -119,7 +122,7 @@ if (!maildevUp) {
     verifySessCookie = verifyCookies.find((c) => c.startsWith("cp_sess=")) ?? "";
     check("verifying also mints an anonymous session cookie", Boolean(verifySessCookie));
 
-    const replay = await fetch(linkMatch[1], { redirect: "manual" });
+    const replay = await fetch(verifyUrl, { redirect: "manual" });
     check(
       "the same token cannot be replayed",
       replay.status === 302 && replay.headers.get("location") === `${PUBLIC_URL}/?verify_error=1`,

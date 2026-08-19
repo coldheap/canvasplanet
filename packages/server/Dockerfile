@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 RUN corepack enable
 WORKDIR /app
 
@@ -21,7 +21,7 @@ RUN pnpm --filter @canvasplanet/shared build \
  && pnpm --filter @canvasplanet/server build
 
 # ---- runtime ---------------------------------------------------------------
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 RUN corepack enable
 # Shelled out to via child_process.spawn (export/queue.ts), not an npm
 # dependency — no native binding, just the binary on PATH.

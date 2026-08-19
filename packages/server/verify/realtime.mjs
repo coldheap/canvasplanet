@@ -8,7 +8,8 @@
 import { finish } from "./finish.mjs";
 import WebSocket from "ws";
 
-const BASE = "http://127.0.0.1:8080";
+const BASE = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
+const WS_BASE = BASE.replace(/^http/, "ws");
 const COLOR = 20;
 // Fresh pixels each run so the cost stays at the base rate and the assertions stay stable.
 const X = 700000 + Math.floor(Math.random() * 200);
@@ -32,7 +33,7 @@ console.log(`session A bank=${(await bootA.json()).bank}  session B bank=${(awai
 
 /** Open a socket and subscribe, resolving only once both are done. */
 async function watcher(cookie, tiles) {
-  const ws = new WebSocket(`ws://127.0.0.1:8080/ws`, { headers: { cookie } });
+  const ws = new WebSocket(`${WS_BASE}/ws`, { headers: { cookie } });
   const frames = [];
   ws.on("message", (raw) => frames.push(JSON.parse(raw.toString())));
   await new Promise((resolve, reject) => {

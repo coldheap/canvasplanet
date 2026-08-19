@@ -18,9 +18,10 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const scripts = ["tiles.mjs", "realtime.mjs", "economy.mjs", "geo.mjs", "timelapse.mjs", "templates.mjs", "features.mjs", "embed.mjs", "admin.mjs", "alliances.mjs", "export.mjs", "accounts.mjs", "discord.mjs", "streaks.mjs", "deletion.mjs"];
 
-const res = await fetch("http://127.0.0.1:8080/api/health").catch(() => null);
+const base = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
+const res = await fetch(`${base}/api/health`).catch(() => null);
 if (!res?.ok) {
-  console.error("Server is not responding on :8080. Start it with `pnpm dev` first.");
+  console.error(`Server is not responding at ${base}. Start it before running verify.`);
   process.exit(1);
 }
 
