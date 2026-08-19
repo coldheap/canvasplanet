@@ -94,7 +94,7 @@ export function SettingsPanel() {
 
       <button className="cp-btn" onClick={() => setPanel("discord")}>
         <DiscordIcon size={15} />
-        Discord community
+        Discord
       </button>
 
       {staff && (

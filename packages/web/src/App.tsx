@@ -602,7 +602,7 @@ export function App() {
                   : panel === "admin"
                     ? "Administration"
                     : panel === "discord"
-                      ? "Discord community"
+                      ? "Discord"
                       : panel === "status"
                         ? "System status"
                         : "Settings"
