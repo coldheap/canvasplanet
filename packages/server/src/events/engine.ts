@@ -80,6 +80,43 @@ export interface EventHistoryRow {
  *  — see that method's doc comment for why a second pass exists at all. */
 const REVERT_MOPUP_DELAY_MS = 2_000;
 
+/**
+ * Backoff and logging policy for the three async operations tick() launches
+ * as floating promises (startEvent, botTick, resolveEvent).
+ *
+ * These are the only database calls in the server with no request context to
+ * fail into. A rejection used to reach Node's unhandledRejection default and
+ * take the whole process down — API, WebSocket hub and tile worker together,
+ * see index.ts's header — over one transient database blip, during the
+ * highest-concurrency window the server has. They are caught and retried
+ * instead, on a doubling delay so a real outage isn't hammered at the hub's
+ * 1 Hz, with repeat failures collapsed so an outage stays readable in the
+ * logs rather than burying every other line.
+ *
+ * Nothing here marks a failed event resolved. An event whose cleanup keeps
+ * failing stays unresolved in corruption_events deliberately, so
+ * recoverOnBoot() reverts its zone on the next start: a zone stuck closed is
+ * recoverable, a half-reverted canvas with no record of it is not.
+ */
+const RETRY_BASE_MS = 2_000;
+const RETRY_MAX_MS = 60_000;
+/** Ceiling on the doubling exponent, so the shift can't reach Infinity. */
+const RETRY_MAX_SHIFT = 20;
+/** While a failure repeats, at most one log line per operation per window. */
+const FAILURE_LOG_INTERVAL_MS = 30_000;
+
+type BackgroundOp = "startEvent" | "botTick" | "resolveEvent";
+
+interface OpFailure {
+  /** Consecutive failures; drives the backoff delay. */
+  count: number;
+  /** Earliest time tick() may launch this operation again. */
+  retryAt: number;
+  lastLoggedAt: number;
+  /** Failures folded into the next log line rather than printed. */
+  unlogged: number;
+}
+
 interface InFlightPlayerPaint {
   x: number;
   y: number;
@@ -115,6 +152,59 @@ class EventEngine {
    *  lets resolution wait for the exact requests touching its zone, including
    *  one that began just before the event itself started. */
   private playerPaints = new Set<InFlightPlayerPaint>();
+  /** Per-operation failure and backoff bookkeeping. Absent means healthy —
+   *  see the RETRY_BASE_MS block above for why this exists at all. */
+  private failures = new Map<BackgroundOp, OpFailure>();
+
+  /** True while `op` is inside its post-failure backoff window. */
+  private backingOff(op: BackgroundOp, now: number): boolean {
+    const failure = this.failures.get(op);
+    return failure !== undefined && now < failure.retryAt;
+  }
+
+  /**
+   * Wraps a tick-launched operation so its rejection can never escape as an
+   * unhandled one. The returned promise always fulfils, which is also what
+   * lets resolveEvent() await botTickPromise without a failing bot write
+   * rejecting its Promise.all and skipping the revert entirely.
+   */
+  private guard(op: BackgroundOp, work: Promise<void>): Promise<void> {
+    return work.then(
+      () => this.noteSuccess(op),
+      (err: unknown) => this.noteFailure(op, err),
+    );
+  }
+
+  private noteSuccess(op: BackgroundOp): void {
+    const failure = this.failures.get(op);
+    if (!failure) return;
+    console.warn(`[events] ${op} recovered after ${failure.count} consecutive failure(s)`);
+    this.failures.delete(op);
+  }
+
+  private noteFailure(op: BackgroundOp, err: unknown): void {
+    const now = Date.now();
+    const failure = this.failures.get(op) ?? { count: 0, retryAt: 0, lastLoggedAt: 0, unlogged: 0 };
+    failure.count++;
+    failure.unlogged++;
+    const delay = Math.min(
+      RETRY_BASE_MS * 2 ** Math.min(failure.count - 1, RETRY_MAX_SHIFT),
+      RETRY_MAX_MS,
+    );
+    failure.retryAt = now + delay;
+    // Always report the first failure in full; collapse the flood that a
+    // sustained outage would otherwise produce at the hub's tick rate.
+    if (failure.count === 1 || now - failure.lastLoggedAt >= FAILURE_LOG_INTERVAL_MS) {
+      const folded = failure.unlogged > 1 ? ` (${failure.unlogged} failures since last line)` : "";
+      console.error(
+        `[events] ${op} failed${folded}; retrying in ${Math.round(delay / 1000)}s`,
+        err,
+      );
+      failure.lastLoggedAt = now;
+      failure.unlogged = 0;
+    }
+    this.failures.set(op, failure);
+  }
 
   /**
    * Reverts any event left unresolved by a server restart — the "zero
@@ -153,7 +243,10 @@ class EventEngine {
    * Called on the 1Hz hub tick (index.ts). Cheap and synchronous — starting
    * a new event and resolving a finished one are async DB work, kicked off
    * but not awaited here, each guarded so an in-flight one never starts
-   * twice from two ticks landing close together.
+   * twice from two ticks landing close together, and so a rejected one is
+   * recorded and retried on a backoff instead of escaping this process as an
+   * unhandled rejection. Every launch below goes through guard(); nothing
+   * async may be started from here without it.
    */
   tick(): ServerMessage | null {
     const now = Date.now();
@@ -161,10 +254,10 @@ class EventEngine {
 
     if (ev) {
       if (now >= ev.endsAt) {
-        if (!this.resolving) {
+        if (!this.resolving && !this.backingOff("resolveEvent", now)) {
           this.resolving = true;
           ev.beginResolving();
-          void this.resolveEvent(ev).finally(() => {
+          void this.guard("resolveEvent", this.resolveEvent(ev)).finally(() => {
             this.resolving = false;
           });
         }
@@ -172,9 +265,9 @@ class EventEngine {
         // A client must never be left looking at an active event stuck at 0:00.
         return { t: "event", event: ev.toDTO() };
       }
-      if (!this.botTicking) {
+      if (!this.botTicking && !this.backingOff("botTick", now)) {
         this.botTicking = true;
-        this.botTickPromise = this.botTick(ev).finally(() => {
+        this.botTickPromise = this.guard("botTick", this.botTick(ev)).finally(() => {
           this.botTicking = false;
           this.botTickPromise = null;
         });
@@ -182,9 +275,9 @@ class EventEngine {
       return { t: "event", event: ev.toDTO() };
     }
 
-    if (!this.starting && now >= this.nextAt) {
+    if (!this.starting && now >= this.nextAt && !this.backingOff("startEvent", now)) {
       this.starting = true;
-      void this.startEvent().finally(() => {
+      void this.guard("startEvent", this.startEvent()).finally(() => {
         this.starting = false;
       });
     }
@@ -239,7 +332,14 @@ class EventEngine {
     ev.beginResolving();
     try {
       await this.resolveEvent(ev);
+      this.noteSuccess("resolveEvent");
       return true;
+    } catch (err) {
+      // Recorded like a tick-launched failure so the retry backoff is shared,
+      // then rethrown: unlike the tick path this one has an admin waiting on
+      // an HTTP response, and they should be told it didn't work.
+      this.noteFailure("resolveEvent", err);
+      throw err;
     } finally {
       this.resolving = false;
     }
