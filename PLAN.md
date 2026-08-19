@@ -17,10 +17,10 @@ original MVP prompt, the reason is noted.
 | # | Decision | Value |
 |---|---|---|
 | 1 | Pixel grid | Web Mercator **zoom 12** — 1,048,576 × 1,048,576 pixels, **~38.22 m/px** at the equator |
-| 2 | Cooldown | **Charge bank**: +1 per 30s, cap 30, spendable in bursts |
-| 3 | New session | Starts with a **full bank of 30** |
+| 2 | Cooldown | **Charge bank**: +1 per 30s, cap 60, spendable in bursts |
+| 3 | New session | Starts with a **full bank of 60** |
 | 4 | History | `pixels` (current state) **+ append-only `pixel_events`** |
-| 5 | Cost table | base **1**, overpaint **2**, terrain-violating **2**, restore **1** |
+| 5 | Cost table | base **2**, overpaint **4**, terrain-violating **4**, restore **2** |
 | 6 | Leaderboard | **Both** all-time cumulative and currently-held, toggled in the panel |
 | 7 | Leaderboard UX | World total + top 10 + **your country pinned**, expandable to full list |
 | 8 | Render path | **Server-rendered PNG tiles** + WS delta overlay |
@@ -35,7 +35,7 @@ original MVP prompt, the reason is noted.
 | 17 | Protection | **DB-backed protected regions**, admin-editable live |
 | 18 | Hosting | **Single VPS, Docker Compose, Cloudflare in front** |
 | 19 | Tile cache | **Dirty-mark + debounced re-render**, batched CF purge |
-| 20 | IP ceiling | **IP-wide token bucket, 120 paints/hour** |
+| 20 | IP ceiling | **IP-wide token bucket, 120 charges/hour** (60 base-cost placements) |
 | 21 | Staff | **Real accounts**, roles `mod` and `admin` |
 | 22 | Anti-bot | **Cloudflare WAF + Turnstile on first paint** and **datacenter/VPN ASN gating** |
 | 23 | Admin tools | Regions, revert, ban, freeze + stats, image stamp — all **in-app panel** |
@@ -106,7 +106,7 @@ Coordinates are stored as plain `INT`. Never store lat/lng — it is derived.
 
 32 colors, indices `0..31`, stored as `SMALLINT`. Indices `27..31` are the
 **water family**; `0..26` are the **land family**. There is no neutral family
-— black outlines at sea therefore cost 2. That is a deliberate, tunable
+— black outlines at sea therefore cost 4. That is a deliberate, tunable
 consequence of the 32/5 split; `COLOR_FAMILY` in shared config is the one
 place to change it.
 
@@ -125,23 +125,23 @@ cost(pixel, newColor):
   wasViolating = wasPainted && isViolation(pixel.color, pixel.terrain)
   nowViolating = isViolation(newColor, pixel.terrain)
 
-  if (wasViolating && !nowViolating)  return 1      // RESTORE — always cheap
-  return max(wasPainted ? 2 : 1, nowViolating ? 2 : 1)
+  if (wasViolating && !nowViolating)  return 2      // RESTORE — always cheap
+  return max(wasPainted ? 4 : 2, nowViolating ? 4 : 2)
 ```
 
 Which yields exactly:
 
 | pixel state | new color | cost |
 |---|---|---|
-| empty | terrain-correct | **1** |
-| empty | violating | **2** |
-| painted, correct | terrain-correct | **2** |
-| painted, correct | violating | **2** |
-| painted, **violating** | terrain-correct | **1** ← restore |
-| painted, violating | violating | 2 |
+| empty | terrain-correct | **2** |
+| empty | violating | **4** |
+| painted, correct | terrain-correct | **4** |
+| painted, correct | violating | **4** |
+| painted, **violating** | terrain-correct | **2** ← restore |
+| painted, violating | violating | 4 |
 
 Note the modifiers **do not stack** — the maximum any single paint can cost is
-2. This is the resolution of "base 1 / overpaint 2 / violating 2 / restore 1",
+4. This is the resolution of "base 2 / overpaint 4 / violating 4 / restore 2",
 which as a flat table left the overlap undefined.
 
 Staff with `mod` or `admin` role bypass cost entirely (unlimited pixels), but
@@ -225,7 +225,7 @@ Indexes: `(created_at)` BRIN, `(session_id, created_at)`, `(x, y, id DESC)`,
 CREATE TABLE sessions (
   id                 BIGSERIAL PRIMARY KEY,
   token_hash         BYTEA NOT NULL UNIQUE,     -- sha256 of cookie value
-  charges            SMALLINT NOT NULL DEFAULT 30,
+  charges            SMALLINT NOT NULL DEFAULT 60,
   charges_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ip                 INET,
   asn                INTEGER,
@@ -246,14 +246,14 @@ there is no timer job:
 ```
 elapsed  = now - charges_updated_at
 regen    = floor(elapsed / 30s)
-charges' = min(30, charges + regen)
+charges' = min(60, charges + regen)
 updated' = charges_updated_at + regen * 30s     -- keeps partial progress
 ```
 
 This runs inside the same transaction as the paint, under
 `SELECT ... FOR UPDATE`, so two concurrent paints cannot double-spend.
 
-### `ip_budget` — token bucket, 120 paints/hour per IP
+### `ip_budget` — token bucket, 120 charges/hour per IP
 
 ```sql
 CREATE TABLE ip_budget (
@@ -266,9 +266,9 @@ CREATE TABLE ip_budget (
 ```
 
 Same lazy-refill maths as charges: +1 token per 30s, cap 120. Because a single
-human regenerates at exactly 120/hour, a legitimate solo user never touches
+human regenerates at exactly 120 charges/hour, a legitimate solo user never touches
 this ceiling; a cookie-wipe farm hits it within minutes. This is the
-containment for the "fresh session = 30 free charges" decision.
+containment for the "fresh session = 60 free charges" decision.
 
 ### Countries and stats
 
@@ -525,7 +525,7 @@ could not resolve individual pixels anyway.
 { "t": "lb", "world": 4182993, "rows": [[81, 412003, 88120], ...] }
 
 // on change, to the owning session only
-{ "t": "charges", "bank": 27, "max": 30, "nextAt": 1754500000000 }
+{ "t": "charges", "bank": 54, "max": 60, "nextAt": 1754500000000 }
 
 // every 1s, to everyone — the activity ticker
 { "t": "pulse", "pps": 41, "recent": [81, 414, 76, 81] }
@@ -670,7 +670,7 @@ The IP the rate limiter counts against comes from `CF-Connecting-IP` only
 when `TRUST_CF_CONNECTING_IP=true`, i.e. only when a proxy that *overwrites*
 that header is known to be in front. Reading it unconditionally means anyone
 who can reach the origin directly sends a fresh forged address per request
-and the entire IP ceiling — the containment for the full 30-charge starting
+and the entire IP ceiling — the containment for the full 60-charge starting
 bank — silently evaporates. Keeping the origin IP unpublished is not the same
 as keeping it unreachable.
 
@@ -706,8 +706,8 @@ Vite + React 18 + Leaflet, no framework beyond that.
                        grid overlay, cursor pixel highlight
 <PalettePanel>         32 swatches, water family visually grouped,
                        collapses to "Zoom in to paint" below z12
-<ChargeBar>            bank / 30, next-charge countdown, cost preview
-                       under the cursor ("this pixel costs 2")
+<ChargeBar>            bank / 60, next-charge countdown, cost preview
+                       under the cursor ("this pixel costs 4")
 <LeaderboardPanel>     world total, [All-time | Held] toggle, top 10,
                        your country pinned, expand to full list
 <ActivityFeed>         paints/sec + rolling flag ticker
@@ -823,7 +823,7 @@ persistence check. *Done when §12 is fully ticked.*
       every zoom from 3 to 18
 - [ ] Color select + click-to-paint works; charge bank decrements by the
       **correct cost** for all six cases in §2
-- [ ] Charges regenerate at 1/30s to a cap of 30 across a server restart
+- [ ] Charges regenerate at 1/30s to a cap of 60 across a server restart
 - [ ] New pixels appear for every other connected client within ~1s
 - [ ] Leaderboard updates live, both modes, without leaving the map view
 - [ ] Painted pixels survive a server restart *and* a full tile-cache wipe
@@ -979,7 +979,7 @@ each VU its own simulated address moved it to 29% success and 122 ms p99.
 ## 13. Open questions carried into the build
 
 1. **Palette neutrals.** With 27 land / 5 water and no neutral family, black
-   and white outlines at sea cost 2. If that proves annoying in practice,
+   and white outlines at sea cost 4. If that proves annoying in practice,
    promote greys to a neutral family — one edit in `palette.ts`.
 2. **Landmark size.** 256×128 is sized for the pixel font. Confirm legibility
    at z12 on a phone before seeding, since re-seeding after launch means

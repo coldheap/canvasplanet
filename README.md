@@ -64,8 +64,8 @@ country attribution, and the admin tooling. Start the server first.
 |---|---|
 | `tiles.mjs` | a painted pixel lands at the right offset in the right PNG, neighbours stay transparent, parents mipmap |
 | `realtime.mjs` | a paint reaches a subscribed client in <1s, and does **not** reach one watching elsewhere |
-| `economy.mjs` | exactly 30 paints then 429, with an accurate countdown; no double-spend |
-| `geo.mjs` | ten real places attribute to the right country and terrain; the 1/2/1 cost rule fires on real land and sea |
+| `economy.mjs` | a full bank is exhausted then returns 429, with an accurate countdown; no double-spend |
+| `geo.mjs` | ten real places attribute to the right country and terrain; the 2/4/2 cost rule fires on real land and sea |
 | `admin.mjs` | stamp/revert/freeze/staff/audit, protected regions holding against admins, timelapse, templates |
 | `export.mjs` | a real ffmpeg run produces a playable GIF and MP4, the cache hit is free, the rate limit only bites a genuinely new encode |
 
@@ -115,10 +115,11 @@ k6/                load and abuse tests from the definition of done
 |---|---|
 | Grid | zoom 12 — 1,048,576 × 1,048,576 pixels, **~38.22 m/pixel** at the equator |
 | Grid centre | `(524288, 524288)` = 0°, 0° |
-| Charges | +1 per 30s, cap 30, new sessions start full |
-| Cost | 1 base · 2 overpaint · 2 terrain-violating · **1 to restore** |
+| Charges | +1 per 30s, cap 60, new sessions start full |
+| Placement timing | 2 charges on unclaimed ground (**60s earned time**) · 4 on claimed ground (**120s earned time**) |
+| Terrain rule | 4 charges to place the wrong colour family · **2 to restore** the correct family |
 | Palette | 32 colours, indices 27–31 are the water family |
-| IP ceiling | 120 paints/hour, shared across every cookie on that IP |
+| IP ceiling | 120 charges/hour (60 base-cost placements), shared across every cookie on that IP |
 | Request flood guard | 40-request burst, then 1 request per 2s/IP, before DB work |
 | Painting | z12 and in only |
 

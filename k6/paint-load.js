@@ -6,7 +6,7 @@
  * Each VU is a distinct session AND a distinct IP. The distinct IP matters:
  * with all 50 sharing one address they contend on a single ip_budget row and
  * the run measures the rate limiter rather than paint throughput, and the
- * shared 120/hour ceiling starves everyone after ~120 paints.
+ * shared 120-charge/hour ceiling starves everyone after ~60 base-cost paints.
  *
  * Spoofing the IP requires TRUST_CF_CONNECTING_IP=true on the server, which
  * is also how it runs behind Cloudflare. Do not set that flag on an origin
@@ -26,7 +26,7 @@ const BASE = __ENV.BASE_URL || "http://localhost:8080";
 // Read from the server at setup rather than hardcoded: the economy is
 // tunable in shared/config.ts, and a stale copy here turns every legitimate
 // post-cooldown paint into a false double-spend report.
-let CHARGE_MAX = 30;
+let CHARGE_MAX = 60;
 let REGEN_MS = 30000;
 
 const painted = new Counter("pixels_painted");

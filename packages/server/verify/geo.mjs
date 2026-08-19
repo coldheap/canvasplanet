@@ -67,7 +67,7 @@ for (const place of PLACES) {
 
 // ---- the terrain cost rule, now that terrain is real ----------------------
 // Fresh pixels each run: re-using fixed ones makes the second run an
-// overpaint (cost 2) and the "empty pixel costs 1" assertion fails for a
+// overpaint (cost 4) and the "empty pixel costs 2" assertion fails for a
 // reason that has nothing to do with terrain.
 const jitter = () => Math.floor(Math.random() * 400);
 const sea = { x: lngToX(-140.0) + jitter(), y: latToY(0.0) + jitter() };
@@ -86,15 +86,15 @@ const paint = async (x, y, color) => {
 
 console.log("\nterrain cost rule against real geography:");
 const a = await paint(land.x, land.y, GREEN);
-console.log(`  ${a.body.cost === 1 ? "PASS" : "FAIL"}  land colour on land   -> cost ${a.body.cost} (expect 1)`);
-if (a.body.cost !== 1) failures++;
+console.log(`  ${a.body.cost === 2 ? "PASS" : "FAIL"}  land colour on land   -> cost ${a.body.cost} (expect 2)`);
+if (a.body.cost !== 2) failures++;
 
 const b = await paint(sea.x, sea.y, GREEN);
-console.log(`  ${b.body.cost === 2 ? "PASS" : "FAIL"}  land colour at sea    -> cost ${b.body.cost} (expect 2, violation)`);
-if (b.body.cost !== 2) failures++;
+console.log(`  ${b.body.cost === 4 ? "PASS" : "FAIL"}  land colour at sea    -> cost ${b.body.cost} (expect 4, violation)`);
+if (b.body.cost !== 4) failures++;
 
 const c = await paint(sea.x, sea.y, BLUE);
-console.log(`  ${c.body.cost === 1 ? "PASS" : "FAIL"}  restoring sea to blue -> cost ${c.body.cost} (expect 1, restore)`);
-if (c.body.cost !== 1) failures++;
+console.log(`  ${c.body.cost === 2 ? "PASS" : "FAIL"}  restoring sea to blue -> cost ${c.body.cost} (expect 2, restore)`);
+if (c.body.cost !== 2) failures++;
 
 finish(failures, "geo");

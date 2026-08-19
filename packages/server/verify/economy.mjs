@@ -6,8 +6,8 @@
  * check that unit tests structurally cannot make, because it needs the real
  * transaction under a real connection.
  *
- * The assertion is deliberately an AGGREGATE one. "Exactly 30 then 429" was
- * true when a charge took 30 s to regenerate, but the economy is tunable and
+ * The assertion is deliberately an AGGREGATE one. A fixed paint count was
+ * once equivalent to exhausting the bank, but the economy is tunable and
  * at one charge per second the loop itself takes long enough to earn several
  * more — so a fixed count tests the clock, not the ledger.
  */
@@ -29,11 +29,11 @@ console.log(`fresh session: ${startBank}/${max} charges, +1 per ${regenMs}ms`);
 
 check("a fresh session starts with a full bank", startBank === max, `${startBank}/${max}`);
 
-// Land-family colour on empty pixels => cost 1 each.
+// Land-family colour on empty pixels => base cost (2 charges) each.
 const COLOR = 20;
 // Genuinely empty ground, asked for rather than guessed at: the canvas now
 // holds tens of thousands of pixels and a fixed band collides with earlier
-// runs, which shows up as "cost 2, expected 1" and looks like a cost-table
+// runs, which shows up as "cost 4, expected 2" and looks like a cost-table
 // regression.
 const { x: baseX, y: baseY } = await findEmptyArea(64, 7);
 
@@ -54,7 +54,7 @@ for (let i = 0; i < 400; i++) {
   if (res.status === 200) {
     placed++;
     spent += body.cost;
-    if (body.cost !== 1) check(`pixel ${i} cost ${body.cost}, expected 1`, false);
+    if (body.cost !== 2) check(`pixel ${i} cost ${body.cost}, expected 2`, false);
   } else {
     refusal = { status: res.status, body };
     break;

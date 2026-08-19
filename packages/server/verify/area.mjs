@@ -2,7 +2,7 @@
  * Find a rectangle of canvas that is genuinely unpainted.
  *
  * Several checks depend on starting from empty ground — "an empty pixel costs
- * 1", "unpainted reads as 255". They used to pick coordinates from a fixed
+ * 2", "unpainted reads as 255". They used to pick coordinates from a fixed
  * band with a small random offset, which worked until the canvas had tens of
  * thousands of pixels in it and the suite started colliding with its own
  * history. The failure looked like a cost-table regression and was not.
@@ -34,7 +34,7 @@ export async function findEmptyArea(w, h, terrain = "land", attempts = 60) {
     if ((await res.json()).painted !== 0) continue;
 
     // Terrain matters as much as emptiness. A land-family colour on sea is a
-    // *correct* cost of 2, so a test asserting "an empty pixel costs 1" on a
+    // *correct* cost of 4, so a test asserting "an empty pixel costs 2" on a
     // randomly chosen rectangle fails about half the time — 51% of the world
     // is ocean — and looks exactly like a cost-table regression.
     //

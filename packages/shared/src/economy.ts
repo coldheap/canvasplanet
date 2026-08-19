@@ -61,11 +61,11 @@ export interface CostResult {
 /**
  * The cost table from PLAN.md §2.
  *
- *   empty  + correct     -> 1  base
- *   empty  + violating   -> 2  violation
- *   painted + correct    -> 2  overpaint
- *   painted + violating  -> 2  (max, not sum — modifiers do NOT stack)
- *   violating -> correct -> 1  restore   (cheap on purpose: healing a
+ *   empty  + correct     -> 2  base
+ *   empty  + violating   -> 4  violation
+ *   painted + correct    -> 4  overpaint
+ *   painted + violating  -> 4  (max, not sum — modifiers do NOT stack)
+ *   violating -> correct -> 2  restore   (cheap on purpose: healing a
  *                                         sunk coastline should not be
  *                                         more expensive than sinking it)
  */
@@ -133,6 +133,27 @@ export function msUntilNextCharge(
   if (bank.charges >= max) return null;
   const elapsed = now - bank.updatedAt;
   return Math.max(0, regenMs - (elapsed % regenMs));
+}
+
+/**
+ * Milliseconds until `bank` can afford `cost` after lazy regeneration.
+ * Returns 0 when it is already affordable, or null when the cost exceeds the
+ * maximum bank and therefore can never be afforded.
+ */
+export function msUntilAffordable(
+  bank: Bank,
+  cost: number,
+  now: number,
+  max = CHARGE_MAX,
+  regenMs = CHARGE_REGEN_MS,
+): number | null {
+  if (cost > max) return null;
+
+  const r = regenerate(bank, now, max, regenMs);
+  if (r.charges >= cost) return 0;
+
+  const chargesNeeded = Math.ceil(cost - r.charges);
+  return Math.max(0, r.updatedAt + chargesNeeded * regenMs - now);
 }
 
 export function canAfford(

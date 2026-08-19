@@ -58,16 +58,16 @@ export const SUB_ZOOM = 10; // Z_PIXEL - 2
 /** Seconds to regenerate one charge. */
 export const CHARGE_REGEN_MS = 30_000;
 /** Maximum bank size. */
-export const CHARGE_MAX = 30;
+export const CHARGE_MAX = 60;
 /** A brand-new session starts with a full bank (see IP_BUDGET_MAX for the
  *  containment on cookie-wiping). */
-export const CHARGE_START = 30;
+export const CHARGE_START = 60;
 
 /** Cost table. Modifiers do not stack — see economy.ts. */
-export const COST_BASE = 1;
-export const COST_OVERPAINT = 2;
-export const COST_VIOLATION = 2;
-export const COST_RESTORE = 1;
+export const COST_BASE = 2;
+export const COST_OVERPAINT = 4;
+export const COST_VIOLATION = 4;
+export const COST_RESTORE = 2;
 
 // ---------------------------------------------------------------------------
 // Rate limiting

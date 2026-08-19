@@ -6,7 +6,7 @@
  * means no JS on the page can read it, which also means an injected script
  * cannot exfiltrate a session to drive it from elsewhere.
  *
- * A new session starts with a FULL bank of 30 charges (best first
+ * A new session starts with a FULL bank of 60 charges (best first
  * impression). The containment for cookie-wiping is the IP token bucket in
  * paint/service.ts, not a smaller starting bank.
  */

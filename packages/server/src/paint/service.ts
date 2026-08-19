@@ -22,6 +22,7 @@ import {
   findProtecting,
   inPaintBounds,
   isValidColor,
+  msUntilAffordable,
   msUntilNextCharge,
   paintCost,
   regenerate,
@@ -166,11 +167,10 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
     if (!staff) {
       const spent = spend(bank, cost, now, CHARGE_MAX, regenMs);
       if (!spent) {
-        const regenned = regenerate(bank, now, CHARGE_MAX, regenMs);
         return {
           ok: false as const,
           reason: PaintRefusal.NoCharges,
-          retryAfterMs: msUntilNextCharge(regenned, now, CHARGE_MAX, regenMs) ?? 0,
+          retryAfterMs: msUntilAffordable(bank, cost, now, CHARGE_MAX, regenMs) ?? 0,
         };
       }
       bank = spent;

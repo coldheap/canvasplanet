@@ -10,7 +10,7 @@ import WebSocket from "ws";
 
 const BASE = "http://127.0.0.1:8080";
 const COLOR = 20;
-// Fresh pixels each run so the cost stays 1 and the assertions stay stable.
+// Fresh pixels each run so the cost stays at the base rate and the assertions stay stable.
 const X = 700000 + Math.floor(Math.random() * 200);
 const Y = 700000 + Math.floor(Math.random() * 200);
 

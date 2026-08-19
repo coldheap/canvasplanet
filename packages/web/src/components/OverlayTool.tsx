@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  COST_BASE,
   PALETTE,
   TEMPLATE_MAX_DIM,
   TRANSPARENT_INDEX,
@@ -277,7 +278,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
 
               <p className="cp-hint">
                 {opaque.toLocaleString()} pixels total, so at least{" "}
-                {opaque.toLocaleString()} charges.
+                {(opaque * COST_BASE).toLocaleString()} charges.
               </p>
 
               <div className="cp-actions">

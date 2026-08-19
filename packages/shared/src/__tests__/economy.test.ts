@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHARGE_MAX,
   CHARGE_REGEN_MS,
+  CHARGE_START,
   IP_BUDGET_FLAGGED_ASN,
   IP_BUDGET_MAX,
   IP_BUDGET_REFILL_MS,
@@ -10,6 +11,7 @@ import {
   Terrain,
   canAfford,
   isViolation,
+  msUntilAffordable,
   msUntilNextCharge,
   paintCost,
   refillBucket,
@@ -48,52 +50,52 @@ describe("isViolation", () => {
 });
 
 describe("paintCost — the six cases from PLAN.md §2", () => {
-  it("1: empty pixel, terrain-correct colour", () => {
+  it("2: empty pixel, terrain-correct colour", () => {
     expect(paintCost({ currentColor: null, newColor: GREEN, terrain: Terrain.Land })).toEqual({
-      cost: 1,
+      cost: 2,
       reason: "base",
     });
   });
 
-  it("2: empty pixel, violating colour", () => {
+  it("4: empty pixel, violating colour", () => {
     expect(paintCost({ currentColor: null, newColor: BLUE, terrain: Terrain.Land })).toEqual({
-      cost: 2,
+      cost: 4,
       reason: "violation",
     });
   });
 
-  it("2: painted pixel, terrain-correct colour (overpaint)", () => {
+  it("4: painted pixel, terrain-correct colour (overpaint)", () => {
     expect(paintCost({ currentColor: GREEN, newColor: BLACK, terrain: Terrain.Land })).toEqual({
-      cost: 2,
+      cost: 4,
       reason: "overpaint",
     });
   });
 
-  it("2: painted pixel + violating colour — modifiers do NOT stack", () => {
+  it("4: painted pixel + violating colour — modifiers do NOT stack", () => {
     const r = paintCost({ currentColor: GREEN, newColor: BLUE, terrain: Terrain.Land });
-    expect(r.cost).toBe(2); // not 3, not 4
+    expect(r.cost).toBe(4); // not 6, not 8
     expect(r.reason).toBe("violation");
   });
 
-  it("1: restoring a sunk land pixel is cheap even though it is an overpaint", () => {
+  it("2: restoring a sunk land pixel is cheap even though it is an overpaint", () => {
     expect(paintCost({ currentColor: BLUE, newColor: GREEN, terrain: Terrain.Land })).toEqual({
-      cost: 1,
+      cost: 2,
       reason: "restore",
     });
   });
 
-  it("1: restoring a filled-in sea pixel is equally cheap", () => {
+  it("2: restoring a filled-in sea pixel is equally cheap", () => {
     expect(paintCost({ currentColor: GREEN, newColor: BLUE, terrain: Terrain.Water })).toEqual({
-      cost: 1,
+      cost: 2,
       reason: "restore",
     });
   });
 
-  it("2: repainting one violating colour with another gets no discount", () => {
-    expect(paintCost({ currentColor: BLUE, newColor: NAVY, terrain: Terrain.Land }).cost).toBe(2);
+  it("4: repainting one violating colour with another gets no discount", () => {
+    expect(paintCost({ currentColor: BLUE, newColor: NAVY, terrain: Terrain.Land }).cost).toBe(4);
   });
 
-  it("never costs more than 2 or less than 1, for any combination", () => {
+  it("never costs more than 4 or less than 2, for any combination", () => {
     for (let cur = -1; cur < 32; cur++) {
       for (let next = 0; next < 32; next++) {
         for (const terrain of [Terrain.Land, Terrain.Water]) {
@@ -102,8 +104,8 @@ describe("paintCost — the six cases from PLAN.md §2", () => {
             newColor: next,
             terrain,
           });
-          expect(cost).toBeGreaterThanOrEqual(1);
-          expect(cost).toBeLessThanOrEqual(2);
+          expect(cost).toBeGreaterThanOrEqual(2);
+          expect(cost).toBeLessThanOrEqual(4);
         }
       }
     }
@@ -126,7 +128,9 @@ describe("charge bank", () => {
     expect(regenerate(bank, T0 + CHARGE_REGEN_MS * 3).charges).toBe(3);
   });
 
-  it("caps at 30", () => {
+  it("starts full and caps at 60", () => {
+    expect(CHARGE_START).toBe(60);
+    expect(CHARGE_MAX).toBe(60);
     const bank = { charges: 0, updatedAt: T0 };
     expect(regenerate(bank, T0 + CHARGE_REGEN_MS * 1000).charges).toBe(CHARGE_MAX);
   });
@@ -147,11 +151,25 @@ describe("charge bank", () => {
     expect(msUntilNextCharge({ charges: CHARGE_MAX, updatedAt: T0 }, T0)).toBeNull();
   });
 
+  it("reports the time until a multi-charge paint is affordable", () => {
+    const half = CHARGE_REGEN_MS / 2;
+    const bank = { charges: 1, updatedAt: T0 };
+
+    expect(msUntilAffordable(bank, 4, T0 + half)).toBe(CHARGE_REGEN_MS * 2 + half);
+    expect(msUntilAffordable(bank, 2, T0 + CHARGE_REGEN_MS)).toBe(0);
+  });
+
+  it("reports impossible costs distinctly from an affordable cost", () => {
+    const bank = { charges: CHARGE_MAX, updatedAt: T0 };
+    expect(msUntilAffordable(bank, CHARGE_MAX, T0)).toBe(0);
+    expect(msUntilAffordable(bank, CHARGE_MAX + 1, T0)).toBeNull();
+  });
+
   it("starts the accrual clock at the moment a full bank is first spent", () => {
     const full = { charges: CHARGE_MAX, updatedAt: T0 - 999_999 };
     const after = spend(full, 1, T0)!;
     expect(after.charges).toBe(CHARGE_MAX - 1);
-    // Must be a fresh 30s, not an instant refill from the stale timestamp.
+    // Must be a fresh regen period, not an instant refill from the stale timestamp.
     expect(msUntilNextCharge(after, T0)).toBe(CHARGE_REGEN_MS);
   });
 
@@ -173,11 +191,11 @@ describe("charge bank", () => {
     expect(b).toBeNull();
   });
 
-  it("lets a full bank place 30 pixels in a burst and no more", () => {
+  it("lets a full bank fund 30 unclaimed pixels in a burst and no more", () => {
     let bank = { charges: CHARGE_MAX, updatedAt: T0 };
     let placed = 0;
     for (let i = 0; i < 50; i++) {
-      const next = spend(bank, 1, T0);
+      const next = spend(bank, 2, T0);
       if (!next) break;
       bank = next;
       placed++;

@@ -8,7 +8,7 @@
 
 import { useEffect } from "react";
 import { Droplet, MapPin, MapPinOff } from "lucide-react";
-import { Family, MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
+import { COST_VIOLATION, Family, MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
 export function PalettePanel({ zoom }: { zoom: number }) {
@@ -55,9 +55,13 @@ export function PalettePanel({ zoom }: { zoom: number }) {
           ))}
         </div>
 
-        {/* Water colours cost 2 on land, so they get their own group with an
-            icon cue rather than a text label — the tooltip carries the rule. */}
-        <span className="cp-swatch-group-label" title="Water colours — cost 2 on land">
+        {/* Water colours use the terrain-violation rate on land, so they get
+            their own group with an icon cue rather than a text label — the
+            tooltip carries the current rate. */}
+        <span
+          className="cp-swatch-group-label"
+          title={`Water colours — cost ${COST_VIOLATION} on land`}
+        >
           <Droplet />
         </span>
         <div className="cp-swatch-group">

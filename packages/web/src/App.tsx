@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
 import {
+  COST_BASE,
   ERASED,
   MIN_MAP_ZOOM,
   Z_PIXEL,
@@ -308,9 +309,10 @@ export function App() {
     if (!colorAttempt) return;
 
     // Best guess at the cost so the bank does not visibly jump when the
-    // response lands. Falls back to 1 for a pixel we have not inspected.
+    // response lands. Falls back to the base rate for a pixel we have not
+    // inspected.
     const known = pixelCache.current.get(k);
-    const guess = known ? costOf(known).cost : 1;
+    const guess = known ? costOf(known).cost : COST_BASE;
 
     if (bank < guess) {
       paintColors.current.rollback(colorAttempt);
@@ -344,7 +346,11 @@ export function App() {
     if (!("ok" in res) || res.ok !== true) {
       const err = res as PaintError;
       if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
-      showToast(err.message ?? "Could not paint that pixel.");
+      showToast(
+        err.reason === "no_charges" && err.retryAfterMs
+          ? `Not enough charges. Ready in ${formatRetryAfter(err.retryAfterMs)}.`
+          : err.message ?? "Could not paint that pixel.",
+      );
       // Resync rather than guess at how far the optimistic bank drifted.
       void api.bootstrap().then(hydrate);
       return;
@@ -659,6 +665,14 @@ function costOf(info: PixelInfo): { cost: number; reason: string } {
     newColor: selectedColor,
     terrain: info.terrain,
   });
+}
+
+function formatRetryAfter(ms: number): string {
+  const seconds = Math.max(1, Math.ceil(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return remainder === 0 ? `${minutes}m` : `${minutes}m ${remainder}s`;
 }
 
 function readViewMode(): "map" | "globe" {
