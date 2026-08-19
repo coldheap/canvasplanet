@@ -6,7 +6,7 @@
  * calls `reloadRegions()` / `setFrozen()` after writing to the DB.
  */
 
-import { LANDMARK, type Region } from "@worldcanvas/shared";
+import { LANDMARK, type Region } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { hub } from "../ws/hub.js";
 

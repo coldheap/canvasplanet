@@ -12,7 +12,7 @@
 
 import { useState } from "react";
 import { AlertTriangle, Check, Image as ImageIcon, Stamp } from "lucide-react";
-import { ADMIN_STAMP_MAX_DIM, PALETTE, nearestPaletteIndex } from "@worldcanvas/shared";
+import { ADMIN_STAMP_MAX_DIM, PALETTE, nearestPaletteIndex } from "@canvasplanet/shared";
 import { api, type StampResult } from "../../api.js";
 import { pickBbox } from "../../canvas/pickBbox.js";
 import type { MapHandle } from "../MapCanvas.js";
@@ -88,7 +88,7 @@ export function StampTab({ handle }: { handle: MapHandle | null }) {
 
   return (
     <section>
-      <label className="wc-drop">
+      <label className="cp-drop">
         <ImageIcon size={16} />
         <span>{image ? `${image.w}×${image.h}` : "Choose an image"}</span>
         <input
@@ -101,25 +101,25 @@ export function StampTab({ handle }: { handle: MapHandle | null }) {
 
       {image && (
         <>
-          <div className="wc-stamp-preview">
+          <div className="cp-stamp-preview">
             <figure>
               <img src={image.url} alt="original" />
-              <figcaption className="wc-hint">original</figcaption>
+              <figcaption className="cp-hint">original</figcaption>
             </figure>
             <figure>
               <QuantizedPreview w={image.w} h={image.h} data={image.data} />
-              <figcaption className="wc-hint">{PALETTE.length} colours</figcaption>
+              <figcaption className="cp-hint">{PALETTE.length} colours</figcaption>
             </figure>
           </div>
-          <p className="wc-hint">{opaque.toLocaleString()} pixels will be painted.</p>
+          <p className="cp-hint">{opaque.toLocaleString()} pixels will be painted.</p>
 
-          <div className="wc-actions">
-            <button className="wc-btn" disabled={!handle} onClick={() => void place()}>
+          <div className="cp-actions">
+            <button className="cp-btn" disabled={!handle} onClick={() => void place()}>
               {at ? `Placed at ${at.x}, ${at.y}` : "Click map for top-left"}
             </button>
           </div>
 
-          <label className="wc-toggle">
+          <label className="cp-toggle">
             <input
               type="checkbox"
               checked={autoProtect}
@@ -136,12 +136,12 @@ export function StampTab({ handle }: { handle: MapHandle | null }) {
             />
           )}
 
-          <div className="wc-actions">
-            <button className="wc-btn" disabled={!at || busy} onClick={() => void run(true)}>
+          <div className="cp-actions">
+            <button className="cp-btn" disabled={!at || busy} onClick={() => void run(true)}>
               Preview
             </button>
             <button
-              className="wc-btn wc-btn-primary"
+              className="cp-btn cp-btn-primary"
               // Preview first, always: a stamp is revertible but an
               // unexpected blast radius still ruins someone's afternoon.
               disabled={!preview?.preview || busy}
@@ -155,35 +155,35 @@ export function StampTab({ handle }: { handle: MapHandle | null }) {
       )}
 
       {preview && (
-        <div className="wc-stamp-result">
+        <div className="cp-stamp-result">
           <p>
             <strong>{preview.pixels.toLocaleString()}</strong> pixels{" "}
             {preview.preview ? "would be painted" : "painted"}
-            {preview.batchId && <em className="wc-hint"> · batch {preview.batchId.slice(0, 8)}</em>}
+            {preview.batchId && <em className="cp-hint"> · batch {preview.batchId.slice(0, 8)}</em>}
           </p>
           {preview.violations > 0 && (
-            <p className="wc-admin-alert">
+            <p className="cp-admin-alert">
               <AlertTriangle size={14} />
               {preview.violations.toLocaleString()} pixels use the wrong colour family for their
               terrain.
             </p>
           )}
           {preview.skippedProtected > 0 && (
-            <p className="wc-admin-alert">
+            <p className="cp-admin-alert">
               <AlertTriangle size={14} />
               {preview.skippedProtected.toLocaleString()} pixels fall inside a protected region and
               will be skipped.
             </p>
           )}
           {!preview.preview && (
-            <p className="wc-ok">
+            <p className="cp-ok">
               <Check size={14} /> Committed.
             </p>
           )}
         </div>
       )}
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
     </section>
   );
 }
@@ -194,7 +194,7 @@ function QuantizedPreview({ w, h, data }: { w: number; h: number; data: number[]
     <canvas
       width={w}
       height={h}
-      className="wc-pixelated"
+      className="cp-pixelated"
       ref={(el) => {
         if (!el) return;
         const ctx = el.getContext("2d");

@@ -1,4 +1,4 @@
-import type { ChatMessageDTO } from "@worldcanvas/shared";
+import type { ChatMessageDTO } from "@canvasplanet/shared";
 import { pool, tx, type Client } from "../db/pool.js";
 import { censorChatMessage, CHAT_COOLDOWN_MS, CHAT_MAX_LENGTH, CHAT_PAGE_SIZE } from "./filter.js";
 

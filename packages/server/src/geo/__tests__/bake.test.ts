@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TOTAL_TILES, Z_PIXEL, latLngToPixel, tileIdOf } from "@worldcanvas/shared";
-import type { Poly } from "@worldcanvas/shared";
+import { TOTAL_TILES, Z_PIXEL, latLngToPixel, tileIdOf } from "@canvasplanet/shared";
+import type { Poly } from "@canvasplanet/shared";
 import {
   HEADER_BYTES,
   MAGIC,

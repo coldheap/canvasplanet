@@ -40,7 +40,7 @@ import { existsSync, statSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { PNG } from "pngjs";
-import { BASEMAP_MAX_ZOOM } from "@worldcanvas/shared";
+import { BASEMAP_MAX_ZOOM } from "@canvasplanet/shared";
 import { env } from "../src/env.js";
 import { TerrainBits, rasterizeTile } from "../src/geo/bake.js";
 import { WATER_FILE, buildWaterIndex, loadGeoJson, waterPresent } from "../src/geo/source.js";

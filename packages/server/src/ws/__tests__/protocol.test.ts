@@ -1,4 +1,4 @@
-import { SUB_ZOOM } from "@worldcanvas/shared";
+import { SUB_ZOOM } from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import { parseClientMessage } from "../protocol.js";
 

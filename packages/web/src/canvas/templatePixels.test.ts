@@ -1,4 +1,4 @@
-import { TRANSPARENT_INDEX, WORLD_SIZE } from "@worldcanvas/shared";
+import { TRANSPARENT_INDEX, WORLD_SIZE } from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import {
   centeredTemplateOrigin,

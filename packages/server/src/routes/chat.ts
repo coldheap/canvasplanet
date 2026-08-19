@@ -1,4 +1,4 @@
-import type { ChatMessageDTO } from "@worldcanvas/shared";
+import type { ChatMessageDTO } from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { pool, tx } from "../db/pool.js";
 import { CHAT_MAX_LENGTH } from "../chat/filter.js";

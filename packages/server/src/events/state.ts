@@ -15,7 +15,7 @@ import {
   WORLD_SIZE,
   type Bbox,
   type EventStateDTO,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 const ZONE_AREA = EVENT_ZONE_SIZE * EVENT_ZONE_SIZE;
 

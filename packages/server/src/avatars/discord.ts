@@ -1,5 +1,5 @@
 /**
- * Importing a new Discord account's picture as its Worldcanvas avatar.
+ * Importing a new Discord account's picture as its CanvasPlanet avatar.
  *
  * The image is pulled through the same normalizeAvatar pipeline an upload
  * goes through and stored in `user_avatars` like any other, so nothing

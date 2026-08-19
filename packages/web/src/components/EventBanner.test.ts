@@ -1,4 +1,4 @@
-import type { EventStateDTO } from "@worldcanvas/shared";
+import type { EventStateDTO } from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import { eventBannerText } from "./EventBanner.js";
 

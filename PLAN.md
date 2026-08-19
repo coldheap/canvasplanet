@@ -1,4 +1,4 @@
-# Worldcanvas — v1 Build Plan
+# CanvasPlanet — v1 Build Plan
 
 A persistent, live pixel-art canvas layered on a real world map. Anonymous
 users paint one pixel at a time from a charge bank; nothing ever resets; a live
@@ -211,7 +211,7 @@ leave the table with no default partition and start rejecting inserts.
 
 ```cron
 # first of the month, 03:00
-0 3 1 * * cd /srv/worldcanvas && pnpm db:partitions >> /var/log/wc-partitions.log 2>&1
+0 3 1 * * cd /srv/canvasplanet && pnpm db:partitions >> /var/log/cp-partitions.log 2>&1
 ```
 
 `prev_color` is what makes revert possible without replaying from zero.

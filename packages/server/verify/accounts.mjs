@@ -111,12 +111,12 @@ if (!maildevUp) {
       verifyRes.headers.get("location"),
     );
     const verifyCookies = cookiesOf(verifyRes);
-    userCookie = verifyCookies.find((c) => c.startsWith("wc_user=")) ?? "";
-    check("verifying sets the wc_user cookie", Boolean(userCookie));
+    userCookie = verifyCookies.find((c) => c.startsWith("cp_user=")) ?? "";
+    check("verifying sets the cp_user cookie", Boolean(userCookie));
     // Verifying has no session cookie yet on this request (a fresh browser
     // clicking the emailed link straight from its inbox), so getOrCreateSession
     // mints one here — this is the anonymous session that must end up linked.
-    verifySessCookie = verifyCookies.find((c) => c.startsWith("wc_sess=")) ?? "";
+    verifySessCookie = verifyCookies.find((c) => c.startsWith("cp_sess=")) ?? "";
     check("verifying also mints an anonymous session cookie", Boolean(verifySessCookie));
 
     const replay = await fetch(linkMatch[1], { redirect: "manual" });
@@ -179,8 +179,8 @@ if (!maildevUp) {
     loginByNameMixedCase.status === 200 && loginByNameMixedCase.body.user?.email === EMAIL,
     JSON.stringify(loginByNameMixedCase.body),
   );
-  const sessCookie = login.cookies.find((c) => c.startsWith("wc_sess="));
-  const loginUserCookie = login.cookies.find((c) => c.startsWith("wc_user="));
+  const sessCookie = login.cookies.find((c) => c.startsWith("cp_sess="));
+  const loginUserCookie = login.cookies.find((c) => c.startsWith("cp_user="));
   check("login issues both an anonymous session and a user session", Boolean(sessCookie && loginUserCookie));
   const jar = [sessCookie, loginUserCookie].filter(Boolean).join("; ");
 
@@ -264,8 +264,8 @@ if (!maildevUp) {
   // rather than by reading the DELETE statement and assuming it fires.
   const secondLogin = await post("/api/auth/login", { identifier: EMAIL, password: PASSWORD });
   const secondJar = [
-    secondLogin.cookies.find((c) => c.startsWith("wc_sess=")),
-    secondLogin.cookies.find((c) => c.startsWith("wc_user=")),
+    secondLogin.cookies.find((c) => c.startsWith("cp_sess=")),
+    secondLogin.cookies.find((c) => c.startsWith("cp_user=")),
   ].filter(Boolean).join("; ");
   const secondMeBefore = await fetch(`${BASE}/api/auth/me`, { headers: { cookie: secondJar } });
   check("second login session works before any reset", secondMeBefore.status === 200, `HTTP ${secondMeBefore.status}`);
@@ -303,8 +303,8 @@ if (!maildevUp) {
     const doReset = await post("/api/auth/reset", { token: resetToken, password: NEW_PASSWORD });
     check("reset succeeds and returns the account", doReset.status === 200 && doReset.body.user?.email === EMAIL, JSON.stringify(doReset.body));
     const resetJar = [
-      doReset.cookies.find((c) => c.startsWith("wc_sess=")),
-      doReset.cookies.find((c) => c.startsWith("wc_user=")),
+      doReset.cookies.find((c) => c.startsWith("cp_sess=")),
+      doReset.cookies.find((c) => c.startsWith("cp_user=")),
     ].filter(Boolean).join("; ");
     check("reset auto-issues a working session", Boolean(resetJar));
 

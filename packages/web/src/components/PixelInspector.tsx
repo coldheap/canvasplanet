@@ -8,7 +8,7 @@
  */
 
 import { Clock, Layers, MapPin, X } from "lucide-react";
-import { PALETTE, type PixelInfo } from "@worldcanvas/shared";
+import { PALETTE, type PixelInfo } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 import { CountryFlag } from "./CountryFlag.js";
 
@@ -26,28 +26,28 @@ export function PixelInspector({
   const swatch = info.color === null ? null : PALETTE[info.color];
 
   return (
-    <aside className={pinned ? "wc-inspector wc-card wc-pinned" : "wc-inspector wc-card"}>
+    <aside className={pinned ? "cp-inspector cp-card cp-pinned" : "cp-inspector cp-card"}>
       {pinned && (
-        <button className="wc-inspector-close" aria-label="Unpin" onClick={onUnpin}>
+        <button className="cp-inspector-close" aria-label="Unpin" onClick={onUnpin}>
           <X size={14} />
         </button>
       )}
 
-      <div className="wc-inspector-head">
+      <div className="cp-inspector-head">
         <span
-          className="wc-inspector-swatch"
+          className="cp-inspector-swatch"
           style={{ background: swatch?.hex ?? "transparent" }}
           aria-hidden
         />
         <div>
           <strong>{swatch ? swatch.name : "Unpainted"}</strong>
-          <span className="wc-inspector-coords">
+          <span className="cp-inspector-coords">
             {info.x.toLocaleString()}, {info.y.toLocaleString()}
           </span>
         </div>
       </div>
 
-      <dl className="wc-inspector-rows">
+      <dl className="cp-inspector-rows">
         <div>
           <dt>
             <MapPin size={13} />
@@ -55,13 +55,13 @@ export function PixelInspector({
           <dd>
             {country ? (
               <>
-                <CountryFlag iso={country.iso_a2} flag={country.flag} className="wc-inspector-flag" />{" "}
+                <CountryFlag iso={country.iso_a2} flag={country.flag} className="cp-inspector-flag" />{" "}
                 {country.name}
               </>
             ) : (
               "—"
             )}
-            <em className="wc-hint"> · {info.terrain === 1 ? "land" : "water"}</em>
+            <em className="cp-hint"> · {info.terrain === 1 ? "land" : "water"}</em>
           </dd>
         </div>
 
@@ -85,7 +85,7 @@ export function PixelInspector({
         )}
       </dl>
 
-      {!pinned && <p className="wc-hint wc-inspector-tip">right-click to pin</p>}
+      {!pinned && <p className="cp-hint cp-inspector-tip">right-click to pin</p>}
     </aside>
   );
 }

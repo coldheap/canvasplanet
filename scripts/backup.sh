@@ -6,7 +6,7 @@
 # the single highest-consequence gap this script closes.
 #
 # Cron, from the repo root on the VPS:
-#   0 3 * * * cd /opt/worldcanvas && ./scripts/backup.sh >> backups/backup.log 2>&1
+#   0 3 * * * cd /opt/canvasplanet && ./scripts/backup.sh >> backups/backup.log 2>&1
 #
 # Retention: every dump from the last 7 days, plus the Sunday dump for the
 # last 4 weeks, plus the 1st-of-month dump for the last 12 months. Anything
@@ -31,7 +31,7 @@ BACKUP_DIR="${BACKUP_DIR:-./backups}"
 mkdir -p "$BACKUP_DIR"
 
 STAMP="$(date +%Y%m%d)"
-OUT="$BACKUP_DIR/worldcanvas-$STAMP.sql.gz"
+OUT="$BACKUP_DIR/canvasplanet-$STAMP.sql.gz"
 
 use_docker=0
 if command -v docker >/dev/null 2>&1 && docker compose ps db >/dev/null 2>&1; then
@@ -78,10 +78,10 @@ fi
 
 # ---- retention --------------------------------------------------------
 echo "[backup] pruning old dumps in $BACKUP_DIR"
-for f in "$BACKUP_DIR"/worldcanvas-*.sql.gz; do
+for f in "$BACKUP_DIR"/canvasplanet-*.sql.gz; do
   [ -f "$f" ] || continue
   base="$(basename "$f" .sql.gz)"
-  d="${base#worldcanvas-}" # YYYYMMDD
+  d="${base#canvasplanet-}" # YYYYMMDD
 
   file_epoch="$(date -d "$d" +%s 2>/dev/null)" || { echo "[backup] skipping unparseable name: $f"; continue; }
   age_days=$(( ( $(date +%s) - file_epoch ) / 86400 ))

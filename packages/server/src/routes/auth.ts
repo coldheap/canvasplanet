@@ -27,7 +27,7 @@ import {
   USER_COOKIE,
   USER_SESSION_TTL_DAYS,
   type UserDTO,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import argon2 from "argon2";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { importDiscordAvatar } from "../avatars/discord.js";

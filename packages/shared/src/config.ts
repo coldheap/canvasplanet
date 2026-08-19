@@ -1,5 +1,5 @@
 /**
- * Every tunable constant in Worldcanvas, in one place.
+ * Every tunable constant in CanvasPlanet, in one place.
  *
  * Rule: if a number appears in PLAN.md, it appears here and nowhere else.
  * Server and client both import from this file so they can never disagree
@@ -10,8 +10,8 @@
 // Identity
 // ---------------------------------------------------------------------------
 
-export const SITE_NAME = "Worldcanvas";
-export const SITE_URL = "worldcanvas.live";
+export const SITE_NAME = "CanvasPlanet";
+export const SITE_URL = "canvasplanet.net";
 
 // ---------------------------------------------------------------------------
 // The grid
@@ -205,7 +205,7 @@ export const EXPORT_EXPIRY_HOURS = 36;
 // Session cookie
 // ---------------------------------------------------------------------------
 
-export const SESSION_COOKIE = "wc_sess";
+export const SESSION_COOKIE = "cp_sess";
 export const SESSION_TTL_DAYS = 365;
 
 // ---------------------------------------------------------------------------
@@ -247,7 +247,7 @@ export const ALLIANCE_LEADERBOARD_TOP_N = 10;
 // Player accounts (ROADMAP.md §5.1)
 // ---------------------------------------------------------------------------
 
-export const USER_COOKIE = "wc_user";
+export const USER_COOKIE = "cp_user";
 
 /** Rows shown in the collapsed player leaderboard (ROADMAP.md §5.2), mirrors
  *  LEADERBOARD_TOP_N / ALLIANCE_LEADERBOARD_TOP_N. */
@@ -285,7 +285,7 @@ export const PASSWORD_RESET_COOLDOWN_MS = 60_000;
  *  `/api/auth/discord`, checked and cleared on `/api/auth/discord/callback`.
  *  Not a login credential, so it does not need `USER_SESSION_TTL_DAYS`-scale
  *  lifetime; the whole authorize→callback hop is one browser navigation. */
-export const DISCORD_STATE_COOKIE = "wc_discord_state";
+export const DISCORD_STATE_COOKIE = "cp_discord_state";
 export const DISCORD_STATE_TTL_SECONDS = 600;
 
 // ---------------------------------------------------------------------------

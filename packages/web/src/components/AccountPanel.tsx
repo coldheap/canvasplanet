@@ -23,7 +23,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import type { UserDTO } from "@worldcanvas/shared";
+import type { UserDTO } from "@canvasplanet/shared";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
 import { UserAvatar } from "./UserAvatar.js";
@@ -138,14 +138,14 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
   }
 
   return (
-    <div className="wc-staff-login">
-      <h2 className="wc-panel-title">
+    <div className="cp-staff-login">
+      <h2 className="cp-panel-title">
         <UserCircle size={16} />
         Account
       </h2>
-      <div className="wc-account-identity">
+      <div className="cp-account-identity">
         <label
-          className={`wc-avatar-control${busy ? " is-disabled" : ""}`}
+          className={`cp-avatar-control${busy ? " is-disabled" : ""}`}
           aria-label="Change profile picture"
           title="Change profile picture"
         >
@@ -156,11 +156,11 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
             previewUrl={previewUrl}
             size={72}
           />
-          <span className="wc-avatar-camera" aria-hidden="true">
+          <span className="cp-avatar-camera" aria-hidden="true">
             <Camera size={14} />
           </span>
           <input
-            className="wc-file-input"
+            className="cp-file-input"
             type="file"
             accept="image/jpeg,image/png,image/webp"
             disabled={busy}
@@ -170,47 +170,47 @@ function AccountSummary({ user, setUser }: { user: UserDTO; setUser: (u: UserDTO
             }}
           />
         </label>
-        <div className="wc-account-copy">
-          <p className="wc-account-name">{user.displayName}</p>
-          {user.email && <p className="wc-hint">{user.email}</p>}
-          <p className="wc-account-id">Player #{user.id}</p>
+        <div className="cp-account-copy">
+          <p className="cp-account-name">{user.displayName}</p>
+          {user.email && <p className="cp-hint">{user.email}</p>}
+          <p className="cp-account-id">Player #{user.id}</p>
         </div>
       </div>
       {pendingAvatar && (
-        <div className="wc-avatar-actions">
-          <button className="wc-btn wc-btn-primary" disabled={busy} onClick={() => void saveAvatar()}>
+        <div className="cp-avatar-actions">
+          <button className="cp-btn cp-btn-primary" disabled={busy} onClick={() => void saveAvatar()}>
             <Check size={15} /> Save picture
           </button>
-          <button className="wc-btn" disabled={busy} onClick={() => setPendingAvatar(null)} aria-label="Cancel picture change">
+          <button className="cp-btn" disabled={busy} onClick={() => setPendingAvatar(null)} aria-label="Cancel picture change">
             <X size={15} /> Cancel
           </button>
         </div>
       )}
       {user.avatarRevision && !pendingAvatar && (
-        <button className="wc-link-btn wc-avatar-remove" disabled={busy} onClick={() => void removeAvatar()}>
+        <button className="cp-link-btn cp-avatar-remove" disabled={busy} onClick={() => void removeAvatar()}>
           <Trash2 size={13} /> Remove picture
         </button>
       )}
-      {error && <p className="wc-error"><AlertOctagon size={14} />{error}</p>}
-      <div className="wc-account-stats" aria-label="Player stats">
-        <div className="wc-account-stat">
+      {error && <p className="cp-error"><AlertOctagon size={14} />{error}</p>}
+      <div className="cp-account-stats" aria-label="Player stats">
+        <div className="cp-account-stat">
           <Paintbrush size={15} />
           <strong>{user.cumulative.toLocaleString()}</strong>
           <span>Painted</span>
         </div>
-        <div className="wc-account-stat">
+        <div className="cp-account-stat">
           <ShieldCheck size={15} />
           <strong>{user.held.toLocaleString()}</strong>
           <span>Holding</span>
         </div>
-        <div className="wc-account-stat wc-account-stat-streak">
+        <div className="cp-account-stat cp-account-stat-streak">
           <Flame size={15} />
           <strong>{user.streakDays}</strong>
           <span>Day streak</span>
           {user.bestStreak > user.streakDays && <small>Best {user.bestStreak}</small>}
         </div>
       </div>
-      <button className="wc-btn" disabled={busy} onClick={() => void logout()}>
+      <button className="cp-btn" disabled={busy} onClick={() => void logout()}>
         <LogOut size={15} />
         Sign out
       </button>
@@ -259,18 +259,18 @@ function DeleteAccountControl({ user }: { user: UserDTO }) {
 
   if (!open) {
     return (
-      <button className="wc-link-btn wc-danger-link" onClick={() => setOpen(true)}>
+      <button className="cp-link-btn cp-danger-link" onClick={() => setOpen(true)}>
         <Trash2 size={13} /> Delete account
       </button>
     );
   }
 
   return (
-    <form className="wc-danger-zone" onSubmit={(e) => void submit(e)}>
-      <p className="wc-danger-title">
+    <form className="cp-danger-zone" onSubmit={(e) => void submit(e)}>
+      <p className="cp-danger-title">
         <AlertOctagon size={14} /> Delete your account
       </p>
-      <p className="wc-hint">
+      <p className="cp-hint">
         This erases your email, password, profile picture and stats, and drops you off the leaderboard. It cannot
         be undone. Pixels you painted stay on the canvas but stop being yours — see the{" "}
         <a href="/privacy.html#deletion" target="_blank" rel="noreferrer">
@@ -278,11 +278,11 @@ function DeleteAccountControl({ user }: { user: UserDTO }) {
         </a>
         .
       </p>
-      <label className="wc-danger-label" htmlFor="wc-delete-confirm">
+      <label className="cp-danger-label" htmlFor="cp-delete-confirm">
         Type <strong>{user.displayName}</strong> to confirm
       </label>
       <input
-        id="wc-delete-confirm"
+        id="cp-delete-confirm"
         autoComplete="off"
         autoCapitalize="off"
         spellCheck={false}
@@ -290,13 +290,13 @@ function DeleteAccountControl({ user }: { user: UserDTO }) {
         onChange={(e) => setConfirm(e.target.value)}
         disabled={busy}
       />
-      <div className="wc-avatar-actions">
-        <button type="submit" className="wc-btn wc-btn-danger" disabled={busy || !matches}>
+      <div className="cp-avatar-actions">
+        <button type="submit" className="cp-btn cp-btn-danger" disabled={busy || !matches}>
           <Trash2 size={15} /> Delete permanently
         </button>
         <button
           type="button"
-          className="wc-btn"
+          className="cp-btn"
           disabled={busy}
           onClick={() => {
             setOpen(false);
@@ -308,7 +308,7 @@ function DeleteAccountControl({ user }: { user: UserDTO }) {
         </button>
       </div>
       {error && (
-        <p className="wc-error">
+        <p className="cp-error">
           <AlertOctagon size={14} />
           {error}
         </p>
@@ -352,8 +352,8 @@ function ResetPasswordForm({
   }
 
   return (
-    <form className="wc-staff-login" onSubmit={(e) => void submit(e)}>
-      <h2 className="wc-panel-title">
+    <form className="cp-staff-login" onSubmit={(e) => void submit(e)}>
+      <h2 className="cp-panel-title">
         <KeyRound size={16} />
         Choose a new password
       </h2>
@@ -374,15 +374,15 @@ function ResetPasswordForm({
         onChange={(e) => setConfirm(e.target.value)}
         required
       />
-      <button type="submit" className="wc-btn wc-btn-primary" disabled={busy}>
+      <button type="submit" className="cp-btn cp-btn-primary" disabled={busy}>
         <Check size={15} />
         Set new password
       </button>
-      <button type="button" className="wc-btn" onClick={onCancel}>
+      <button type="button" className="cp-btn" onClick={onCancel}>
         Cancel
       </button>
       {error && (
-        <p className="wc-error">
+        <p className="cp-error">
           <AlertOctagon size={14} />
           {error}
         </p>
@@ -478,17 +478,17 @@ function AuthForms() {
 
   if (pendingEmail) {
     return (
-      <div className="wc-staff-login">
-        <h2 className="wc-panel-title">
+      <div className="cp-staff-login">
+        <h2 className="cp-panel-title">
           <Mail size={16} />
           Verify your email
         </h2>
-        <p className="wc-hint">{notice}</p>
-        <button className="wc-btn" disabled={busy} onClick={() => void resend()}>
+        <p className="cp-hint">{notice}</p>
+        <button className="cp-btn" disabled={busy} onClick={() => void resend()}>
           Resend verification email
         </button>
         {error && (
-          <p className="wc-error">
+          <p className="cp-error">
             <AlertOctagon size={14} />
             {error}
           </p>
@@ -499,13 +499,13 @@ function AuthForms() {
 
   if (mode === "forgot") {
     return (
-      <form className="wc-staff-login" onSubmit={(e) => void submitForgot(e)}>
-        <h2 className="wc-panel-title">
+      <form className="cp-staff-login" onSubmit={(e) => void submitForgot(e)}>
+        <h2 className="cp-panel-title">
           <KeyRound size={16} />
           Reset your password
         </h2>
         {resetRequested ? (
-          <p className="wc-hint">{notice}</p>
+          <p className="cp-hint">{notice}</p>
         ) : (
           <>
             <input
@@ -517,17 +517,17 @@ function AuthForms() {
               required
               autoFocus
             />
-            <button type="submit" className="wc-btn wc-btn-primary" disabled={busy}>
+            <button type="submit" className="cp-btn cp-btn-primary" disabled={busy}>
               <Mail size={15} />
               Send reset link
             </button>
           </>
         )}
-        <button type="button" className="wc-btn" onClick={() => switchMode("login")}>
+        <button type="button" className="cp-btn" onClick={() => switchMode("login")}>
           Back to sign in
         </button>
         {error && (
-          <p className="wc-error">
+          <p className="cp-error">
             <AlertOctagon size={14} />
             {error}
           </p>
@@ -538,14 +538,14 @@ function AuthForms() {
 
   return (
     <form
-      className="wc-staff-login"
+      className="cp-staff-login"
       onSubmit={(e) => void (mode === "login" ? submitLogin(e) : submitSignup(e))}
     >
-      <h2 className="wc-panel-title">
+      <h2 className="cp-panel-title">
         <UserCircle size={16} />
         Account
       </h2>
-      <div className="wc-lb-toggle" role="tablist">
+      <div className="cp-lb-toggle" role="tablist">
         <button type="button" role="tab" aria-selected={mode === "login"} onClick={() => switchMode("login")}>
           Sign in
         </button>
@@ -591,18 +591,18 @@ function AuthForms() {
         required
       />
 
-      <button type="submit" className="wc-btn wc-btn-primary" disabled={busy}>
+      <button type="submit" className="cp-btn cp-btn-primary" disabled={busy}>
         {mode === "login" ? <LogIn size={15} /> : <UserPlus size={15} />}
         {mode === "login" ? "Sign in" : "Create account"}
       </button>
 
       {discordEnabled && (
         <>
-          <p className="wc-auth-divider">or</p>
+          <p className="cp-auth-divider">or</p>
           {/* A plain navigation, not a fetch call — routes/auth.ts's
               /api/auth/discord redirects straight to Discord's own
               authorize screen. */}
-          <a className="wc-btn wc-btn-discord" href="/api/auth/discord">
+          <a className="cp-btn cp-btn-discord" href="/api/auth/discord">
             <DiscordIcon />
             Continue with Discord
           </a>
@@ -610,7 +610,7 @@ function AuthForms() {
       )}
 
       {mode === "login" && (
-        <button type="button" className="wc-link-btn" onClick={() => switchMode("forgot")}>
+        <button type="button" className="cp-link-btn" onClick={() => switchMode("forgot")}>
           Forgot password?
         </button>
       )}
@@ -620,7 +620,7 @@ function AuthForms() {
           the footer link below. Shown for the Discord button too — it sits in
           this same form and creates an account just as much as submitting. */}
       {mode === "signup" && (
-        <p className="wc-consent">
+        <p className="cp-consent">
           By creating an account you agree to our{" "}
           <a href="/terms.html" target="_blank" rel="noreferrer">
             Terms of Service
@@ -634,7 +634,7 @@ function AuthForms() {
       )}
 
       {error && (
-        <p className="wc-error">
+        <p className="cp-error">
           <AlertOctagon size={14} />
           {error}
         </p>

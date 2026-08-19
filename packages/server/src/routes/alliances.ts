@@ -16,7 +16,7 @@ import {
   ALLIANCE_NAME_MIN_LEN,
   isValidColor,
   type AllianceDTO,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { pool, tx } from "../db/pool.js";
 import { alliances } from "../alliances/store.js";

@@ -1,4 +1,4 @@
-import { ERASED, Terrain } from "@worldcanvas/shared";
+import { ERASED, Terrain } from "@canvasplanet/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { query } = vi.hoisted(() => ({ query: vi.fn() }));

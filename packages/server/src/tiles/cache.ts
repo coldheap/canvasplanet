@@ -11,7 +11,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { Z_PIXEL } from "@worldcanvas/shared";
+import { Z_PIXEL } from "@canvasplanet/shared";
 import { env } from "../env.js";
 import { EMPTY_TILE, renderTile, type TileMode } from "./renderer.js";
 

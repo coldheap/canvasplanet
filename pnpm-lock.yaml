@@ -33,7 +33,7 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.3.0
-      '@worldcanvas/shared':
+      '@canvasplanet/shared':
         specifier: workspace:*
         version: link:../shared
       adm-zip:
@@ -118,7 +118,7 @@ importers:
 
   packages/web:
     dependencies:
-      '@worldcanvas/shared':
+      '@canvasplanet/shared':
         specifier: workspace:*
         version: link:../shared
       flag-icons:

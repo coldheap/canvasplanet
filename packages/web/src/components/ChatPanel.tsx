@@ -153,36 +153,36 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
   }
 
   return (
-    <aside id="world-chat-panel" className="wc-chat wc-chat-compact wc-card" aria-label="World chat">
-      <header className="wc-chat-head">
+    <aside id="world-chat-panel" className="cp-chat cp-chat-compact cp-card" aria-label="World chat">
+      <header className="cp-chat-head">
         <strong>World chat</strong>
-        <button className="wc-chat-close" aria-label="Close chat" title="Close chat" onClick={onClose}>
+        <button className="cp-chat-close" aria-label="Close chat" title="Close chat" onClick={onClose}>
           <X size={17} />
         </button>
       </header>
 
-      <div className="wc-chat-list" ref={listRef} role="log" aria-live="polite">
+      <div className="cp-chat-list" ref={listRef} role="log" aria-live="polite">
         {hasMore && chatMessages.length > 0 && chatMessages.length < 500 && (
-          <button className="wc-chat-older" disabled={loading} onClick={() => void loadOlder()}>
-            {loading ? <LoaderCircle className="wc-spin" size={13} /> : null}
+          <button className="cp-chat-older" disabled={loading} onClick={() => void loadOlder()}>
+            {loading ? <LoaderCircle className="cp-spin" size={13} /> : null}
             Load older messages
           </button>
         )}
         {loading && chatMessages.length === 0 ? (
-          <p className="wc-chat-empty"><LoaderCircle className="wc-spin" size={16} /> Loading chat…</p>
+          <p className="cp-chat-empty"><LoaderCircle className="cp-spin" size={16} /> Loading chat…</p>
         ) : chatMessages.length === 0 ? (
-          <p className="wc-chat-empty">No messages yet.</p>
+          <p className="cp-chat-empty">No messages yet.</p>
         ) : (
           chatMessages.map((message) => (
-            <article className={`wc-chat-message${message.deleted ? " is-deleted" : ""}`} key={message.id}>
+            <article className={`cp-chat-message${message.deleted ? " is-deleted" : ""}`} key={message.id}>
               <ChatAvatar
                 userId={message.userId}
                 name={message.displayName}
                 revision={message.avatarRevision}
                 size={27}
               />
-              <div className="wc-chat-message-body">
-                <div className="wc-chat-meta">
+              <div className="cp-chat-message-body">
+                <div className="cp-chat-meta">
                   <strong>{message.displayName}</strong>
                   <time title={new Date(message.createdAt).toLocaleString()} dateTime={message.createdAt}>
                     {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -206,10 +206,10 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
                     </button>
                   )}
                 </div>
-                {message.deleted ? <p className="wc-chat-removed">Message removed</p> : <p>{message.body}</p>}
+                {message.deleted ? <p className="cp-chat-removed">Message removed</p> : <p>{message.body}</p>}
 
                 {reporting === message.id && (
-                  <div className="wc-chat-action-box">
+                  <div className="cp-chat-action-box">
                     <input
                       value={reportReason}
                       maxLength={400}
@@ -217,8 +217,8 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
                       onChange={(event) => setReportReason(event.target.value)}
                     />
                     <div>
-                      <button className="wc-btn" disabled={busyAction} onClick={() => setReporting(null)}>Cancel</button>
-                      <button className="wc-btn wc-btn-primary" disabled={busyAction} onClick={() => void reportMessage(message.id)}>
+                      <button className="cp-btn" disabled={busyAction} onClick={() => setReporting(null)}>Cancel</button>
+                      <button className="cp-btn cp-btn-primary" disabled={busyAction} onClick={() => void reportMessage(message.id)}>
                         <Flag size={13} /> Report
                       </button>
                     </div>
@@ -226,7 +226,7 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
                 )}
 
                 {moderating === message.id && (
-                  <div className="wc-chat-action-box wc-chat-mod-box">
+                  <div className="cp-chat-action-box cp-chat-mod-box">
                     <input
                       value={moderationReason}
                       maxLength={400}
@@ -240,10 +240,10 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
                       <option value="permanent">Mute permanently</option>
                     </select>
                     <div>
-                      <button className="wc-btn" disabled={busyAction} onClick={() => void muteUser(message.userId)}>
+                      <button className="cp-btn" disabled={busyAction} onClick={() => void muteUser(message.userId)}>
                         <Shield size={13} /> Mute user
                       </button>
-                      <button className="wc-danger" disabled={busyAction} onClick={() => void deleteMessage(message.id)}>
+                      <button className="cp-danger" disabled={busyAction} onClick={() => void deleteMessage(message.id)}>
                         <Trash2 size={13} /> Remove
                       </button>
                     </div>
@@ -255,17 +255,17 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
         )}
       </div>
 
-      {error && <div className="wc-chat-status" role="status">{error}</div>}
+      {error && <div className="cp-chat-status" role="status">{error}</div>}
 
       {user ? (
-        <form className="wc-chat-compose" onSubmit={submit}>
+        <form className="cp-chat-compose" onSubmit={submit}>
           <ChatAvatar
             userId={user.id}
             name={user.displayName}
             revision={chatMessages.slice().reverse().find((message) => message.userId === user.id)?.avatarRevision ?? null}
             size={29}
           />
-          <div className="wc-chat-input-wrap">
+          <div className="cp-chat-input-wrap">
             <textarea
               ref={composerRef}
               rows={1}
@@ -282,16 +282,16 @@ export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: 
             {characterCount > 320 && <span className={characterCount > 400 ? "is-over" : ""}>{characterCount}/400</span>}
           </div>
           <button
-            className="wc-chat-send"
+            className="cp-chat-send"
             type="submit"
             aria-label="Send message"
             disabled={sending || !draft.trim() || characterCount > 400}
           >
-            {sending ? <LoaderCircle className="wc-spin" size={16} /> : <Send size={16} />}
+            {sending ? <LoaderCircle className="cp-spin" size={16} /> : <Send size={16} />}
           </button>
         </form>
       ) : (
-        <button className="wc-chat-login" onClick={onLogin}>
+        <button className="cp-chat-login" onClick={onLogin}>
           Log in / Sign up <span>to join the conversation</span>
         </button>
       )}
@@ -315,7 +315,7 @@ export function ChatAvatar({
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
   return (
-    <span className="wc-chat-avatar" style={{ width: size, height: size, fontSize: Math.max(10, size * 0.42) }} aria-hidden="true">
+    <span className="cp-chat-avatar" style={{ width: size, height: size, fontSize: Math.max(10, size * 0.42) }} aria-hidden="true">
       {src && !failed ? (
         <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
       ) : (

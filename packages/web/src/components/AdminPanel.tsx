@@ -96,13 +96,13 @@ export function AdminPanel({ handle }: { handle: MapHandle | null }) {
   ];
 
   return (
-    <div className="wc-admin">
+    <div className="cp-admin">
       <header>
         <ShieldCheck size={16} />
         <strong>{staff.username}</strong>
-        <span className="wc-role">{staff.role}</span>
+        <span className="cp-role">{staff.role}</span>
         <button
-          className="wc-mini"
+          className="cp-mini"
           title="Log out"
           onClick={async () => {
             // There is no separate staff session to end — signing out of the

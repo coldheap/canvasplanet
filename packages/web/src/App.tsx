@@ -10,7 +10,7 @@ import {
   type PixelInfo,
   paintCost,
   pixelToLatLng,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { api } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
@@ -393,11 +393,11 @@ export function App() {
   }, []);
 
   if (!ready) {
-    return <div className="wc-boot">{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</div>;
+    return <div className="cp-boot">{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</div>;
   }
 
   return (
-    <div className="wc-app">
+    <div className="cp-app">
       <MapCanvas
         active={viewMode === "map"}
         inactiveZoom={zoom}
@@ -408,7 +408,7 @@ export function App() {
         onViewport={onViewport}
       />
       {viewMode === "globe" && (
-        <Suspense fallback={<div className="wc-globe-view wc-boot">Loading the globe…</div>}>
+        <Suspense fallback={<div className="cp-globe-view cp-boot">Loading the globe…</div>}>
           <GlobeCanvas
             initialView={globeStart}
             onPaint={onPaint}
@@ -427,9 +427,9 @@ export function App() {
         </Suspense>
       )}
 
-      <div className="wc-hud">
+      <div className="cp-hud">
         {frozen && (
-          <div className="wc-frozen-banner">
+          <div className="cp-frozen-banner">
             <AlertTriangle size={15} />
             The canvas is temporarily frozen.
           </div>
@@ -446,17 +446,17 @@ export function App() {
             }
           />
         )}
-        <div className="wc-topbar">
+        <div className="cp-topbar">
           <ChargeBar />
         </div>
       </div>
 
-      <nav className="wc-rail wc-card" aria-label="Panels">
-        <span className="wc-rail-brand">
+      <nav className="cp-rail cp-card" aria-label="Panels">
+        <span className="cp-rail-brand">
           <MapPinned size={18} />
         </span>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={viewMode === "globe"}
           aria-label={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
           title={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
@@ -465,17 +465,17 @@ export function App() {
           {viewMode === "globe" ? <MapIcon size={19} /> : <Globe2 size={19} />}
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "activity"}
           aria-label="Live activity"
           title="Live activity"
           onClick={() => togglePanel("activity")}
         >
           <Activity size={19} />
-          <span className={pps > 0 ? "wc-activity-indicator is-live" : "wc-activity-indicator"} aria-hidden />
+          <span className={pps > 0 ? "cp-activity-indicator is-live" : "cp-activity-indicator"} aria-hidden />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "leaderboard"}
           aria-label="Leaderboard"
           title="Leaderboard"
@@ -484,7 +484,7 @@ export function App() {
           <Trophy size={19} />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "overlay"}
           aria-label="Template overlay"
           title="Template overlay"
@@ -493,7 +493,7 @@ export function App() {
           <LayoutTemplate size={19} />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "timelapse"}
           aria-label="Timelapse"
           title="Timelapse"
@@ -502,7 +502,7 @@ export function App() {
           <Clapperboard size={19} />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "report"}
           aria-label="Report an area"
           title="Report an area"
@@ -511,7 +511,7 @@ export function App() {
           <Flag size={19} />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "embed"}
           aria-label="Embed"
           title="Embed on your site"
@@ -519,9 +519,9 @@ export function App() {
         >
           <Code2 size={19} />
         </button>
-        <span className="wc-rail-spacer" />
+        <span className="cp-rail-spacer" />
         <button
-          className="wc-rail-btn wc-rail-btn-discord"
+          className="cp-rail-btn cp-rail-btn-discord"
           aria-pressed={panel === "discord"}
           aria-label="Discord community"
           title="Discord community"
@@ -530,7 +530,7 @@ export function App() {
           <DiscordIcon />
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "account"}
           aria-label="Account"
           title={user ? user.displayName : "Sign in"}
@@ -543,7 +543,7 @@ export function App() {
           )}
         </button>
         <button
-          className="wc-rail-btn"
+          className="cp-rail-btn"
           aria-pressed={panel === "settings" || panel === "admin"}
           aria-label="Settings"
           title="Settings"
@@ -569,7 +569,7 @@ export function App() {
         />
       )}
       <button
-        className="wc-chat-toggle wc-card"
+        className="cp-chat-toggle cp-card"
         aria-controls="world-chat-panel"
         aria-expanded={chatOpen}
         aria-label={chatUnread > 0 ? `World chat, ${chatUnread} unread` : chatOpen ? "Close world chat" : "Open world chat"}
@@ -584,7 +584,7 @@ export function App() {
         }}
       >
         {chatOpen ? <X size={20} /> : <MessageCircle size={20} />}
-        {chatUnread > 0 && <span className="wc-chat-badge">{chatUnread}</span>}
+        {chatUnread > 0 && <span className="cp-chat-badge">{chatUnread}</span>}
       </button>
 
       <SharedTemplateBar handle={handle.current} />
@@ -611,11 +611,11 @@ export function App() {
         panel === "discord" ||
         panel === "account") && (
         <div
-          className={mapPicking ? "wc-modal-backdrop wc-hidden" : "wc-modal-backdrop"}
+          className={mapPicking ? "cp-modal-backdrop cp-hidden" : "cp-modal-backdrop"}
           onClick={() => setPanel("none")}
         >
-          <div className="wc-modal wc-card" onClick={(e) => e.stopPropagation()}>
-            <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+          <div className="cp-modal cp-card" onClick={(e) => e.stopPropagation()}>
+            <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
               <X size={18} />
             </button>
             {panel === "settings" && <SettingsPanel />}
@@ -634,15 +634,15 @@ export function App() {
       )}
 
       {mapPicking && (
-        <div className="wc-picking wc-card" role="status">
+        <div className="cp-picking cp-card" role="status">
           <Square size={15} />
           Drag a rectangle on the map
-          <em className="wc-hint">Esc to cancel</em>
+          <em className="cp-hint">Esc to cancel</em>
         </div>
       )}
 
       {toast && (
-        <div key={toast.id} className="wc-toast wc-card" role="status" onAnimationEnd={() => setToast(null)}>
+        <div key={toast.id} className="cp-toast cp-card" role="status" onAnimationEnd={() => setToast(null)}>
           <AlertTriangle size={15} />
           {toast.text}
         </div>
@@ -667,7 +667,7 @@ function readViewMode(): "map" | "globe" {
   if (/^\/t\/[0-9a-f-]{36}$/i.test(location.pathname)) return "map";
   if (new URLSearchParams(location.search).get("view") === "globe") return "globe";
   try {
-    return localStorage.getItem("wc-view-mode") === "globe" ? "globe" : "map";
+    return localStorage.getItem("cp-view-mode") === "globe" ? "globe" : "map";
   } catch {
     return "map";
   }
@@ -675,7 +675,7 @@ function readViewMode(): "map" | "globe" {
 
 function saveViewMode(mode: "map" | "globe"): void {
   try {
-    localStorage.setItem("wc-view-mode", mode);
+    localStorage.setItem("cp-view-mode", mode);
   } catch {
     // Storage can be disabled without making the view toggle unusable.
   }

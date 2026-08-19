@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
-import { BASEMAP_MAX_ZOOM, Z_PIXEL } from "@worldcanvas/shared";
+import { BASEMAP_MAX_ZOOM, Z_PIXEL } from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { renderPixelBasemapTile } from "../basemap/renderer.js";
 import { env } from "../env.js";
@@ -29,7 +29,7 @@ function validParams(z: number, x: number, y: number): boolean {
 
 export function registerBasemapRoutes(app: FastifyInstance): void {
   // Native terrain at painting zoom. Unlike the coarse pre-baked backdrop,
-  // every output cell here is one actual Worldcanvas pixel. Leaflet reuses
+  // every output cell here is one actual CanvasPlanet pixel. Leaflet reuses
   // these z12 tiles above z12, so no higher-resolution routes are needed.
   app.get<{ Params: { z: string; x: string; y: string } }>(
     `/basemap/z${Z_PIXEL}/:z/:x/:y.png`,

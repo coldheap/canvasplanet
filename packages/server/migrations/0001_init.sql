@@ -1,4 +1,4 @@
--- Worldcanvas v1 — initial schema.
+-- CanvasPlanet v1 — initial schema.
 -- See PLAN.md §3 for the reasoning behind each table.
 
 BEGIN;

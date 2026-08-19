@@ -10,7 +10,7 @@ import type {
   PaintResponse,
   PixelInfo,
   UserDTO,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json();

@@ -17,7 +17,7 @@ import {
   TRANSPARENT_INDEX,
   Z_PIXEL,
   pixelToLatLng,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { templateColorAt, type TemplatePlacement } from "./templatePixels.js";
 
 // At native zoom there is no room for a per-pixel marker. A deliberately
@@ -50,7 +50,7 @@ export class TemplateLayer {
   private visible = true;
 
   constructor(private readonly map: L.Map) {
-    this.canvas = L.DomUtil.create("canvas", "wc-template-layer") as HTMLCanvasElement;
+    this.canvas = L.DomUtil.create("canvas", "cp-template-layer") as HTMLCanvasElement;
     this.canvas.style.pointerEvents = "none";
     this.canvas.style.position = "absolute";
     // Above the live overlay so the ghost is visible over freshly painted

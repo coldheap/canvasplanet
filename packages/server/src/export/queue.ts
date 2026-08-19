@@ -18,7 +18,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { EXPORT_FPS, type ExportFormat } from "@worldcanvas/shared";
+import { EXPORT_FPS, type ExportFormat } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { buildTimelapse } from "../timelapse/build.js";

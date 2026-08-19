@@ -28,7 +28,7 @@ export function UserAvatar({
 
   return (
     <span
-      className={`wc-user-avatar ${className}`.trim()}
+      className={`cp-user-avatar ${className}`.trim()}
       style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.42)) }}
       role={label ? "img" : undefined}
       aria-label={label}

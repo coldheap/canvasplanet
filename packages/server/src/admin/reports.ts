@@ -11,7 +11,7 @@
  */
 
 import { PNG } from "pngjs";
-import { DEFAULT_TERRAIN_COLOR, PALETTE_RGB, TEMPLATE_MAX_DIM } from "@worldcanvas/shared";
+import { DEFAULT_TERRAIN_COLOR, PALETTE_RGB, TEMPLATE_MAX_DIM } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { geo } from "../geo/index.js";
 

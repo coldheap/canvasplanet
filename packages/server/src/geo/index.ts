@@ -23,7 +23,7 @@ import {
   Z_PIXEL,
   pixelCenterLatLng,
   tileIdOf,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { env } from "../env.js";
 import { HEADER_BYTES, MAGIC, MIXED_COUNTRY, TerrainBits, rasterizeTile, unpack2Bit } from "./bake.js";
 import type { PolygonIndex } from "./polygonIndex.js";

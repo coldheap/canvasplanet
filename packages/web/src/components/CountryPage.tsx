@@ -52,36 +52,36 @@ export function CountryPage({
     };
   }, [iso]);
 
-  if (error) return <p className="wc-error">{error}</p>;
+  if (error) return <p className="cp-error">{error}</p>;
   if (!data) {
     return (
-      <p className="wc-hint wc-loading">
-        <Loader2 size={15} className="wc-spin" /> Loading…
+      <p className="cp-hint cp-loading">
+        <Loader2 size={15} className="cp-spin" /> Loading…
       </p>
     );
   }
 
   return (
-    <div className="wc-country">
-      <h2 className="wc-panel-title">
-        <CountryFlag iso={iso} flag={data.flag} className="wc-country-flag" />
+    <div className="cp-country">
+      <h2 className="cp-panel-title">
+        <CountryFlag iso={iso} flag={data.flag} className="cp-country-flag" />
         {data.name}
       </h2>
 
-      <div className="wc-country-stats">
+      <div className="cp-country-stats">
         <div>
-          <span className="wc-country-value">{data.cumulative.toLocaleString()}</span>
-          <span className="wc-hint">all-time</span>
+          <span className="cp-country-value">{data.cumulative.toLocaleString()}</span>
+          <span className="cp-hint">all-time</span>
         </div>
         <div>
-          <span className="wc-country-value">{data.held.toLocaleString()}</span>
-          <span className="wc-hint">held now</span>
+          <span className="cp-country-value">{data.held.toLocaleString()}</span>
+          <span className="cp-hint">held now</span>
         </div>
         <div>
-          <span className="wc-country-value">
+          <span className="cp-country-value">
             {data.rank === null ? "—" : `#${data.rank}`}
           </span>
-          <span className="wc-hint">
+          <span className="cp-hint">
             <Trophy size={12} /> rank
           </span>
         </div>
@@ -89,7 +89,7 @@ export function CountryPage({
 
       {data.hotspot ? (
         <button
-          className="wc-btn wc-btn-primary"
+          className="cp-btn cp-btn-primary"
           onClick={() => {
             onFlyTo(data.hotspot!.x, data.hotspot!.y);
             setPanel("none");
@@ -97,24 +97,24 @@ export function CountryPage({
         >
           <Crosshair size={15} />
           Fly to busiest area
-          <em className="wc-hint"> · {data.hotspot.paints.toLocaleString()} in 24h</em>
+          <em className="cp-hint"> · {data.hotspot.paints.toLocaleString()} in 24h</em>
         </button>
       ) : (
-        <p className="wc-hint">No activity here in the last 24 hours.</p>
+        <p className="cp-hint">No activity here in the last 24 hours.</p>
       )}
 
       {data.subdivisions.length === 0 ? (
-        <p className="wc-hint wc-country-note">Regional breakdown is not available yet.</p>
+        <p className="cp-hint cp-country-note">Regional breakdown is not available yet.</p>
       ) : (
         <>
-          <h3 className="wc-admin-sub">
+          <h3 className="cp-admin-sub">
             <MapPin size={14} /> Busiest regions
           </h3>
-          <ul className="wc-ip-list">
+          <ul className="cp-ip-list">
             {data.subdivisions.map((s) => (
               <li key={s.name}>
                 <span>{s.name}</span>
-                <span className="wc-ip-count">{s.cumulative.toLocaleString()}</span>
+                <span className="cp-ip-count">{s.cumulative.toLocaleString()}</span>
               </li>
             ))}
           </ul>

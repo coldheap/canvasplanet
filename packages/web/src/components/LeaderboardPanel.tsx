@@ -29,19 +29,19 @@ export function LeaderboardPanel() {
   const [mode, setMode] = useState<"cumulative" | "held">("cumulative");
 
   return (
-    <aside className="wc-leaderboard wc-card">
-      <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+    <aside className="cp-leaderboard cp-card">
+      <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
         <X size={16} />
       </button>
       <header>
-        <h2 className="wc-panel-title">
+        <h2 className="cp-panel-title">
           <Trophy size={16} />
           Leaderboard
         </h2>
-        <span className="wc-world">{world.toLocaleString()}</span>
-        <span className="wc-world-label">pixels painted</span>
+        <span className="cp-world">{world.toLocaleString()}</span>
+        <span className="cp-world-label">pixels painted</span>
 
-        <nav className="wc-lb-tabs" role="tablist" aria-label="Leaderboard scope">
+        <nav className="cp-lb-tabs" role="tablist" aria-label="Leaderboard scope">
           <button role="tab" aria-selected={tab === "player"} onClick={() => setTab("player")}>
             Player
           </button>
@@ -53,7 +53,7 @@ export function LeaderboardPanel() {
           </button>
         </nav>
 
-        {tab !== "country" && <div className="wc-lb-toggle" role="tablist" aria-label="Ranking metric">
+        {tab !== "country" && <div className="cp-lb-toggle" role="tablist" aria-label="Ranking metric">
           <button
             role="tab"
             aria-selected={mode === "cumulative"}

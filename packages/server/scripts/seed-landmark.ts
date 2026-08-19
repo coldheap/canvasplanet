@@ -19,7 +19,7 @@ import {
   SITE_NAME,
   SITE_URL,
   tileAncestry,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { drawRect, drawText, textHeight, textWidth } from "../src/admin/pixelFont.js";
 import { pool, tx } from "../src/db/pool.js";
 

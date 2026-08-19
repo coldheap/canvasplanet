@@ -31,26 +31,26 @@ export function EmbedTool({ handle }: { handle: MapHandle | null }) {
     : null;
 
   const snippet = src
-    ? `<iframe src="${src}" width="${width}" height="${height}" style="border:0" loading="lazy" title="Worldcanvas — live"></iframe>`
+    ? `<iframe src="${src}" width="${width}" height="${height}" style="border:0" loading="lazy" title="CanvasPlanet — live"></iframe>`
     : "";
 
   return (
-    <div className="wc-embed-tool wc-card">
-      <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+    <div className="cp-embed-tool cp-card">
+      <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
         <X size={16} />
       </button>
-      <h2 className="wc-panel-title">
+      <h2 className="cp-panel-title">
         <Code2 size={16} />
         Embed
       </h2>
 
-      <p className="wc-hint">
+      <p className="cp-hint">
         Draw a region to get a live, read-only <code>&lt;iframe&gt;</code> for your own site — no
         painting from it, just the canvas updating in real time.
       </p>
 
-      <div className="wc-actions">
-        <button className="wc-btn" disabled={!handle} onClick={async () => {
+      <div className="cp-actions">
+        <button className="cp-btn" disabled={!handle} onClick={async () => {
           const b = await pickBbox(handle);
           if (b) setBbox(b);
         }}>
@@ -58,7 +58,7 @@ export function EmbedTool({ handle }: { handle: MapHandle | null }) {
           {bbox ? "Redraw region" : "Draw region on map"}
         </button>
         {bbox && (
-          <button className="wc-btn" onClick={clear}>
+          <button className="cp-btn" onClick={clear}>
             Clear
           </button>
         )}
@@ -66,17 +66,17 @@ export function EmbedTool({ handle }: { handle: MapHandle | null }) {
 
       {bbox && (
         <>
-          <p className="wc-hint">
+          <p className="cp-hint">
             <code>
               {bbox.x0},{bbox.y0} → {bbox.x1},{bbox.y1}
             </code>
           </p>
 
-          <div className="wc-embed-preview">
+          <div className="cp-embed-preview">
             <iframe src={src!} title="Embed preview" />
           </div>
 
-          <label className="wc-embed-size">
+          <label className="cp-embed-size">
             Size
             <input
               type="number"
@@ -93,16 +93,16 @@ export function EmbedTool({ handle }: { handle: MapHandle | null }) {
               value={height}
               onChange={(e) => setHeight(Number(e.target.value) || 360)}
             />
-            <span className="wc-hint">pixels</span>
+            <span className="cp-hint">pixels</span>
           </label>
 
-          <div className="wc-embed-code">
+          <div className="cp-embed-code">
             <textarea readOnly rows={3} value={snippet} onFocus={(e) => e.target.select()} />
           </div>
 
-          <div className="wc-actions">
+          <div className="cp-actions">
             <button
-              className="wc-btn wc-btn-primary"
+              className="cp-btn cp-btn-primary"
               onClick={() => {
                 void navigator.clipboard.writeText(snippet);
                 setCopied(true);
@@ -114,7 +114,7 @@ export function EmbedTool({ handle }: { handle: MapHandle | null }) {
             </button>
           </div>
 
-          <p className="wc-hint">
+          <p className="cp-hint">
             Live view: painting updates arrive the same way they do here. Nothing painted from the
             embed itself — it only ever reads.
           </p>

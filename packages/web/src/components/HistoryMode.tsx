@@ -4,7 +4,7 @@ import {
   HISTORY_BUCKET_MS,
   HISTORY_MAX_AGE_MS,
   Z_PIXEL,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { normalizeHistoryAt } from "../history.js";
 import { useStore } from "../store.js";
 import "./HistoryMode.css";
@@ -14,8 +14,8 @@ export function HistoryMode({ zoom }: { zoom: number }) {
   const setHistoryAt = useStore((s) => s.setHistoryAt);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("wc-history-mode", historyAt !== null);
-    return () => document.documentElement.classList.remove("wc-history-mode");
+    document.documentElement.classList.toggle("cp-history-mode", historyAt !== null);
+    return () => document.documentElement.classList.remove("cp-history-mode");
   }, [historyAt]);
 
   if (historyAt === null) return null;
@@ -26,13 +26,13 @@ export function HistoryMode({ zoom }: { zoom: number }) {
   const at = Math.max(min, Math.min(historyAt, max));
 
   return (
-    <section className="wc-history-bar wc-card" aria-label="Canvas history mode">
-      <div className="wc-history-heading">
+    <section className="cp-history-bar cp-card" aria-label="Canvas history mode">
+      <div className="cp-history-heading">
         <History size={17} />
         <strong>History</strong>
         <time dateTime={new Date(at).toISOString()}>{new Date(at).toLocaleString()}</time>
         <button
-          className="wc-history-close"
+          className="cp-history-close"
           aria-label="Return to live canvas"
           title="Return to live canvas (H or Esc)"
           onClick={() => setHistoryAt(null)}
@@ -42,7 +42,7 @@ export function HistoryMode({ zoom }: { zoom: number }) {
       </div>
 
       <input
-        className="wc-history-slider"
+        className="cp-history-slider"
         type="range"
         min={min}
         max={max}
@@ -52,7 +52,7 @@ export function HistoryMode({ zoom }: { zoom: number }) {
         onChange={(event) => setHistoryAt(normalizeHistoryAt(Number(event.target.value), now))}
       />
 
-      <div className="wc-history-fields">
+      <div className="cp-history-fields">
         <span>{zoom < Z_PIXEL ? "Zoom in to view past pixels" : "Read-only past canvas"}</span>
         <input
           type="datetime-local"
@@ -66,7 +66,7 @@ export function HistoryMode({ zoom }: { zoom: number }) {
             if (Number.isFinite(parsed)) setHistoryAt(normalizeHistoryAt(parsed, now));
           }}
         />
-        <button className="wc-btn wc-history-live" onClick={() => setHistoryAt(null)}>
+        <button className="cp-btn cp-history-live" onClick={() => setHistoryAt(null)}>
           <Radio size={14} />
           Live
         </button>

@@ -11,7 +11,7 @@ import {
   pixelCenterLatLng,
   type PixelInfo,
   isValidColor,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { geo } from "../geo/index.js";

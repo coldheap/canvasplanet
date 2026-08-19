@@ -66,9 +66,9 @@ export async function solveTurnstile(sitekey: string): Promise<string> {
   if (!api) throw new Error("Verification is unavailable.");
 
   const backdrop = document.createElement("div");
-  backdrop.className = "wc-turnstile-backdrop";
+  backdrop.className = "cp-turnstile-backdrop";
   const box = document.createElement("div");
-  box.className = "wc-turnstile wc-card";
+  box.className = "cp-turnstile cp-card";
   const label = document.createElement("p");
   label.textContent = "Quick check before your first pixel";
   const host = document.createElement("div");

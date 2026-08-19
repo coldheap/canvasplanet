@@ -19,12 +19,12 @@ export function SharedTemplateBar({ handle }: { handle: MapHandle | null }) {
   if (!id) return null;
 
   return (
-    <div className="wc-shared-bar wc-card" role="status">
+    <div className="cp-shared-bar cp-card" role="status">
       <LayoutTemplate size={15} />
       <span>Someone shared a template with you — paint over the ghost.</span>
 
       <button
-        className="wc-btn"
+        className="cp-btn"
         disabled={busy || reported}
         title="Report this template"
         onClick={async () => {
@@ -42,7 +42,7 @@ export function SharedTemplateBar({ handle }: { handle: MapHandle | null }) {
       </button>
 
       <button
-        className="wc-btn"
+        className="cp-btn"
         aria-label="Dismiss"
         onClick={() => {
           handle?.template.set(null);

@@ -13,7 +13,7 @@ import {
   STATUS_HISTORY_INTERVAL_MS,
   STATUS_HISTORY_MAX_DAYS,
   STATUS_HISTORY_RETENTION_DAYS,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { computeStatus, deriveComponents, overallOf, type ComponentKey, type ComponentState } from "./snapshot.js";
 

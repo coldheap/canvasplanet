@@ -11,7 +11,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Poly } from "@worldcanvas/shared";
+import type { Poly } from "@canvasplanet/shared";
 import { PolygonIndex } from "./polygonIndex.js";
 
 export const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../../data");

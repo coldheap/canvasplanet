@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Handshake, LogOut, Plus } from "lucide-react";
-import { ALLIANCE_LEADERBOARD_TOP_N, PALETTE } from "@worldcanvas/shared";
+import { ALLIANCE_LEADERBOARD_TOP_N, PALETTE } from "@canvasplanet/shared";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
 
@@ -85,7 +85,7 @@ export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" })
   return (
     <>
       {ranked.length === 0 && !creating && (
-        <p className="wc-hint">No alliances yet — be the first to start one.</p>
+        <p className="cp-hint">No alliances yet — be the first to start one.</p>
       )}
 
       <ol>
@@ -105,7 +105,7 @@ export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" })
       </ol>
 
       {showPin && yourIndex >= 0 && (
-        <div className="wc-lb-pinned">
+        <div className="cp-lb-pinned">
           <AllianceRow
             rank={yourIndex + 1}
             value={ranked[yourIndex]![col]}
@@ -119,15 +119,15 @@ export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" })
       )}
 
       {ranked.length > ALLIANCE_LEADERBOARD_TOP_N && (
-        <button className="wc-lb-expand" onClick={() => setExpanded((e) => !e)}>
+        <button className="cp-lb-expand" onClick={() => setExpanded((e) => !e)}>
           {expanded ? "Show less" : `Show all ${ranked.length}`}
         </button>
       )}
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
 
       {creating ? (
-        <div className="wc-alliance-create">
+        <div className="cp-alliance-create">
           <input
             placeholder="Alliance name"
             maxLength={32}
@@ -135,12 +135,12 @@ export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" })
             onChange={(e) => setName(e.target.value)}
             autoFocus
           />
-          <div className="wc-swatches">
-            <div className="wc-swatch-group">
+          <div className="cp-swatches">
+            <div className="cp-swatch-group">
               {PALETTE.map((s) => (
                 <button
                   key={s.i}
-                  className={s.i === color ? "wc-swatch wc-on" : "wc-swatch"}
+                  className={s.i === color ? "cp-swatch cp-on" : "cp-swatch"}
                   style={{ background: s.hex }}
                   title={s.name}
                   aria-label={s.name}
@@ -150,22 +150,22 @@ export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" })
               ))}
             </div>
           </div>
-          <div className="wc-actions">
+          <div className="cp-actions">
             <button
-              className="wc-btn wc-btn-primary"
+              className="cp-btn cp-btn-primary"
               disabled={name.trim().length < 3 || busy === "create"}
               onClick={() => void create()}
             >
               <Check size={15} />
               Create
             </button>
-            <button className="wc-btn" onClick={() => setCreating(false)}>
+            <button className="cp-btn" onClick={() => setCreating(false)}>
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <button className="wc-btn wc-admin-entry" onClick={() => setCreating(true)}>
+        <button className="cp-btn cp-admin-entry" onClick={() => setCreating(true)}>
           <Plus size={15} />
           Start an alliance
         </button>
@@ -195,21 +195,21 @@ function AllianceRow({
 }) {
   const hex = PALETTE[color]?.hex ?? "#888";
   return (
-    <li className={you ? "wc-lb-row wc-alliance-row wc-you" : "wc-lb-row wc-alliance-row"}>
-      <span className="wc-rank">{rank}</span>
-      <span className="wc-alliance-dot" style={{ background: hex }} />
-      <span className="wc-name">
+    <li className={you ? "cp-lb-row cp-alliance-row cp-you" : "cp-lb-row cp-alliance-row"}>
+      <span className="cp-rank">{rank}</span>
+      <span className="cp-alliance-dot" style={{ background: hex }} />
+      <span className="cp-name">
         {name}
         {you && <em> (you)</em>}
       </span>
-      <span className="wc-value">{value.toLocaleString()}</span>
+      <span className="cp-value">{value.toLocaleString()}</span>
       {onLeave && (
-        <button className="wc-mini-danger" title="Leave" disabled={busy} onClick={onLeave}>
+        <button className="cp-mini-danger" title="Leave" disabled={busy} onClick={onLeave}>
           <LogOut size={13} />
         </button>
       )}
       {onJoin && (
-        <button className="wc-mini" title="Join" disabled={busy} onClick={onJoin}>
+        <button className="cp-mini" title="Join" disabled={busy} onClick={onJoin}>
           <Handshake size={13} />
         </button>
       )}

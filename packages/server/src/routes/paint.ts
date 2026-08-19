@@ -5,7 +5,7 @@ import {
   type PaintError,
   type PaintRequest,
   type PaintResponse,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { alliances } from "../alliances/store.js";
 import { events } from "../events/engine.js";

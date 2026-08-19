@@ -8,7 +8,7 @@
  * have `user_id IS NULL` and never touch this at all.
  */
 
-import { type UserLbRow, type ServerMessage } from "@worldcanvas/shared";
+import { type UserLbRow, type ServerMessage } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 
 interface Stat {

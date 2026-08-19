@@ -16,7 +16,7 @@ import {
   classifyRect,
   pointInPolygon,
   ringBbox,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 export interface Feature {
   /** Stable id written into the baked index. */

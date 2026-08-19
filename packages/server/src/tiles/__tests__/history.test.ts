@@ -1,5 +1,5 @@
 import { PNG } from "pngjs";
-import { ERASED, PALETTE_RGB, TILE_SIZE, pixelIndexInTile } from "@worldcanvas/shared";
+import { ERASED, PALETTE_RGB, TILE_SIZE, pixelIndexInTile } from "@canvasplanet/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { query } = vi.hoisted(() => ({ query: vi.fn() }));

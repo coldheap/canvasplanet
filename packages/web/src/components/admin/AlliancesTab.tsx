@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Ban, Handshake, RotateCcw } from "lucide-react";
 import { api, type AdminAlliance } from "../../api.js";
-import { PALETTE } from "@worldcanvas/shared";
+import { PALETTE } from "@canvasplanet/shared";
 
 export function AlliancesTab() {
   const [rows, setRows] = useState<AdminAlliance[] | null>(null);
@@ -24,28 +24,28 @@ export function AlliancesTab() {
 
   return (
     <section>
-      <h3 className="wc-admin-sub">
+      <h3 className="cp-admin-sub">
         <Handshake size={14} /> Alliances
       </h3>
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
       {!rows ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="wc-hint">No alliances have been created yet.</p>
+        <p className="cp-hint">No alliances have been created yet.</p>
       ) : (
-        <ul className="wc-staff-list">
+        <ul className="cp-staff-list">
           {rows.map((a) => {
             const disabled = a.disabled_at !== null;
             return (
-              <li key={a.id} className={disabled ? "wc-staff-off" : undefined}>
+              <li key={a.id} className={disabled ? "cp-staff-off" : undefined}>
                 <span
-                  className="wc-alliance-dot"
+                  className="cp-alliance-dot"
                   style={{ background: PALETTE[a.color]?.hex ?? "#888" }}
                 />
-                <span className="wc-staff-name">{a.name}</span>
-                <span className="wc-role">{a.members} member{a.members === 1 ? "" : "s"}</span>
+                <span className="cp-staff-name">{a.name}</span>
+                <span className="cp-role">{a.members} member{a.members === 1 ? "" : "s"}</span>
                 <button
-                  className={disabled ? "wc-mini" : "wc-mini-danger"}
+                  className={disabled ? "cp-mini" : "cp-mini-danger"}
                   title={disabled ? "Re-enable" : "Disable"}
                   onClick={async () => {
                     await api.admin.setAllianceDisabled(a.id, !disabled);

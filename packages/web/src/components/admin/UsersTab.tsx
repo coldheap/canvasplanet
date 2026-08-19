@@ -44,7 +44,7 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
   return (
     <section>
       <form
-        className="wc-staff-form"
+        className="cp-staff-form"
         onSubmit={(e) => {
           e.preventDefault();
           void load(query);
@@ -55,22 +55,22 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="wc-btn wc-btn-primary" type="submit">
+        <button className="cp-btn cp-btn-primary" type="submit">
           <Search size={15} />
           Search
         </button>
       </form>
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
 
-      <h3 className="wc-admin-sub">
+      <h3 className="cp-admin-sub">
         <UserCog size={14} /> Accounts
       </h3>
       {!rows ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="wc-hint">No accounts match.</p>
+        <p className="cp-hint">No accounts match.</p>
       ) : (
-        <ul className="wc-staff-list">
+        <ul className="cp-staff-list">
           {rows.map((u) => {
             const disabled = u.disabled_at !== null;
             // The Discord handle is what identifies a Discord-only account
@@ -80,19 +80,19 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
               [u.email, u.discord_username && `@${u.discord_username}`].filter(Boolean).join(" · ") ||
               "Discord only";
             return (
-              <li key={u.id} className={disabled ? "wc-staff-off" : undefined}>
+              <li key={u.id} className={disabled ? "cp-staff-off" : undefined}>
                 <UserAvatar userId={u.id} name={u.display_name} revision={u.avatar_revision} size={24} />
-                <span className="wc-staff-name">
+                <span className="cp-staff-name">
                   {u.display_name}
-                  {!u.email_verified_at && <em className="wc-hint"> (unverified)</em>}
+                  {!u.email_verified_at && <em className="cp-hint"> (unverified)</em>}
                 </span>
-                <span className="wc-hint" title={contact}>
+                <span className="cp-hint" title={contact}>
                   {contact}
                 </span>
-                <span className="wc-role">{u.cumulative.toLocaleString()} painted</span>
+                <span className="cp-role">{u.cumulative.toLocaleString()} painted</span>
                 {isAdmin && (
                   <select
-                    className="wc-mini-select"
+                    className="cp-mini-select"
                     value={u.role ?? ""}
                     title="Staff role"
                     onChange={async (e) => {
@@ -108,7 +108,7 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                 )}
                 {u.avatar_revision && (
                   <button
-                    className="wc-mini-danger"
+                    className="cp-mini-danger"
                     title="Remove profile picture"
                     aria-label={`Remove ${u.display_name}'s profile picture`}
                     onClick={async () => {
@@ -120,7 +120,7 @@ export function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                   </button>
                 )}
                 <button
-                  className={disabled ? "wc-mini" : "wc-mini-danger"}
+                  className={disabled ? "cp-mini" : "cp-mini-danger"}
                   title={disabled ? "Re-enable" : "Disable"}
                   onClick={async () => {
                     await api.admin.setUserDisabled(u.id, !disabled);

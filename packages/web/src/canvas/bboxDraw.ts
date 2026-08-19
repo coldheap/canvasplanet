@@ -10,7 +10,7 @@
  */
 
 import L from "leaflet";
-import { latLngToPixel, pixelToLatLng } from "@worldcanvas/shared";
+import { latLngToPixel, pixelToLatLng } from "@canvasplanet/shared";
 
 export interface Bbox {
   x0: number;

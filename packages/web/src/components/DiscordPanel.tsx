@@ -57,41 +57,41 @@ export function DiscordPanel() {
   const members = widget?.members.slice(0, VISIBLE_MEMBERS) ?? [];
 
   return (
-    <section className="wc-discord" aria-labelledby="wc-discord-title">
-      <h2 id="wc-discord-title" className="wc-panel-title wc-discord-title">
+    <section className="cp-discord" aria-labelledby="cp-discord-title">
+      <h2 id="cp-discord-title" className="cp-panel-title cp-discord-title">
         <DiscordIcon />
-        {widget?.name ?? "WorldCanvas"}
+        {widget?.name ?? "CanvasPlanet"}
       </h2>
 
       {widget ? (
         <>
-          <div className="wc-discord-presence" role="status">
-            <span className="wc-discord-live" aria-hidden />
+          <div className="cp-discord-presence" role="status">
+            <span className="cp-discord-live" aria-hidden />
             <strong>{widget.presence_count.toLocaleString()}</strong> online
           </div>
 
           {members.length > 0 && (
-            <ul className="wc-discord-members" aria-label="Members online">
+            <ul className="cp-discord-members" aria-label="Members online">
               {members.map((member) => (
                 <li key={member.avatar_url}>
-                  <span className="wc-discord-avatar">
+                  <span className="cp-discord-avatar">
                     <img src={member.avatar_url} alt="" width="34" height="34" loading="lazy" referrerPolicy="no-referrer" />
-                    <span className={`wc-discord-status is-${member.status}`} aria-hidden />
+                    <span className={`cp-discord-status is-${member.status}`} aria-hidden />
                   </span>
-                  <span className="wc-discord-member-name">{member.username}</span>
-                  <span className="wc-discord-member-status">{statusLabel(member.status)}</span>
+                  <span className="cp-discord-member-name">{member.username}</span>
+                  <span className="cp-discord-member-status">{statusLabel(member.status)}</span>
                 </li>
               ))}
             </ul>
           )}
         </>
       ) : failed ? (
-        <div className="wc-discord-unavailable" role="status">
+        <div className="cp-discord-unavailable" role="status">
           <Users size={18} />
           Discord presence is unavailable right now.
         </div>
       ) : (
-        <div className="wc-discord-loading" role="status" aria-label="Loading Discord members">
+        <div className="cp-discord-loading" role="status" aria-label="Loading Discord members">
           <span />
           <span />
           <span />
@@ -99,7 +99,7 @@ export function DiscordPanel() {
       )}
 
       <a
-        className="wc-btn wc-btn-discord wc-discord-join"
+        className="cp-btn cp-btn-discord cp-discord-join"
         href={DISCORD_INVITE_URL}
         target="_blank"
         rel="noopener noreferrer"

@@ -91,8 +91,8 @@ if (!maildevUp) {
   if (linkMatch) {
     const verified = await fetch(linkMatch[1], { redirect: "manual" });
     const cookies = cookiesOf(verified);
-    userCookie = cookies.find((c) => c.startsWith("wc_user=")) ?? "";
-    sessCookie = cookies.find((c) => c.startsWith("wc_sess=")) ?? "";
+    userCookie = cookies.find((c) => c.startsWith("cp_user=")) ?? "";
+    sessCookie = cookies.find((c) => c.startsWith("cp_sess=")) ?? "";
     check("verifying signs the account in", Boolean(userCookie) && Boolean(sessCookie));
   }
   const both = [sessCookie, userCookie].filter(Boolean).join("; ");

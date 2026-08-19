@@ -28,7 +28,7 @@ import {
   spend,
   Z_PIXEL,
   tileIdOf,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { Client } from "../db/pool.js";
 import { tx } from "../db/pool.js";
 import { geo } from "../geo/index.js";

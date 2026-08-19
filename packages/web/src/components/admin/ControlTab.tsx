@@ -48,10 +48,10 @@ export function ControlTab({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <section className="wc-admin-control">
+    <section className="cp-admin-control">
       {isAdmin && (
         <button
-          className={frozen ? "wc-danger wc-on" : "wc-danger"}
+          className={frozen ? "cp-danger cp-on" : "cp-danger"}
           disabled={busy}
           onClick={() => void toggleFreeze()}
         >
@@ -60,12 +60,12 @@ export function ControlTab({ isAdmin }: { isAdmin: boolean }) {
         </button>
       )}
       {frozen && (
-        <p className="wc-admin-alert">
+        <p className="cp-admin-alert">
           <AlertOctagon size={14} /> The canvas is frozen. No one can paint.
         </p>
       )}
 
-      <div className="wc-stat-grid">
+      <div className="cp-stat-grid">
         <Stat label="paints/sec" value={stats ? String(stats.pps) : "—"} />
         <Stat label="clients" value={stats ? String(stats.ws.clients) : "—"} />
         <Stat
@@ -87,8 +87,8 @@ export function ControlTab({ isAdmin }: { isAdmin: boolean }) {
         />
       </div>
 
-      <h3 className="wc-admin-sub">Latency</h3>
-      <div className="wc-stat-grid">
+      <h3 className="cp-admin-sub">Latency</h3>
+      <div className="cp-stat-grid">
         {/* Sustained loop lag means everything queues behind something on
             this thread; a high max with a low p99 means a rare stall. The
             two need very different fixes, which is why both are shown. */}
@@ -110,19 +110,19 @@ export function ControlTab({ isAdmin }: { isAdmin: boolean }) {
         />
       </div>
 
-      <h3 className="wc-admin-sub">Busiest IPs (last hour)</h3>
+      <h3 className="cp-admin-sub">Busiest IPs (last hour)</h3>
       {!stats ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : stats.topIps.length === 0 ? (
-        <p className="wc-hint">No paints in the last hour.</p>
+        <p className="cp-hint">No paints in the last hour.</p>
       ) : (
-        <ul className="wc-ip-list">
+        <ul className="cp-ip-list">
           {stats.topIps.map((row) => (
             <li key={row.ip}>
               <code>{row.ip}</code>
-              <span className="wc-ip-count">{row.paints.toLocaleString()}</span>
+              <span className="cp-ip-count">{row.paints.toLocaleString()}</span>
               <button
-                className="wc-mini-danger"
+                className="cp-mini-danger"
                 title="Ban this IP for 24 hours"
                 onClick={() => void api.admin.ban({ ip: row.ip, hours: 24, reason: "manual" })}
               >
@@ -138,9 +138,9 @@ export function ControlTab({ isAdmin }: { isAdmin: boolean }) {
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className={warn ? "wc-stat wc-stat-warn" : "wc-stat"}>
-      <span className="wc-stat-value">{value}</span>
-      <span className="wc-stat-label">{label}</span>
+    <div className={warn ? "cp-stat cp-stat-warn" : "cp-stat"}>
+      <span className="cp-stat-value">{value}</span>
+      <span className="cp-stat-label">{label}</span>
     </div>
   );
 }

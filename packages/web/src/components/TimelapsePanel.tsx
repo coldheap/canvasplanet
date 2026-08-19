@@ -21,7 +21,7 @@ import {
   type ExportStatusResponse,
   type Terrain,
   type TimelapseResponse,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { api } from "../api.js";
 import { pickBbox, type Bbox } from "../canvas/pickBbox.js";
 import { useStore } from "../store.js";
@@ -244,17 +244,17 @@ export function TimelapsePanel({ handle }: { handle: MapHandle | null }) {
   const painted = data ? data.frames.reduce((n, f) => n + f.p.length, 0) : 0;
 
   return (
-    <div className="wc-timelapse wc-card">
-      <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+    <div className="cp-timelapse cp-card">
+      <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
         <X size={16} />
       </button>
-      <h2 className="wc-panel-title">
+      <h2 className="cp-panel-title">
         <Clapperboard size={16} />
         Timelapse
       </h2>
 
-      <div className="wc-actions">
-        <button className="wc-btn" disabled={!handle} onClick={() => void selectArea()}>
+      <div className="cp-actions">
+        <button className="cp-btn" disabled={!handle} onClick={() => void selectArea()}>
           <Square size={15} />
           {bbox ? `${width}×${height}` : "Draw an area"}
         </button>
@@ -265,29 +265,29 @@ export function TimelapsePanel({ handle }: { handle: MapHandle | null }) {
             </option>
           ))}
         </select>
-        <button className="wc-btn wc-btn-primary" disabled={!bbox || busy} onClick={() => void load()}>
-          {busy ? <Loader2 size={15} className="wc-spin" /> : null}
+        <button className="cp-btn cp-btn-primary" disabled={!bbox || busy} onClick={() => void load()}>
+          {busy ? <Loader2 size={15} className="cp-spin" /> : null}
           Load
         </button>
       </div>
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
 
       {data && (
         <>
-          <div className="wc-timelapse-stage">
+          <div className="cp-timelapse-stage">
             <canvas
               ref={canvasRef}
               width={width}
               height={height}
-              className="wc-pixelated"
+              className="cp-pixelated"
               style={{ aspectRatio: `${width} / ${height}` }}
             />
           </div>
 
-          <div className="wc-timelapse-controls">
+          <div className="cp-timelapse-controls">
             <button
-              className="wc-btn"
+              className="cp-btn"
               onClick={() => {
                 // Restarting from the end is what people expect from a
                 // play button sitting at the end of a finished clip.
@@ -319,39 +319,39 @@ export function TimelapsePanel({ handle }: { handle: MapHandle | null }) {
             </select>
           </div>
 
-          <p className="wc-hint wc-timelapse-meta">
+          <p className="cp-hint cp-timelapse-meta">
             {new Date(data.frames[frame]!.t).toLocaleString()} · frame {frame + 1}/
             {data.frames.length} · {painted.toLocaleString()} paints
             {data.truncated && (
               // Saying so beats showing a partial story as if it were whole.
-              <strong className="wc-warn-text"> · truncated, narrow the range</strong>
+              <strong className="cp-warn-text"> · truncated, narrow the range</strong>
             )}
           </p>
           {painted === 0 && (
-            <p className="wc-hint">Nothing was painted here in that period.</p>
+            <p className="cp-hint">Nothing was painted here in that period.</p>
           )}
 
-          <div className="wc-timelapse-export">
+          <div className="cp-timelapse-export">
             <select value={format} onChange={(e) => setFormat(e.target.value as "gif" | "mp4")}>
               <option value="gif">GIF</option>
               <option value="mp4">MP4</option>
             </select>
-            <button className="wc-btn" disabled={exportBusy} onClick={() => void startExport()}>
-              {exportBusy ? <Loader2 size={15} className="wc-spin" /> : <Download size={15} />}
+            <button className="cp-btn" disabled={exportBusy} onClick={() => void startExport()}>
+              {exportBusy ? <Loader2 size={15} className="cp-spin" /> : <Download size={15} />}
               Export
             </button>
             {exportStatus?.status === "done" && exportStatus.url && (
-              <a className="wc-btn wc-btn-primary" href={exportStatus.url} download>
+              <a className="cp-btn cp-btn-primary" href={exportStatus.url} download>
                 <Download size={15} />
                 Download {format.toUpperCase()}
               </a>
             )}
             {(exportStatus?.status === "queued" || exportStatus?.status === "processing") && (
-              <span className="wc-hint">{exportStatus.status}…</span>
+              <span className="cp-hint">{exportStatus.status}…</span>
             )}
           </div>
           {(exportError || exportStatus?.status === "failed") && (
-            <p className="wc-error">{exportError ?? exportStatus?.error ?? "Export failed."}</p>
+            <p className="cp-error">{exportError ?? exportStatus?.error ?? "Export failed."}</p>
           )}
         </>
       )}

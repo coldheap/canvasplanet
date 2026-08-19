@@ -12,8 +12,8 @@
  * almost nothing.
  */
 
-import { TILES_PER_AXIS, TOTAL_TILES, Z_PIXEL, xToLng, yToLat } from "@worldcanvas/shared";
-import type { Rect } from "@worldcanvas/shared";
+import { TILES_PER_AXIS, TOTAL_TILES, Z_PIXEL, xToLng, yToLat } from "@canvasplanet/shared";
+import type { Rect } from "@canvasplanet/shared";
 import type { PolygonIndex } from "./polygonIndex.js";
 
 export const MIXED_COUNTRY = 0xffff;

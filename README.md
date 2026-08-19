@@ -1,4 +1,4 @@
-# Worldcanvas
+# CanvasPlanet
 
 A persistent, live pixel-art canvas layered on a real world map. Anyone can
 paint, one pixel at a time, from a charge bank. Nothing ever resets. A live
@@ -37,12 +37,12 @@ entirely inside the project, using binaries you already have:
 
 ```bash
 PG="/c/Program Files/PostgreSQL/16/bin"
-"$PG/initdb" -D .pgdev/data -U worldcanvas --pwfile=<(echo -n devpassword) -E UTF8
+"$PG/initdb" -D .pgdev/data -U canvasplanet --pwfile=<(echo -n devpassword) -E UTF8
 "$PG/pg_ctl" -D .pgdev/data -l .pgdev/server.log -o "-p 5544" start
-"$PG/createdb" -U worldcanvas -h 127.0.0.1 -p 5544 worldcanvas
+"$PG/createdb" -U canvasplanet -h 127.0.0.1 -p 5544 canvasplanet
 ```
 
-Then `DATABASE_URL=postgres://worldcanvas:devpassword@127.0.0.1:5544/worldcanvas`.
+Then `DATABASE_URL=postgres://canvasplanet:devpassword@127.0.0.1:5544/canvasplanet`.
 `.pgdev/` is gitignored; deleting the folder removes it completely. Port 5544
 avoids colliding with a system instance on 5432/5433.
 
@@ -149,13 +149,13 @@ without backups running from day one.
 
 ```bash
 pnpm backup                              # dump now, prune old dumps
-pnpm backup:restore backups/worldcanvas-20260101.sql.gz   # restore, with a confirm prompt
+pnpm backup:restore backups/canvasplanet-20260101.sql.gz   # restore, with a confirm prompt
 ```
 
 Cron, from the repo root on the VPS:
 
 ```
-0 3 * * * cd /opt/worldcanvas && ./scripts/backup.sh >> backups/backup.log 2>&1
+0 3 * * * cd /opt/canvasplanet && ./scripts/backup.sh >> backups/backup.log 2>&1
 ```
 
 Retention is 7 daily + 4 weekly (Sundays) + 12 monthly (the 1st), pruned

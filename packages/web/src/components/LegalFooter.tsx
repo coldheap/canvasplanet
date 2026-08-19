@@ -15,7 +15,7 @@
  */
 export function LegalFooter() {
   return (
-    <footer className="wc-legal-footer">
+    <footer className="cp-legal-footer">
       <a href="/terms.html" target="_blank" rel="noreferrer">
         Terms
       </a>

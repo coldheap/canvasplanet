@@ -48,7 +48,7 @@ import {
   type Bbox,
   type EventStateDTO,
   type ServerMessage,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { revert } from "../admin/revert.js";
 import { alliances } from "../alliances/store.js";
 import { pool, tx } from "../db/pool.js";

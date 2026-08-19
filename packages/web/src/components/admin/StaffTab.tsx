@@ -26,29 +26,29 @@ export function StaffTab() {
 
   return (
     <section>
-      <p className="wc-hint">Grant a role from the Users tab — search for an account, then pick mod or admin.</p>
-      {error && <p className="wc-error">{error}</p>}
+      <p className="cp-hint">Grant a role from the Users tab — search for an account, then pick mod or admin.</p>
+      {error && <p className="cp-error">{error}</p>}
 
-      <h3 className="wc-admin-sub">
+      <h3 className="cp-admin-sub">
         <ShieldCheck size={14} /> Currently staff
       </h3>
       {!rows ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="wc-hint">Nobody has a staff role.</p>
+        <p className="cp-hint">Nobody has a staff role.</p>
       ) : (
-        <ul className="wc-staff-list">
+        <ul className="cp-staff-list">
           {rows.map((s) => {
             const isMe = s.id === me?.id;
             return (
               <li key={s.id}>
-                <span className="wc-staff-name">
+                <span className="cp-staff-name">
                   {s.username}
-                  {isMe && <em className="wc-hint"> (you)</em>}
+                  {isMe && <em className="cp-hint"> (you)</em>}
                 </span>
-                <span className="wc-role">{s.role}</span>
+                <span className="cp-role">{s.role}</span>
                 <button
-                  className="wc-mini-danger"
+                  className="cp-mini-danger"
                   disabled={isMe}
                   title={isMe ? "You cannot revoke your own admin role" : "Revoke"}
                   onClick={async () => {

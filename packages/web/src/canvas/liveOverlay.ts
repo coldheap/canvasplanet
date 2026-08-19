@@ -19,7 +19,7 @@
  */
 
 import L from "leaflet";
-import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@worldcanvas/shared";
+import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@canvasplanet/shared";
 import { livePixelScreenSize } from "./livePixels.js";
 import { tilePixelMatches } from "./tilePixels.js";
 
@@ -48,7 +48,7 @@ export class LiveOverlay {
     private readonly map: L.Map,
     private readonly refreshTiles: () => void,
   ) {
-    this.canvas = L.DomUtil.create("canvas", "wc-live-overlay") as HTMLCanvasElement;
+    this.canvas = L.DomUtil.create("canvas", "cp-live-overlay") as HTMLCanvasElement;
     // Clicks must reach the map underneath — this layer is purely visual.
     this.canvas.style.pointerEvents = "none";
     this.canvas.style.position = "absolute";

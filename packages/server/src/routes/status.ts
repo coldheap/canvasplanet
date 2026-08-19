@@ -8,7 +8,7 @@
  * src/status/history.ts for the persisted uptime record.
  */
 
-import { STATUS_HISTORY_MAX_DAYS } from "@worldcanvas/shared";
+import { STATUS_HISTORY_MAX_DAYS } from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { dailyHistory } from "../status/history.js";
 import { computeStatus } from "../status/snapshot.js";

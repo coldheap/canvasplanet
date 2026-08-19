@@ -10,15 +10,15 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
 # argon2 has a native build step; python3/make/g++ are needed to compile it.
 RUN apk add --no-cache python3 make g++ \
- && pnpm install --frozen-lockfile --filter @worldcanvas/server...
+ && pnpm install --frozen-lockfile --filter @canvasplanet/server...
 
 # ---- build -----------------------------------------------------------------
 FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY packages/server packages/server
-RUN pnpm --filter @worldcanvas/shared build \
- && pnpm --filter @worldcanvas/server build
+RUN pnpm --filter @canvasplanet/shared build \
+ && pnpm --filter @canvasplanet/server build
 
 # ---- runtime ---------------------------------------------------------------
 FROM node:20-alpine AS runtime

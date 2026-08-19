@@ -87,7 +87,7 @@ export function ChatTab() {
 
   return (
     <section>
-      <div className="wc-chat-admin-controls">
+      <div className="cp-chat-admin-controls">
         <select value={status} onChange={(event) => setStatus(event.target.value as Status)}>
           <option value="open">Open reports</option>
           <option value="all">All reports</option>
@@ -100,16 +100,16 @@ export function ChatTab() {
         </select>
       </div>
 
-      <h3 className="wc-admin-sub"><MessageCircleWarning size={14} /> Chat reports</h3>
-      {error && <p className="wc-error">{error}</p>}
+      <h3 className="cp-admin-sub"><MessageCircleWarning size={14} /> Chat reports</h3>
+      {error && <p className="cp-error">{error}</p>}
       {!reports ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : reports.length === 0 ? (
-        <p className="wc-hint">No {status === "open" ? "open " : ""}chat reports.</p>
+        <p className="cp-hint">No {status === "open" ? "open " : ""}chat reports.</p>
       ) : (
-        <ol className="wc-chat-report-list">
+        <ol className="cp-chat-report-list">
           {reports.map((report) => (
-            <li key={report.id} className="wc-chat-report-row">
+            <li key={report.id} className="cp-chat-report-row">
               <ChatAvatar
                 userId={report.user_id}
                 name={report.display_name}
@@ -117,31 +117,31 @@ export function ChatTab() {
                 size={28}
               />
               <div>
-                <div className="wc-chat-report-head">
+                <div className="cp-chat-report-head">
                   <strong>{report.display_name}</strong>
                   <time>{new Date(report.message_created_at).toLocaleString()}</time>
                 </div>
-                <p className={report.deleted_at ? "wc-chat-removed" : ""}>
+                <p className={report.deleted_at ? "cp-chat-removed" : ""}>
                   {report.deleted_at ? "Message removed" : report.display_body}
                 </p>
                 <details>
                   <summary>Original moderation evidence</summary>
                   <p>{report.original_body}</p>
                 </details>
-                <p className="wc-hint">
+                <p className="cp-hint">
                   Reported by {report.reporter_name}{report.reason ? `: ${report.reason}` : " (no reason given)"}
                 </p>
                 {report.resolved_at ? (
-                  <span className="wc-hint">Resolved: {report.resolution ?? "reviewed"}</span>
+                  <span className="cp-hint">Resolved: {report.resolution ?? "reviewed"}</span>
                 ) : (
-                  <div className="wc-actions">
-                    <button className="wc-danger" disabled={busy !== null} onClick={() => void remove(report)}>
+                  <div className="cp-actions">
+                    <button className="cp-danger" disabled={busy !== null} onClick={() => void remove(report)}>
                       <Trash2 size={13} /> Remove
                     </button>
-                    <button className="wc-btn" disabled={busy !== null} onClick={() => void mute(report)}>
+                    <button className="cp-btn" disabled={busy !== null} onClick={() => void mute(report)}>
                       <Shield size={13} /> Mute
                     </button>
-                    <button className="wc-btn" disabled={busy !== null} onClick={() => void dismiss(report)}>
+                    <button className="cp-btn" disabled={busy !== null} onClick={() => void dismiss(report)}>
                       <Check size={13} /> Dismiss
                     </button>
                   </div>
@@ -152,23 +152,23 @@ export function ChatTab() {
         </ol>
       )}
 
-      <h3 className="wc-admin-sub"><Shield size={14} /> Active chat mutes</h3>
+      <h3 className="cp-admin-sub"><Shield size={14} /> Active chat mutes</h3>
       {!mutes ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : mutes.length === 0 ? (
-        <p className="wc-hint">Nobody is currently muted.</p>
+        <p className="cp-hint">Nobody is currently muted.</p>
       ) : (
-        <ol className="wc-chat-mute-list">
+        <ol className="cp-chat-mute-list">
           {mutes.map((mute) => (
             <li key={mute.id}>
               <div>
                 <strong>{mute.display_name}</strong>
-                <span className="wc-hint">
+                <span className="cp-hint">
                   {mute.until_at ? `Until ${new Date(mute.until_at).toLocaleString()}` : "Permanent"}
                   {mute.reason ? ` · ${mute.reason}` : ""}
                 </span>
               </div>
-              <button className="wc-btn" disabled={busy !== null} onClick={() => void unmute(mute.user_id)}>
+              <button className="cp-btn" disabled={busy !== null} onClick={() => void unmute(mute.user_id)}>
                 <Volume2 size={13} /> Unmute
               </button>
             </li>

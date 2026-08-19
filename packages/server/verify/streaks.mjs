@@ -56,7 +56,7 @@ if (!maildevUp) {
 } else {
   const client = new pg.Client({
     connectionString:
-      process.env.DATABASE_URL ?? "postgres://worldcanvas:worldcanvas_dev@127.0.0.1:5544/worldcanvas",
+      process.env.DATABASE_URL ?? "postgres://canvasplanet:canvasplanet_dev@127.0.0.1:5544/canvasplanet",
   });
   await client.connect();
 
@@ -78,8 +78,8 @@ if (!maildevUp) {
   } else {
     const verifyRes = await fetch(linkMatch[1], { redirect: "manual" });
     const verifyCookies = cookiesOf(verifyRes);
-    const userCookie = verifyCookies.find((c) => c.startsWith("wc_user="));
-    const sessCookie = verifyCookies.find((c) => c.startsWith("wc_sess="));
+    const userCookie = verifyCookies.find((c) => c.startsWith("cp_user="));
+    const sessCookie = verifyCookies.find((c) => c.startsWith("cp_sess="));
     const jar = [sessCookie, userCookie].filter(Boolean).join("; ");
     check("verify-click logged the account in", Boolean(userCookie && sessCookie));
 

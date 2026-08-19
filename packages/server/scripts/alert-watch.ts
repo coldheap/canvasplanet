@@ -112,7 +112,7 @@ async function tick(): Promise<void> {
     consecutiveBad = 0;
     if (alerting) {
       const downtimeMin = downSince ? Math.round((Date.now() - downSince) / 60_000) : 0;
-      await notify(`✅ worldcanvas recovered (was down ~${downtimeMin}m). ${result.detail}`);
+      await notify(`✅ canvasplanet recovered (was down ~${downtimeMin}m). ${result.detail}`);
       alerting = false;
       downSince = null;
     }
@@ -130,7 +130,7 @@ async function tick(): Promise<void> {
   if (!alerting || justEscalated || dueForRenotify) {
     if (!alerting) downSince = now;
     const icon = result.overall === "down" ? "🔴" : "🟡";
-    await notify(`${icon} worldcanvas is ${result.overall}: ${result.detail} (${STATUS_URL})`);
+    await notify(`${icon} canvasplanet is ${result.overall}: ${result.detail} (${STATUS_URL})`);
     lastNotifiedAt = now;
     alerting = true;
   }

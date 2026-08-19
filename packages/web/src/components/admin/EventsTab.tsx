@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { Biohazard, Square } from "lucide-react";
 import { api, type EventHistoryRow } from "../../api.js";
-import type { EventStateDTO } from "@worldcanvas/shared";
+import type { EventStateDTO } from "@canvasplanet/shared";
 
 export function EventsTab() {
   const [current, setCurrent] = useState<EventStateDTO | null>(null);
@@ -48,36 +48,36 @@ export function EventsTab() {
   }
 
   return (
-    <section className="wc-admin-control">
-      <h3 className="wc-admin-sub">Current event</h3>
+    <section className="cp-admin-control">
+      <h3 className="cp-admin-sub">Current event</h3>
       {!current ? (
-        <p className="wc-hint">No corruption event running.</p>
+        <p className="cp-hint">No corruption event running.</p>
       ) : (
         <>
-          <p className="wc-admin-alert">
+          <p className="cp-admin-alert">
             <Biohazard size={14} />
             Zone ({current.bbox.x0},{current.bbox.y0})–({current.bbox.x1},{current.bbox.y1}) —{" "}
             {Math.round(current.corruptionPct * 100)}% corrupted, {current.defenders} defending,{" "}
             {Math.max(0, Math.round((current.endsAt - Date.now()) / 1000))}s left
           </p>
-          <button className="wc-danger" disabled={busy} onClick={() => void forceEnd()}>
+          <button className="cp-danger" disabled={busy} onClick={() => void forceEnd()}>
             <Square size={15} />
             Force end now
           </button>
         </>
       )}
 
-      <h3 className="wc-admin-sub">History</h3>
+      <h3 className="cp-admin-sub">History</h3>
       {history.length === 0 ? (
-        <p className="wc-hint">No events yet.</p>
+        <p className="cp-hint">No events yet.</p>
       ) : (
-        <ul className="wc-ip-list">
+        <ul className="cp-ip-list">
           {history.map((h) => (
             <li key={h.id}>
               <code>
                 ({h.x0},{h.y0})–({h.x1},{h.y1})
               </code>
-              <span className="wc-ip-count">
+              <span className="cp-ip-count">
                 {h.result ?? "running"}
                 {h.corruption_pct !== null ? ` · ${Math.round(h.corruption_pct * 100)}%` : ""}
                 {" · "}

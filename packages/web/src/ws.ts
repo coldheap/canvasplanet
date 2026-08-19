@@ -22,7 +22,7 @@ import {
   type ServerMessage,
   type UserLbRow,
   subKeysForBbox,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 type Handlers = {
   onPixels: (pixels: PixelTuple[]) => void;

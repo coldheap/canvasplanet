@@ -17,7 +17,7 @@ import {
   isValidColor,
   isViolation,
   tileAncestry,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { tx } from "../db/pool.js";
 import { geo } from "../geo/index.js";
 import { incrementCumulative, reloadOwnershipStores, transferHeld } from "../paint/ownership.js";

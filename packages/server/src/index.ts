@@ -1,5 +1,5 @@
 /**
- * Worldcanvas server entrypoint.
+ * CanvasPlanet server entrypoint.
  *
  * One process holds the API, the WebSocket hub and the tile worker. That is
  * deliberate: the hub is in-memory and the tile cache is on local disk, and
@@ -15,7 +15,7 @@ import {
   effectiveRegenMs,
   msUntilNextCharge,
   regenerate,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import Fastify from "fastify";
 import { migrate } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
   // Cloudflare, no WAF and a dev SESSION_SECRET in front of it.
   const host = env.isProd ? "0.0.0.0" : "127.0.0.1";
   await app.listen({ port: env.port, host });
-  app.log.info(`worldcanvas listening on ${host}:${env.port}`);
+  app.log.info(`canvasplanet listening on ${host}:${env.port}`);
 
   const shutdown = async (signal: string) => {
     app.log.info(`${signal} — shutting down`);

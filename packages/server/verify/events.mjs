@@ -30,7 +30,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cookiesOf = (res) => (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]);
 
 const client = new pg.Client({
-  connectionString: process.env.DATABASE_URL ?? "postgres://worldcanvas:worldcanvas_dev@127.0.0.1:5544/worldcanvas",
+  connectionString: process.env.DATABASE_URL ?? "postgres://canvasplanet:canvasplanet_dev@127.0.0.1:5544/canvasplanet",
 });
 await client.connect();
 

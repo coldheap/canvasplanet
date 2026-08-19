@@ -1,5 +1,5 @@
 {
-  "name": "@worldcanvas/web",
+  "name": "@canvasplanet/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@worldcanvas/shared": "workspace:*",
+    "@canvasplanet/shared": "workspace:*",
     "flag-icons": "^7.5.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.30.0",

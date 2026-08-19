@@ -4,14 +4,14 @@
  * tick while one is active, so the store update alone re-renders this at
  * the same cadence — the countdown and bar are just derived from it.
  *
- * Lives beside App.tsx's `.wc-topbar`, not inside MapCanvas.tsx: the zone is
+ * Lives beside App.tsx's `.cp-topbar`, not inside MapCanvas.tsx: the zone is
  * picked at random anywhere in the world, so there's no reason to expect it
  * to be on screen — clicking the banner is how you get there (same
  * `flyTo` pattern ReportsTab/RegionsTab already use for "go look at this
  * area").
  */
 import { Biohazard, Crosshair } from "lucide-react";
-import { EVENT_WIN_THRESHOLD, type EventStateDTO } from "@worldcanvas/shared";
+import { EVENT_WIN_THRESHOLD, type EventStateDTO } from "@canvasplanet/shared";
 
 export function eventBannerText(event: EventStateDTO, now = Date.now()): string {
   const pct = Math.min(1, event.corruptionPct);
@@ -42,7 +42,7 @@ export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocat
 
   return (
     <div
-      className={danger ? "wc-event-banner wc-event-danger" : "wc-event-banner"}
+      className={danger ? "cp-event-banner cp-event-danger" : "cp-event-banner"}
       role="status"
       aria-live="polite"
     >
@@ -51,10 +51,10 @@ export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocat
         {status}
         {event.defenders > 0 ? ` · ${event.defenders} defending` : ""}
       </span>
-      <div className="wc-event-bar">
-        <div className="wc-event-bar-fill" style={{ width: `${pct * 100}%` }} />
+      <div className="cp-event-bar">
+        <div className="cp-event-bar-fill" style={{ width: `${pct * 100}%` }} />
       </div>
-      <button className="wc-event-locate" onClick={onLocate} title="Fly to the zone">
+      <button className="cp-event-locate" onClick={onLocate} title="Fly to the zone">
         <Crosshair size={13} />
         Locate
       </button>

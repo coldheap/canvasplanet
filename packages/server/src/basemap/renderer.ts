@@ -1,5 +1,5 @@
 import { PNG } from "pngjs";
-import { TILE_SIZE } from "@worldcanvas/shared";
+import { TILE_SIZE } from "@canvasplanet/shared";
 import { TerrainBits } from "../geo/bake.js";
 import { geo } from "../geo/index.js";
 

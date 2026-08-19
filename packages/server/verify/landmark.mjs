@@ -10,7 +10,7 @@ const X0 = 524160, Y0 = 524224, W = 256, H = 128;
 const client = new pg.Client({
   connectionString:
     process.env.DATABASE_URL ??
-    "postgres://worldcanvas:worldcanvas_dev@127.0.0.1:5544/worldcanvas",
+    "postgres://canvasplanet:canvasplanet_dev@127.0.0.1:5544/canvasplanet",
 });
 await client.connect();
 

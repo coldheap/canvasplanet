@@ -8,7 +8,7 @@
 
 import { useEffect } from "react";
 import { Droplet, MapPin, MapPinOff } from "lucide-react";
-import { Family, MIN_PAINT_ZOOM, PALETTE } from "@worldcanvas/shared";
+import { Family, MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
 export function PalettePanel({ zoom }: { zoom: number }) {
@@ -33,7 +33,7 @@ export function PalettePanel({ zoom }: { zoom: number }) {
 
   if (zoom < MIN_PAINT_ZOOM) {
     return (
-      <div className="wc-palette wc-palette-locked wc-card">
+      <div className="cp-palette cp-palette-locked cp-card">
         <MapPinOff size={16} />
         <span>Zoom in to paint</span>
       </div>
@@ -44,12 +44,12 @@ export function PalettePanel({ zoom }: { zoom: number }) {
   const water = PALETTE.filter((s) => s.family === Family.Water);
 
   return (
-    <div className="wc-palette wc-card">
-      <div className="wc-swatches">
-        <span className="wc-swatch-group-label" title="Land colours">
+    <div className="cp-palette cp-card">
+      <div className="cp-swatches">
+        <span className="cp-swatch-group-label" title="Land colours">
           <MapPin />
         </span>
-        <div className="wc-swatch-group">
+        <div className="cp-swatch-group">
           {land.map((s) => (
             <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
           ))}
@@ -57,10 +57,10 @@ export function PalettePanel({ zoom }: { zoom: number }) {
 
         {/* Water colours cost 2 on land, so they get their own group with an
             icon cue rather than a text label — the tooltip carries the rule. */}
-        <span className="wc-swatch-group-label" title="Water colours — cost 2 on land">
+        <span className="cp-swatch-group-label" title="Water colours — cost 2 on land">
           <Droplet />
         </span>
-        <div className="wc-swatch-group">
+        <div className="cp-swatch-group">
           {water.map((s) => (
             <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
           ))}
@@ -85,7 +85,7 @@ function Swatch({
 }) {
   return (
     <button
-      className={on ? "wc-swatch wc-on" : "wc-swatch"}
+      className={on ? "cp-swatch cp-on" : "cp-swatch"}
       style={{ background: hex }}
       onClick={() => pick(i)}
       title={name}

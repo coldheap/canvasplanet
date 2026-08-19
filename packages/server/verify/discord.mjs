@@ -58,7 +58,7 @@ check("scope requests identify + email", authorizeUrl?.searchParams.get("scope")
 
 const initiateCookies = cookiesOf(initiate);
 const state = authorizeUrl?.searchParams.get("state");
-const stateCookie = cookieValue(initiateCookies, "wc_discord_state");
+const stateCookie = cookieValue(initiateCookies, "cp_discord_state");
 check(
   "sets a CSRF state cookie matching the query state",
   Boolean(state) && state === stateCookie,
@@ -75,7 +75,7 @@ check(
 
 const mismatched = await fetch(`${BASE}/api/auth/discord/callback?code=x&state=wrong`, {
   redirect: "manual",
-  headers: { cookie: `wc_discord_state=${stateCookie ?? "whatever"}` },
+  headers: { cookie: `cp_discord_state=${stateCookie ?? "whatever"}` },
 });
 check(
   "callback with a state that doesn't match the cookie redirects to ?discord_error=1",
@@ -85,7 +85,7 @@ check(
 
 const denied = await fetch(`${BASE}/api/auth/discord/callback?error=access_denied&state=${state}`, {
   redirect: "manual",
-  headers: { cookie: `wc_discord_state=${state}` },
+  headers: { cookie: `cp_discord_state=${state}` },
 });
 check(
   "Discord reporting the user declined redirects to ?discord_error=1",
@@ -99,7 +99,7 @@ check(
 if (state) {
   const bogusCode = await fetch(`${BASE}/api/auth/discord/callback?code=not-a-real-code&state=${state}`, {
     redirect: "manual",
-    headers: { cookie: `wc_discord_state=${state}` },
+    headers: { cookie: `cp_discord_state=${state}` },
   });
   check(
     "a bogus code is refused by Discord's real token endpoint and redirects to ?discord_error=1",

@@ -4,7 +4,7 @@ import {
   type BootstrapResponse,
   msUntilNextCharge,
   regenerate,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { events } from "../events/engine.js";

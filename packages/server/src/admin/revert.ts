@@ -24,7 +24,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { ERASED, tileAncestry } from "@worldcanvas/shared";
+import { ERASED, tileAncestry } from "@canvasplanet/shared";
 import { tx } from "../db/pool.js";
 import { reloadOwnershipStores, transferHeld, type PixelOwnership } from "../paint/ownership.js";
 import { hub } from "../ws/hub.js";

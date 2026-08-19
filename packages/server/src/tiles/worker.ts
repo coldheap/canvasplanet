@@ -9,7 +9,7 @@
  * Drains Z_PIXEL first so parents downsample from already-fresh children.
  */
 
-import { CF_PURGE_BATCH, TILE_WORKER_BATCH } from "@worldcanvas/shared";
+import { CF_PURGE_BATCH, TILE_WORKER_BATCH } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { evict, tileUrl, writeTile } from "./cache.js";

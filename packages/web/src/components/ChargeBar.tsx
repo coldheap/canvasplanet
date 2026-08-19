@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
-import { CHARGE_REGEN_MS } from "@worldcanvas/shared";
+import { CHARGE_REGEN_MS } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
 export function ChargeBar() {
@@ -19,7 +19,7 @@ export function ChargeBar() {
   useEffect(() => {
     if (!settings.notifyWhenFull || bank < max) return;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    new Notification("Worldcanvas", { body: `Your ${max} charges are ready.` });
+    new Notification("CanvasPlanet", { body: `Your ${max} charges are ready.` });
   }, [bank, max, settings.notifyWhenFull]);
 
   // Continuous fill: whole charges plus how far into the next one we are, so
@@ -28,16 +28,16 @@ export function ChargeBar() {
   const pct = ((bank + Math.max(0, Math.min(1, partial))) / max) * 100;
 
   return (
-    <div className="wc-charge-pill wc-card">
+    <div className="cp-charge-pill cp-card">
       <Zap size={14} />
-      <div className="wc-charge-bar">
-        <div className="wc-charge-bar-fill" style={{ width: `${pct}%` }} />
+      <div className="cp-charge-bar">
+        <div className="cp-charge-bar-fill" style={{ width: `${pct}%` }} />
       </div>
-      <span className="wc-charge-count">
+      <span className="cp-charge-count">
         {bank}
-        <span className="wc-charge-count-max">/{max}</span>
+        <span className="cp-charge-count-max">/{max}</span>
       </span>
-      <span className="wc-charge-timer">
+      <span className="cp-charge-timer">
         {bank >= max ? "Full" : seconds !== null ? `+1 in ${seconds}s` : "Recharging"}
       </span>
     </div>

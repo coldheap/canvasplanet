@@ -9,7 +9,7 @@
  */
 
 import L from "leaflet";
-import { Z_PIXEL } from "@worldcanvas/shared";
+import { Z_PIXEL } from "@canvasplanet/shared";
 
 /** [t, r, g, b] stops, t ascending 0..1. Cool for sparse activity, hot for dense. */
 const STOPS: Array<[number, number, number, number]> = [
@@ -74,7 +74,7 @@ const HeatGridLayer = L.GridLayer.extend({
 export function createHeatLayer(): L.GridLayer {
   return new HeatGridLayer({
     maxNativeZoom: Z_PIXEL,
-    className: "wc-heat-layer",
+    className: "cp-heat-layer",
     keepBuffer: 1,
     updateWhenZooming: false,
     opacity: 0.85,

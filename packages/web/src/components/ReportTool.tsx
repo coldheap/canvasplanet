@@ -45,34 +45,34 @@ export function ReportTool({ handle }: { handle: MapHandle | null }) {
   }
 
   return (
-    <div className="wc-report-tool wc-card">
-      <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+    <div className="cp-report-tool cp-card">
+      <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
         <X size={16} />
       </button>
-      <h2 className="wc-panel-title">
+      <h2 className="cp-panel-title">
         <Flag size={16} />
         Report an area
       </h2>
 
       {sent ? (
         <>
-          <p className="wc-ok">
+          <p className="cp-ok">
             <Check size={14} /> Report sent. A moderator will take a look.
           </p>
-          <button className="wc-btn" onClick={clear}>
+          <button className="cp-btn" onClick={clear}>
             Report another area
           </button>
         </>
       ) : (
         <>
-          <p className="wc-hint">
+          <p className="cp-hint">
             Draw a box around something that shouldn't be there — hate symbols, harassment,
             spam. A moderator reviews every report before anything changes.
           </p>
 
-          <div className="wc-actions">
+          <div className="cp-actions">
             <button
-              className="wc-btn"
+              className="cp-btn"
               disabled={!handle}
               onClick={async () => {
                 const b = await pickBbox(handle);
@@ -83,14 +83,14 @@ export function ReportTool({ handle }: { handle: MapHandle | null }) {
               {bbox ? "Redraw area" : "Draw area on map"}
             </button>
             {bbox && (
-              <button className="wc-btn" onClick={clear}>
+              <button className="cp-btn" onClick={clear}>
                 Clear
               </button>
             )}
           </div>
 
           {bbox && (
-            <p className="wc-hint">
+            <p className="cp-hint">
               <code>
                 {bbox.x0},{bbox.y0} → {bbox.x1},{bbox.y1}
               </code>
@@ -105,14 +105,14 @@ export function ReportTool({ handle }: { handle: MapHandle | null }) {
             onChange={(e) => setReason(e.target.value)}
           />
 
-          <div className="wc-actions">
-            <button className="wc-btn wc-btn-primary" disabled={!bbox || busy} onClick={() => void submit()}>
+          <div className="cp-actions">
+            <button className="cp-btn cp-btn-primary" disabled={!bbox || busy} onClick={() => void submit()}>
               <Flag size={15} />
               Send report
             </button>
           </div>
 
-          {error && <p className="wc-error">{error}</p>}
+          {error && <p className="cp-error">{error}</p>}
         </>
       )}
     </div>

@@ -1,6 +1,6 @@
 /** Country rankings by the painter's IP-derived country. */
 
-import { LEADERBOARD_TOP_N, type CountryDTO, type LbRow } from "@worldcanvas/shared";
+import { LEADERBOARD_TOP_N, type CountryDTO, type LbRow } from "@canvasplanet/shared";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
 import { CountryFlag } from "./CountryFlag.js";
@@ -17,7 +17,7 @@ export function CountryLeaderboardTab() {
   const showPin = yourIndex >= LEADERBOARD_TOP_N && !expanded;
 
   if (ranked.length === 0) {
-    return <p className="wc-hint wc-lb-empty">No data yet.</p>;
+    return <p className="cp-hint cp-lb-empty">No data yet.</p>;
   }
 
   return (
@@ -39,7 +39,7 @@ export function CountryLeaderboardTab() {
       </ol>
 
       {showPin && yourIndex >= 0 && (
-        <div className="wc-lb-pinned">
+        <div className="cp-lb-pinned">
           <Row
             rank={yourIndex + 1}
             value={ranked[yourIndex]![1]}
@@ -52,7 +52,7 @@ export function CountryLeaderboardTab() {
       )}
 
       {ranked.length > LEADERBOARD_TOP_N && (
-        <button className="wc-lb-expand" onClick={() => setExpanded((value) => !value)}>
+        <button className="cp-lb-expand" onClick={() => setExpanded((value) => !value)}>
           {expanded ? "Show less" : `Show all ${ranked.length}`}
         </button>
       )}
@@ -83,9 +83,9 @@ function CountryPieChart({
   });
 
   return (
-    <figure className="wc-country-pie">
+    <figure className="cp-country-pie">
       <div
-        className="wc-country-pie-graphic"
+        className="cp-country-pie-graphic"
         role="img"
         aria-label={`Country share of ${total.toLocaleString()} IP-attributed placements`}
         style={{ backgroundImage: `conic-gradient(${stops.join(", ")})` }}
@@ -131,14 +131,14 @@ function Row({
   }, [value]);
 
   return (
-    <li className={you ? "wc-lb-row wc-you" : "wc-lb-row"}>
-      <span className="wc-rank">{rank}</span>
-      <CountryFlag iso={iso} flag={flag} className="wc-flag" />
-      <span className="wc-name">
+    <li className={you ? "cp-lb-row cp-you" : "cp-lb-row"}>
+      <span className="cp-rank">{rank}</span>
+      <CountryFlag iso={iso} flag={flag} className="cp-flag" />
+      <span className="cp-name">
         {name}
         {you && <em> (you)</em>}
       </span>
-      <span key={bump} className="wc-value wc-value-bump" title="placements">
+      <span key={bump} className="cp-value cp-value-bump" title="placements">
         {value.toLocaleString()}
       </span>
     </li>

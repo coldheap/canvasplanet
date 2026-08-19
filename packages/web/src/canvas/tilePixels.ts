@@ -1,4 +1,4 @@
-import { PALETTE_RGB, TILE_SIZE } from "@worldcanvas/shared";
+import { PALETTE_RGB, TILE_SIZE } from "@canvasplanet/shared";
 
 /** True only when a native PNG has baked the pending palette colour. */
 export function tilePixelMatches(

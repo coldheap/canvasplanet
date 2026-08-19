@@ -17,7 +17,7 @@ import {
   latLngToPixel,
   pixelToLatLng,
   type PixelTuple,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import {
   GeoJSONSource,
   Map as MapLibreMap,
@@ -88,8 +88,8 @@ export function GlobeCanvas({
   cb.current = { onPaint, onHover, onInspect, onOpenMap, onReady, onViewport, onUnavailable };
 
   useEffect(() => {
-    document.documentElement.classList.add("wc-globe-active");
-    return () => document.documentElement.classList.remove("wc-globe-active");
+    document.documentElement.classList.add("cp-globe-active");
+    return () => document.documentElement.classList.remove("cp-globe-active");
   }, []);
 
   useEffect(() => {
@@ -193,7 +193,7 @@ export function GlobeCanvas({
       const source = map.getSource("paint-preview") as GeoJSONSource | undefined;
       source?.setData(EMPTY_FEATURES);
       paintPreviewKey = null;
-      map.getCanvasContainer().classList.remove("wc-paint-preview-active");
+      map.getCanvasContainer().classList.remove("cp-paint-preview-active");
     };
 
     const showPaintPreview = (pixel: { x: number; y: number }) => {
@@ -205,7 +205,7 @@ export function GlobeCanvas({
 
       const color = PALETTE[current.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
-      map.getCanvasContainer().classList.add("wc-paint-preview-active");
+      map.getCanvasContainer().classList.add("cp-paint-preview-active");
 
       const previewKey = `${pixel.x},${pixel.y},${color}`;
       if (previewKey === paintPreviewKey) return;
@@ -495,12 +495,12 @@ export function GlobeCanvas({
 
   return (
     <div
-      className="wc-globe-view"
+      className="cp-globe-view"
       aria-label="Interactive 3D globe canvas. Double-tap a location to open the flat map."
     >
       <div ref={ref} />
       <a
-        className="wc-globe-credit"
+        className="cp-globe-credit"
         href="https://www.eso.org/public/images/eso0932a/"
         target="_blank"
         rel="noreferrer"

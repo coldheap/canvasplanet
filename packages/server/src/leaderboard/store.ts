@@ -7,7 +7,7 @@
  * pages, while `country_placement_stats` powers this public leaderboard.
  */
 
-import { type LbRow, type ServerMessage } from "@worldcanvas/shared";
+import { type LbRow, type ServerMessage } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 
 export class LeaderboardStore {

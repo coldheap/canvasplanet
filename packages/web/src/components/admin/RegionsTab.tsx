@@ -63,20 +63,20 @@ export function RegionsTab({ handle }: { handle: MapHandle | null }) {
 
   return (
     <section>
-      <p className="wc-hint">
+      <p className="cp-hint">
         Painting is refused inside a protected region — for everyone, including
         an admin image stamp.
       </p>
 
-      <div className="wc-actions">
-        <button className="wc-btn" disabled={!handle || drawing} onClick={() => void draw()}>
+      <div className="cp-actions">
+        <button className="cp-btn" disabled={!handle || drawing} onClick={() => void draw()}>
           <Square size={15} />
           {drawing ? "Drag on the map… (Esc to cancel)" : "Draw on map"}
         </button>
       </div>
 
       {drawn && (
-        <div className="wc-region-draft">
+        <div className="cp-region-draft">
           <p>
             <strong>{area.toLocaleString()}</strong> pixels ·{" "}
             <code>
@@ -89,12 +89,12 @@ export function RegionsTab({ handle }: { handle: MapHandle | null }) {
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
           />
-          <div className="wc-actions">
-            <button className="wc-btn wc-btn-primary" disabled={!name.trim()} onClick={() => void protect()}>
+          <div className="cp-actions">
+            <button className="cp-btn cp-btn-primary" disabled={!name.trim()} onClick={() => void protect()}>
               Protect
             </button>
             <button
-              className="wc-btn"
+              className="cp-btn"
               onClick={() => {
                 handle?.bbox.clear();
                 setDrawn(null);
@@ -106,21 +106,21 @@ export function RegionsTab({ handle }: { handle: MapHandle | null }) {
         </div>
       )}
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
 
-      <h3 className="wc-admin-sub">
+      <h3 className="cp-admin-sub">
         <MapPinned size={14} /> Protected ({regions?.length ?? 0})
       </h3>
       {!regions ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : regions.length === 0 ? (
-        <p className="wc-hint">Nothing protected yet.</p>
+        <p className="cp-hint">Nothing protected yet.</p>
       ) : (
-        <ul className="wc-region-list">
+        <ul className="cp-region-list">
           {regions.map((r) => (
             <li key={r.id}>
               <button
-                className="wc-region-name"
+                className="cp-region-name"
                 title="Show on map"
                 onClick={() => {
                   handle?.bbox.show(r);
@@ -129,11 +129,11 @@ export function RegionsTab({ handle }: { handle: MapHandle | null }) {
               >
                 {r.name}
               </button>
-              <span className="wc-hint">
+              <span className="cp-hint">
                 {(r.x1 - r.x0 + 1)}×{(r.y1 - r.y0 + 1)}
               </span>
               <button
-                className="wc-mini-danger"
+                className="cp-mini-danger"
                 title="Remove protection"
                 onClick={async () => {
                   await api.admin.removeRegion(r.id);

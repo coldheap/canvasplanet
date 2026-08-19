@@ -55,12 +55,12 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
 
   return (
     <section>
-      <p className="wc-hint">
+      <p className="cp-hint">
         Selectors combine. With more than one set, only pixels matching all of
         them are reverted.
       </p>
 
-      <label className="wc-toggle">
+      <label className="cp-toggle">
         <input type="checkbox" checked={useTime} onChange={(e) => setUseTime(e.target.checked)} />
         Painted in the last
         <input
@@ -73,11 +73,11 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
         />
         minutes
       </label>
-      {!isAdmin && <p className="wc-hint">Mods can revert at most one hour of history.</p>}
+      {!isAdmin && <p className="cp-hint">Mods can revert at most one hour of history.</p>}
 
-      <div className="wc-actions">
+      <div className="cp-actions">
         <button
-          className="wc-btn"
+          className="cp-btn"
           disabled={!handle}
           onClick={async () => {
             const b = await pickBbox(handle);
@@ -92,7 +92,7 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
         </button>
         {bbox && (
           <button
-            className="wc-btn"
+            className="cp-btn"
             onClick={() => {
               handle?.bbox.clear();
               setBbox(null);
@@ -103,7 +103,7 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
         )}
       </div>
       {bbox && (
-        <p className="wc-hint">
+        <p className="cp-hint">
           <code>
             {bbox.x0},{bbox.y0} → {bbox.x1},{bbox.y1}
           </code>{" "}
@@ -118,12 +118,12 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
         onChange={(e) => setSessionId(e.target.value.replace(/[^0-9]/g, ""))}
       />
 
-      <div className="wc-actions">
-        <button className="wc-btn" disabled={busy || !hasSelector} onClick={() => void run(true)}>
+      <div className="cp-actions">
+        <button className="cp-btn" disabled={busy || !hasSelector} onClick={() => void run(true)}>
           Preview
         </button>
         <button
-          className="wc-danger"
+          className="cp-danger"
           disabled={busy || !result?.preview || result.affected === 0}
           onClick={() => void run(false)}
         >
@@ -132,12 +132,12 @@ export function RevertTab({ handle, isAdmin }: { handle: MapHandle | null; isAdm
         </button>
       </div>
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
       {result && (
-        <p className={result.affected > 5000 ? "wc-admin-alert" : undefined}>
+        <p className={result.affected > 5000 ? "cp-admin-alert" : undefined}>
           <strong>{result.affected.toLocaleString()}</strong> pixels{" "}
           {result.preview ? "would be reverted" : "reverted"}
-          {result.batchId && <em className="wc-hint"> · batch {result.batchId.slice(0, 8)}</em>}
+          {result.batchId && <em className="cp-hint"> · batch {result.batchId.slice(0, 8)}</em>}
         </p>
       )}
     </section>

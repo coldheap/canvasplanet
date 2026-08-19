@@ -1,4 +1,4 @@
-import { WORLD_SIZE } from "@worldcanvas/shared";
+import { WORLD_SIZE } from "@canvasplanet/shared";
 
 export interface PaintColorAttempt {
   readonly key: number;

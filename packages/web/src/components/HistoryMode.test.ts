@@ -1,4 +1,4 @@
-import { HISTORY_BUCKET_MS, HISTORY_MAX_AGE_MS } from "@worldcanvas/shared";
+import { HISTORY_BUCKET_MS, HISTORY_MAX_AGE_MS } from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import { normalizeHistoryAt } from "../history.js";
 

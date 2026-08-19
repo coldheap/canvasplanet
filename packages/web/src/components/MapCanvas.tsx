@@ -35,7 +35,7 @@ import {
   Z_PIXEL,
   pixelToLatLng,
   latLngToPixel,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
@@ -130,7 +130,7 @@ export function MapCanvas({
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile",
+      className: "cp-pixel-tile",
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,
@@ -143,7 +143,7 @@ export function MapCanvas({
       minZoom: Z_PIXEL,
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile wc-native-basemap-layer",
+      className: "cp-pixel-tile cp-native-basemap-layer",
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,
@@ -164,7 +164,7 @@ export function MapCanvas({
     const canvasLayer = L.tileLayer(`/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile wc-canvas-layer",
+      className: "cp-pixel-tile cp-canvas-layer",
       // A four-tile buffer could turn a 40-tile viewport into ~200 network
       // requests at every zoom level. One ring is enough to hide pan edges
       // without making visible tiles wait behind off-screen work.
@@ -183,7 +183,7 @@ export function MapCanvas({
       minZoom: Z_PIXEL,
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile wc-history-layer",
+      className: "cp-pixel-tile cp-history-layer",
       keepBuffer: 1,
       updateWhenZooming: false,
       zIndex: 2,
@@ -342,7 +342,7 @@ export function MapCanvas({
         paintPreview = null;
       }
       paintPreviewKey = null;
-      map.getContainer().classList.remove("wc-paint-preview-active");
+      map.getContainer().classList.remove("cp-paint-preview-active");
     };
 
     const showPaintPreview = (pixel: { x: number; y: number }) => {
@@ -354,7 +354,7 @@ export function MapCanvas({
 
       const color = PALETTE[state.selectedColor]?.hex;
       if (!color) return hidePaintPreview();
-      map.getContainer().classList.add("wc-paint-preview-active");
+      map.getContainer().classList.add("cp-paint-preview-active");
 
       const previewKey = `${pixel.x},${pixel.y},${color}`;
       if (previewKey === paintPreviewKey) return;
@@ -581,7 +581,7 @@ export function MapCanvas({
 
   return (
     <>
-      <div ref={ref} className={active ? "wc-map" : "wc-map wc-map-inactive"} />
+      <div ref={ref} className={active ? "cp-map" : "cp-map cp-map-inactive"} />
       <HistoryMode zoom={!active && inactiveZoom !== undefined ? inactiveZoom : zoom} />
     </>
   );

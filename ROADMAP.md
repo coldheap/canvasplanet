@@ -1,4 +1,4 @@
-# Worldcanvas — Roadmap
+# CanvasPlanet — Roadmap
 
 v1 is defined in [PLAN.md](PLAN.md) and is complete: every endpoint is built,
 81 unit tests and 50 smoke checks pass, and both k6 load scenarios are green.
@@ -454,7 +454,7 @@ for the mod/admin login, just applied to a new player-facing table, not
 
 **Discord OAuth (built 2026-08-09 fast-follow)**: `GET /api/auth/discord`
 redirects to Discord's authorize screen (CSRF `state` round-tripped through a
-short-lived `wc_discord_state` cookie, `0012_users_discord.sql`'s DISCORD_STATE_COOKIE
+short-lived `cp_discord_state` cookie, `0012_users_discord.sql`'s DISCORD_STATE_COOKIE
 constant lives in shared/config.ts); `GET /api/auth/discord/callback` exchanges
 the code, fetches the profile from `discord.com/api/users/@me`, and logs in —
 same session-attach step as `/api/auth/login`. A Discord-only account has no
@@ -493,7 +493,7 @@ without Discord's consent screen even though the HTTP endpoint isn't.
 end to end, which needs both a human clicking "Authorize" on Discord's own
 site and the redirect URIs actually registered in Discord's Developer Portal
 first (`http://localhost:5173/api/auth/discord/callback` dev,
-`https://worldcanvas.live/api/auth/discord/callback` prod) — do that, then
+`https://canvasplanet.net/api/auth/discord/callback` prod) — do that, then
 click the real button once to close the loop.
 
 Landed beyond the original shape below, decided along the way: **email
@@ -526,7 +526,7 @@ Caught by the mandatory Playwright pass, not by typecheck or a code read: the ta
 Verified for real, not just typechecked: `verify/accounts.mjs` runs the whole
 loop against a running server and a real `maildev` catcher — signup
 validation, the actual emailed link (parsed out of a real captured email, not
-a mocked token), the verify redirect setting `wc_user`, a replayed token
+a mocked token), the verify redirect setting `cp_user`, a replayed token
 being refused, wrong-password and pre-verification login refusals, a login
 linking the browser's anonymous session and a paint immediately landing in
 `user_stats`, logout, and resend-verification answering identically for a
@@ -637,7 +637,7 @@ until its first paint.
 
 **A real, pre-existing bug was found and fixed via the mandatory Playwright
 pass**, unrelated to the reorder itself: `GET /api/auth/verify` — the route a
-real browser hits by clicking the emailed link — issued the `wc_user` cookie
+real browser hits by clicking the emailed link — issued the `cp_user` cookie
 but, unlike `POST /api/auth/login`, never linked the browser's anonymous
 session (`sessions.user_id`) to the account. Verifying is documented as
 "doubling as a first login," but only an explicit second call to

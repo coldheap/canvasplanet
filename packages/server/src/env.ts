@@ -7,7 +7,7 @@ import {
   EVENT_INTERVAL_MS,
   EXPORT_EXPIRY_HOURS,
   TILE_WORKER_INTERVAL_MS,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 // One .env at the repo root, shared by every package. Real environment
 // variables always win, so container env in production is unaffected.
@@ -111,7 +111,7 @@ export const env = {
     },
     secure: process.env.SMTP_SECURE === "true",
   },
-  emailFrom: process.env.EMAIL_FROM ?? "Worldcanvas <noreply@worldcanvas.live>",
+  emailFrom: process.env.EMAIL_FROM ?? "CanvasPlanet <noreply@canvasplanet.net>",
 
   turnstile: {
     sitekey: process.env.TURNSTILE_SITEKEY ?? "",

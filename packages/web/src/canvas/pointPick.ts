@@ -1,5 +1,5 @@
 import L from "leaflet";
-import { latLngToPixel } from "@worldcanvas/shared";
+import { latLngToPixel } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 import type { MapHandle } from "../components/MapCanvas.js";
 

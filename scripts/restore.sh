@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore the database from a dump made by backup.sh.
 #
-#   ./scripts/restore.sh backups/worldcanvas-20260101.sql.gz
+#   ./scripts/restore.sh backups/canvasplanet-20260101.sql.gz
 #
 # This DROPS the current database and reloads it from the file. There is no
 # undo — that is why it asks you to type the database name back before

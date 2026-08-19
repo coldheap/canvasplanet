@@ -14,8 +14,8 @@ export function SettingsPanel() {
   const { settings, updateSettings, staff, setPanel } = useStore();
 
   return (
-    <div className="wc-settings">
-      <h2 className="wc-panel-title">
+    <div className="cp-settings">
+      <h2 className="cp-panel-title">
         <SettingsIcon size={16} />
         Settings
       </h2>
@@ -80,19 +80,19 @@ export function SettingsPanel() {
 
       <fieldset>
         <legend>Share</legend>
-        <button className="wc-btn" onClick={() => void navigator.clipboard.writeText(location.href)}>
+        <button className="cp-btn" onClick={() => void navigator.clipboard.writeText(location.href)}>
           <Link2 size={15} />
           Copy link to this view
         </button>
       </fieldset>
 
-      <button className="wc-btn" onClick={() => setPanel("status")}>
+      <button className="cp-btn" onClick={() => setPanel("status")}>
         <Radio size={15} />
         System status
       </button>
 
       {staff && (
-        <button className="wc-btn wc-admin-entry" onClick={() => setPanel("admin")}>
+        <button className="cp-btn cp-admin-entry" onClick={() => setPanel("admin")}>
           <ShieldCheck size={15} />
           {`Admin (${staff.role})`}
         </button>
@@ -113,7 +113,7 @@ function Toggle({
   set: (v: boolean) => void | Promise<void>;
 }) {
   return (
-    <label className="wc-toggle">
+    <label className="cp-toggle">
       <input type="checkbox" checked={on} onChange={(e) => void set(e.target.checked)} />
       {label}
     </label>

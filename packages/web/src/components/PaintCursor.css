@@ -1,8 +1,8 @@
 @media (pointer: fine) {
-  .wc-map.wc-paint-preview-active,
-  .wc-map.wc-paint-preview-active .leaflet-interactive,
-  .maplibregl-canvas-container.wc-paint-preview-active,
-  .maplibregl-canvas-container.wc-paint-preview-active .maplibregl-canvas {
+  .cp-map.cp-paint-preview-active,
+  .cp-map.cp-paint-preview-active .leaflet-interactive,
+  .maplibregl-canvas-container.cp-paint-preview-active,
+  .maplibregl-canvas-container.cp-paint-preview-active .maplibregl-canvas {
     cursor: crosshair !important;
   }
 }

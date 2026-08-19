@@ -1,17 +1,17 @@
-.wc-globe-view {
+.cp-globe-view {
   position: absolute;
   inset: 0;
   overflow: hidden;
   background: #010206 url("/assets/milky-way-panorama.jpg") center / cover no-repeat;
 }
 
-.wc-globe-view > .maplibregl-map {
+.cp-globe-view > .maplibregl-map {
   position: absolute;
   inset: 0;
   z-index: 1;
 }
 
-.wc-globe-credit {
+.cp-globe-credit {
   position: absolute;
   right: 8px;
   bottom: 7px;
@@ -25,38 +25,38 @@
   text-decoration: none;
 }
 
-.wc-globe-credit:hover,
-.wc-globe-credit:focus-visible {
+.cp-globe-credit:hover,
+.cp-globe-credit:focus-visible {
   color: #fff;
   text-decoration: underline;
 }
 
-.wc-globe-view .maplibregl-canvas {
+.cp-globe-view .maplibregl-canvas {
   outline: none;
 }
 
-.wc-globe-view .maplibregl-ctrl-top-right {
-  top: var(--wc-gap);
-  right: var(--wc-gap);
+.cp-globe-view .maplibregl-ctrl-top-right {
+  top: var(--cp-gap);
+  right: var(--cp-gap);
 }
 
-.wc-globe-view .maplibregl-ctrl-group {
+.cp-globe-view .maplibregl-ctrl-group {
   overflow: hidden;
-  border: 1px solid var(--wc-panel-border);
-  border-radius: var(--wc-radius-sm);
-  background: var(--wc-panel);
-  box-shadow: var(--wc-shadow);
+  border: 1px solid var(--cp-panel-border);
+  border-radius: var(--cp-radius-sm);
+  background: var(--cp-panel);
+  box-shadow: var(--cp-shadow);
 }
 
-.wc-globe-view .maplibregl-ctrl-group button {
-  background-color: var(--wc-panel);
+.cp-globe-view .maplibregl-ctrl-group button {
+  background-color: var(--cp-panel);
 }
 
-.wc-globe-view .maplibregl-ctrl-group button:hover {
-  background-color: var(--wc-subtle);
+.cp-globe-view .maplibregl-ctrl-group button:hover {
+  background-color: var(--cp-subtle);
 }
 
-.wc-map-inactive {
+.cp-map-inactive {
   /* LiveOverlay sets visibility inline while handing fresh paints to the
      tile layer. A descendant can override inherited visibility, but it can
      never escape an ancestor's composited opacity. Keep both declarations:
@@ -66,16 +66,16 @@
   pointer-events: none;
 }
 
-html.wc-globe-active,
-html.wc-globe-active body,
-html.wc-globe-active #root {
+html.cp-globe-active,
+html.cp-globe-active body,
+html.cp-globe-active #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
 @media (max-width: 700px) {
-  .wc-globe-view .maplibregl-ctrl-top-right {
-    top: calc(var(--wc-gap) + 52px);
+  .cp-globe-view .maplibregl-ctrl-top-right {
+    top: calc(var(--cp-gap) + 52px);
   }
 }

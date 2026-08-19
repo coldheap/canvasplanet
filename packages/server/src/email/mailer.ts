@@ -6,7 +6,7 @@
  */
 
 import nodemailer from "nodemailer";
-import { SITE_NAME } from "@worldcanvas/shared";
+import { SITE_NAME } from "@canvasplanet/shared";
 import { env } from "../env.js";
 
 const transport = nodemailer.createTransport({

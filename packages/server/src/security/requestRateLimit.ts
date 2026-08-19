@@ -2,7 +2,7 @@ import {
   PAINT_REQUEST_BURST,
   PAINT_REQUEST_MAX_IPS,
   PAINT_REQUEST_REFILL_MS,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 
 interface Bucket {
   tokens: number;

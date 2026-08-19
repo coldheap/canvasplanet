@@ -48,26 +48,26 @@ export function AuditTab() {
         </select>
       )}
 
-      <h3 className="wc-admin-sub">
+      <h3 className="cp-admin-sub">
         <ScrollText size={14} /> Recent actions
       </h3>
 
       {!rows ? (
-        <p className="wc-hint">Loading…</p>
+        <p className="cp-hint">Loading…</p>
       ) : shown.length === 0 ? (
-        <p className="wc-hint">Nothing logged yet.</p>
+        <p className="cp-hint">Nothing logged yet.</p>
       ) : (
-        <ol className="wc-audit-list">
+        <ol className="cp-audit-list">
           {shown.map((r) => (
             <li key={r.id}>
-              <div className="wc-audit-head">
+              <div className="cp-audit-head">
                 <strong>{r.username ?? "unknown"}</strong>
                 <span>{ACTION_LABEL[r.action] ?? r.action}</span>
                 {r.affected !== null && (
-                  <em className="wc-hint">{r.affected.toLocaleString()} pixels</em>
+                  <em className="cp-hint">{r.affected.toLocaleString()} pixels</em>
                 )}
               </div>
-              <div className="wc-audit-meta">
+              <div className="cp-audit-meta">
                 <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleString()}</time>
                 {/* The raw params are the difference between "someone
                     reverted something" and being able to reconstruct it. */}

@@ -8,7 +8,7 @@
  * pipes it straight to ffmpeg's stdin, so this never holds more than one
  * frame in memory regardless of frame count.
  */
-import { DEFAULT_TERRAIN_COLOR, PALETTE_RGB, type Terrain, type TimelapseResponse } from "@worldcanvas/shared";
+import { DEFAULT_TERRAIN_COLOR, PALETTE_RGB, type Terrain, type TimelapseResponse } from "@canvasplanet/shared";
 
 /** Sentinel for "nothing painted here yet" — same as the client and the template tools. */
 const EMPTY = 255;

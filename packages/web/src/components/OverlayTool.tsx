@@ -30,7 +30,7 @@ import {
   TRANSPARENT_INDEX,
   type DitherMode,
   quantizeToPalette,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { api } from "../api.js";
 import { pickPoint } from "../canvas/pointPick.js";
 import { centeredTemplateOrigin } from "../canvas/templatePixels.js";
@@ -187,16 +187,16 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
-    <div className="wc-overlay-tool wc-card">
-      <button className="wc-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
+    <div className="cp-overlay-tool cp-card">
+      <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
         <X size={16} />
       </button>
-      <h2 className="wc-panel-title">
+      <h2 className="cp-panel-title">
         <LayoutTemplate size={16} />
         Template
       </h2>
 
-      <label className="wc-drop">
+      <label className="cp-drop">
         <ImageIcon size={16} />
         <span>{image ? `${image.w}×${image.h}` : "Choose an image"}</span>
         <input
@@ -209,14 +209,14 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
 
       {image && (
         <>
-          <div className="wc-stamp-preview">
+          <div className="cp-stamp-preview">
             <figure>
               <img src={image.url} alt="original" />
-              <figcaption className="wc-hint">original</figcaption>
+              <figcaption className="cp-hint">original</figcaption>
             </figure>
             <figure>
               <QuantizedPreview w={image.w} h={image.h} data={image.data} />
-              <figcaption className="wc-hint">{PALETTE.length} colours</figcaption>
+              <figcaption className="cp-hint">{PALETTE.length} colours</figcaption>
             </figure>
           </div>
 
@@ -228,19 +228,19 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
             </select>
           </label>
 
-          <div className="wc-actions">
-            <button className="wc-btn" disabled={!handle || placing} onClick={() => void place()}>
+          <div className="cp-actions">
+            <button className="cp-btn" disabled={!handle || placing} onClick={() => void place()}>
               <MapPin size={15} />
               {placing ? "Click template centre…" : at ? "Reposition" : "Place on map"}
             </button>
           </div>
 
-          {placing && <p className="wc-hint">Click once where the template centre should go. Press Esc to cancel.</p>}
-          {at && <p className="wc-hint">Top-left pixel: <code>{at.x}, {at.y}</code></p>}
+          {placing && <p className="cp-hint">Click once where the template centre should go. Press Esc to cancel.</p>}
+          {at && <p className="cp-hint">Top-left pixel: <code>{at.x}, {at.y}</code></p>}
 
           {at && (
             <>
-              <label className="wc-opacity">
+              <label className="cp-opacity">
                 Unfinished pixels
                 <input
                   type="range"
@@ -249,44 +249,44 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
                   value={opacity * 100}
                   onChange={(e) => setOpacity(Number(e.target.value) / 100)}
                 />
-                <span className="wc-hint">{Math.round(opacity * 100)}%</span>
+                <span className="cp-hint">{Math.round(opacity * 100)}%</span>
               </label>
 
-              <p className="wc-hint">
+              <p className="cp-hint">
                 Marked pixels still need painting. Hover one to select its palette colour automatically.
               </p>
 
-              <div className="wc-progress">
-                <div className="wc-progress-track">
-                  <div className="wc-progress-fill" style={{ width: `${pct}%` }} />
+              <div className="cp-progress">
+                <div className="cp-progress-track">
+                  <div className="cp-progress-fill" style={{ width: `${pct}%` }} />
                 </div>
-                <span className="wc-progress-label">
+                <span className="cp-progress-label">
                   {progress.done.toLocaleString()} / {progress.total.toLocaleString()} · {pct}%
                 </span>
               </div>
 
               {next ? (
-                <p className="wc-hint wc-next-pixel">
+                <p className="cp-hint cp-next-pixel">
                   next: <code>{next.x}, {next.y}</code> — ringed on the map
                 </p>
               ) : progress.total > 0 ? (
-                <p className="wc-ok">
+                <p className="cp-ok">
                   <Check size={14} /> Template complete.
                 </p>
               ) : null}
 
-              <p className="wc-hint">
+              <p className="cp-hint">
                 {opaque.toLocaleString()} pixels total, so at least{" "}
                 {opaque.toLocaleString()} charges.
               </p>
 
-              <div className="wc-actions">
-                <button className="wc-btn" disabled={busy} onClick={() => void share()}>
-                  {busy ? <Loader2 size={15} className="wc-spin" /> : <Share2 size={15} />}
+              <div className="cp-actions">
+                <button className="cp-btn" disabled={busy} onClick={() => void share()}>
+                  {busy ? <Loader2 size={15} className="cp-spin" /> : <Share2 size={15} />}
                   Share
                 </button>
                 <button
-                  className="wc-btn"
+                  className="cp-btn"
                   onClick={() => {
                     setImage(null);
                     setAt(null);
@@ -300,10 +300,10 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
               </div>
 
               {shareUrl && (
-                <div className="wc-share">
+                <div className="cp-share">
                   <code>{shareUrl}</code>
                   <button
-                    className="wc-btn"
+                    className="cp-btn"
                     aria-label="Copy link"
                     onClick={() => {
                       void navigator.clipboard.writeText(shareUrl);
@@ -316,7 +316,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
                   {/* Unlisted, not private. Saying so is the difference
                       between someone sharing art and someone sharing
                       something they assumed only one person would see. */}
-                  <p className="wc-hint">
+                  <p className="cp-hint">
                     Anyone with this link can load it. Unlisted, not secret.
                   </p>
                 </div>
@@ -326,7 +326,7 @@ export function OverlayTool({ handle }: { handle: MapHandle | null }) {
         </>
       )}
 
-      {error && <p className="wc-error">{error}</p>}
+      {error && <p className="cp-error">{error}</p>}
     </div>
   );
 }
@@ -353,5 +353,5 @@ export function QuantizedPreview({ w, h, data }: { w: number; h: number; data: U
     ctx.putImageData(img, 0, 0);
   }, [w, h, data]);
 
-  return <canvas ref={ref} width={w} height={h} className="wc-pixelated" />;
+  return <canvas ref={ref} width={w} height={h} className="cp-pixelated" />;
 }

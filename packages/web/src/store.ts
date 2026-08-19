@@ -18,14 +18,14 @@ import {
   type LbRow,
   type UserDTO,
   type UserLbRow,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { create } from "zustand";
 
 export interface Settings {
   grid: "auto" | "on" | "off";
   sound: boolean;
   notifyWhenFull: boolean;
-  /** Whole-app dark theme — see the `html.wc-dark` block in styles.css.
+  /** Whole-app dark theme — see the `html.cp-dark` block in styles.css.
    *  Deliberately leaves the map's own basemap tiles alone. */
   darkMode: boolean;
   reduceMotion: "system" | "on" | "off";
@@ -268,7 +268,7 @@ export const useStore = create<State>((set) => ({
       const settings = { ...s.settings, ...patch };
       // Settings are cosmetic and per-device, so localStorage is fine here.
       // The session token deliberately is not — it stays httpOnly.
-      localStorage.setItem("wc_settings", JSON.stringify(settings));
+      localStorage.setItem("cp_settings", JSON.stringify(settings));
       if (patch.reduceMotion) applyMotionClass(patch.reduceMotion);
       if (patch.darkMode !== undefined) applyThemeClass(patch.darkMode);
       return { settings };
@@ -277,7 +277,7 @@ export const useStore = create<State>((set) => ({
 
 function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem("wc_settings");
+    const raw = localStorage.getItem("cp_settings");
     const settings = raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
     applyMotionClass(settings.reduceMotion);
     applyThemeClass(settings.darkMode);
@@ -293,10 +293,10 @@ function loadSettings(): Settings {
  *  query in styles.css is the only thing deciding — see that rule for why an
  *  explicit "on"/"off" class still wins over it either way. */
 function applyMotionClass(mode: Settings["reduceMotion"]): void {
-  document.documentElement.classList.toggle("wc-motion-reduce", mode === "on");
-  document.documentElement.classList.toggle("wc-motion-full", mode === "off");
+  document.documentElement.classList.toggle("cp-motion-reduce", mode === "on");
+  document.documentElement.classList.toggle("cp-motion-full", mode === "off");
 }
 
 function applyThemeClass(darkMode: boolean): void {
-  document.documentElement.classList.toggle("wc-dark", darkMode);
+  document.documentElement.classList.toggle("cp-dark", darkMode);
 }

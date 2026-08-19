@@ -19,7 +19,7 @@ import {
   type PixelTuple,
   type ServerMessage,
   tileKeyAt,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { WebSocket } from "ws";
 
 interface Conn {
@@ -140,7 +140,7 @@ class Hub {
       }
     }
     conn.tiles = next;
-    if (process.env.WC_DEBUG_WS) {
+    if (process.env.CP_DEBUG_WS) {
       console.log(`[hub] sub conn(session=${conn.sessionId}) -> [${[...next].join(",")}]`);
     }
   }
@@ -160,7 +160,7 @@ class Hub {
     if (this.pending.size === 0) return;
     for (const [key, pixels] of this.pending) {
       const subs = this.byTile.get(key);
-      if (process.env.WC_DEBUG_WS) {
+      if (process.env.CP_DEBUG_WS) {
         console.log(
           `[hub] flush ${key}: ${pixels.length}px -> ${subs?.size ?? 0} subs; known keys=[${[...this.byTile.keys()].join(",")}]`,
         );

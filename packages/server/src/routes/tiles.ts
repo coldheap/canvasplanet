@@ -3,7 +3,7 @@ import {
   HISTORY_MAX_AGE_MS,
   TILES_PER_AXIS,
   Z_PIXEL,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { readTile } from "../tiles/cache.js";
 import { tileEtag } from "../tiles/etag.js";

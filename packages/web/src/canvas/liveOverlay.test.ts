@@ -1,4 +1,4 @@
-import { PALETTE_RGB, TILE_SIZE } from "@worldcanvas/shared";
+import { PALETTE_RGB, TILE_SIZE } from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import { livePixelScreenSize } from "./livePixels.js";
 import { tilePixelMatches } from "./tilePixels.js";

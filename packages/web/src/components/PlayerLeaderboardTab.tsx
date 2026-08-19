@@ -10,7 +10,7 @@
  * viewer sees here.
  */
 
-import { PLAYER_LEADERBOARD_TOP_N } from "@worldcanvas/shared";
+import { PLAYER_LEADERBOARD_TOP_N } from "@canvasplanet/shared";
 import { Flame, LogIn } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
@@ -31,9 +31,9 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
   return (
     <>
       {user === null && (
-        <div className="wc-lb-claim">
+        <div className="cp-lb-claim">
           <p>Log in to claim your spot on the player leaderboard.</p>
-          <button className="wc-btn wc-btn-primary" onClick={() => setPanel("account")}>
+          <button className="cp-btn cp-btn-primary" onClick={() => setPanel("account")}>
             <LogIn size={15} />
             Log in / Sign up
           </button>
@@ -41,7 +41,7 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
       )}
 
       {ranked.length === 0 && (
-        <p className="wc-hint">No players yet — be the first to sign up and paint.</p>
+        <p className="cp-hint">No players yet — be the first to sign up and paint.</p>
       )}
 
       <ol>
@@ -60,7 +60,7 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
       </ol>
 
       {showPin && yourIndex >= 0 && (
-        <div className="wc-lb-pinned">
+        <div className="cp-lb-pinned">
           <PlayerRow
             rank={yourIndex + 1}
             value={ranked[yourIndex]![col]}
@@ -74,7 +74,7 @@ export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) 
       )}
 
       {ranked.length > PLAYER_LEADERBOARD_TOP_N && (
-        <button className="wc-lb-expand" onClick={() => setExpanded((e) => !e)}>
+        <button className="cp-lb-expand" onClick={() => setExpanded((e) => !e)}>
           {expanded ? "Show less" : `Show all ${ranked.length}`}
         </button>
       )}
@@ -111,20 +111,20 @@ function PlayerRow({
   }, [value]);
 
   return (
-    <li className={you ? "wc-lb-row wc-player-row wc-you" : "wc-lb-row wc-player-row"}>
-      <span className="wc-rank">{rank}</span>
+    <li className={you ? "cp-lb-row cp-player-row cp-you" : "cp-lb-row cp-player-row"}>
+      <span className="cp-rank">{rank}</span>
       <UserAvatar userId={userId} name={name} revision={avatarRevision} />
-      <span className="wc-name">
+      <span className="cp-name">
         {name}
         {you && <em> (you)</em>}
       </span>
       {streak >= 2 && (
-        <span className="wc-streak" title={`${streak}-day streak`}>
+        <span className="cp-streak" title={`${streak}-day streak`}>
           <Flame size={12} />
           {streak}
         </span>
       )}
-      <span key={bump} className="wc-value wc-value-bump">
+      <span key={bump} className="cp-value cp-value-bump">
         {value.toLocaleString()}
       </span>
     </li>

@@ -1,4 +1,4 @@
-import { SUB_ZOOM, type ClientMessage } from "@worldcanvas/shared";
+import { SUB_ZOOM, type ClientMessage } from "@canvasplanet/shared";
 
 const MAX_SUBSCRIPTIONS = 64;
 const TILES_AT_SUB_ZOOM = 2 ** SUB_ZOOM;

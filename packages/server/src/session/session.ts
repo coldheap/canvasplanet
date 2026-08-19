@@ -17,7 +17,7 @@ import {
   CHARGE_START,
   SESSION_COOKIE,
   SESSION_TTL_DAYS,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";

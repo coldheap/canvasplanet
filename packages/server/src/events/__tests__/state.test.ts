@@ -3,7 +3,7 @@ import {
   EVENT_WIN_THRESHOLD,
   EVENT_ZONE_SIZE,
   PAINT_BOUNDS,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { describe, expect, it } from "vitest";
 import { ActiveEventState, botPaintWorkCost, eventRollbackBbox } from "../state.js";
 

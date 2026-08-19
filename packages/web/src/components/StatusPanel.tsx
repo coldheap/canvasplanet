@@ -98,25 +98,25 @@ export function StatusPanel() {
   const statusHost = typeof location !== "undefined" ? `status.${location.hostname}` : null;
 
   return (
-    <div className="wc-status">
-      <h2 className="wc-panel-title">
+    <div className="cp-status">
+      <h2 className="cp-panel-title">
         <Radio size={16} />
         Status
       </h2>
 
       {failed && !status ? (
-        <p className="wc-error">
+        <p className="cp-error">
           <AlertOctagon size={14} /> Could not reach the status endpoint.
         </p>
       ) : !status ? (
-        <p className="wc-hint wc-loading">
-          <Loader2 size={15} className="wc-spin" /> Checking…
+        <p className="cp-hint cp-loading">
+          <Loader2 size={15} className="cp-spin" /> Checking…
         </p>
       ) : (
         <>
           <Banner status={status} />
 
-          <div className="wc-status-components">
+          <div className="cp-status-components">
             {(Object.keys(COMPONENT_LABEL) as ComponentKey[]).map((key) => (
               <ComponentRow
                 key={key}
@@ -127,7 +127,7 @@ export function StatusPanel() {
             ))}
           </div>
 
-          <div className="wc-stat-grid">
+          <div className="cp-stat-grid">
             <Stat label="paints/sec" value={String(status.paintsPerSec)} />
             <Stat label="connected" value={String(status.connectedClients)} />
             <Stat
@@ -144,9 +144,9 @@ export function StatusPanel() {
             <Stat label="uptime" value={formatUptime(status.uptimeSeconds)} />
           </div>
 
-          <p className="wc-hint">Last checked {new Date(status.time).toLocaleTimeString()}</p>
+          <p className="cp-hint">Last checked {new Date(status.time).toLocaleTimeString()}</p>
           {statusHost && (
-            <a className="wc-status-link" href={`https://${statusHost}`} target="_blank" rel="noreferrer">
+            <a className="cp-status-link" href={`https://${statusHost}`} target="_blank" rel="noreferrer">
               <ExternalLink size={11} style={{ verticalAlign: "-1px", marginRight: 4 }} />
               Full 90-day history at {statusHost}
             </a>
@@ -160,7 +160,7 @@ export function StatusPanel() {
 function Banner({ status }: { status: Status }) {
   if (status.overall === "operational") {
     return (
-      <p className="wc-ok">
+      <p className="cp-ok">
         <CheckCircle2 size={15} />
         All systems operational
         {status.frozen && " — canvas is frozen"}
@@ -169,7 +169,7 @@ function Banner({ status }: { status: Status }) {
   }
   if (status.overall === "degraded") {
     return (
-      <p className="wc-warn-banner">
+      <p className="cp-warn-banner">
         <AlertTriangle size={14} />
         Degraded performance
         {status.frozen && " — canvas is frozen"}
@@ -177,7 +177,7 @@ function Banner({ status }: { status: Status }) {
     );
   }
   return (
-    <p className="wc-admin-alert">
+    <p className="cp-admin-alert">
       <AlertOctagon size={14} />
       Major outage
     </p>
@@ -187,15 +187,15 @@ function Banner({ status }: { status: Status }) {
 function ComponentRow({ label, state, days }: { label: string; state: ComponentState; days: DayState[] }) {
   const Icon = state === "operational" ? CheckCircle2 : state === "degraded" ? AlertTriangle : XCircle;
   return (
-    <div className="wc-status-component">
-      <span className={`wc-status-component-icon ${state}`}>
+    <div className="cp-status-component">
+      <span className={`cp-status-component-icon ${state}`}>
         <Icon size={14} />
       </span>
-      <span className="wc-status-component-name">{label}</span>
-      <span className="wc-status-component-state">{STATE_LABEL[state]}</span>
-      <div className="wc-status-strip">
+      <span className="cp-status-component-name">{label}</span>
+      <span className="cp-status-component-state">{STATE_LABEL[state]}</span>
+      <div className="cp-status-strip">
         {days.map((d, i) => (
-          <span key={i} className={`wc-status-day ${d}`} title={`${STATE_LABEL[d]}`} />
+          <span key={i} className={`cp-status-day ${d}`} title={`${STATE_LABEL[d]}`} />
         ))}
       </div>
     </div>
@@ -213,9 +213,9 @@ function formatUptime(seconds: number): string {
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className={warn ? "wc-stat wc-stat-warn" : "wc-stat"}>
-      <span className="wc-stat-value">{value}</span>
-      <span className="wc-stat-label">{label}</span>
+    <div className={warn ? "cp-stat cp-stat-warn" : "cp-stat"}>
+      <span className="cp-stat-value">{value}</span>
+      <span className="cp-stat-label">{label}</span>
     </div>
   );
 }

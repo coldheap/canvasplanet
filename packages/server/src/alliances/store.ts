@@ -8,7 +8,7 @@
  * where every session always has *some* country.
  */
 
-import { type AllianceLbRow, type ServerMessage } from "@worldcanvas/shared";
+import { type AllianceLbRow, type ServerMessage } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 
 interface Stat {

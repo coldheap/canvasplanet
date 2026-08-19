@@ -17,7 +17,7 @@ import {
   TIMELAPSE_MAX_FRAMES,
   type ExportFormat,
   type ExportStatusResponse,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db/pool.js";
 import { kick } from "../export/queue.js";
@@ -139,7 +139,7 @@ export function registerExportRoutes(app: FastifyInstance): void {
     reply
       .header("Content-Type", row.format === "gif" ? "image/gif" : "video/mp4")
       .header("Content-Length", size)
-      .header("Content-Disposition", `attachment; filename="worldcanvas-${req.params.id}.${row.format}"`)
+      .header("Content-Disposition", `attachment; filename="canvasplanet-${req.params.id}.${row.format}"`)
       // Private: the download URL is unguessable but not access-controlled,
       // same posture as a shared template link.
       .header("Cache-Control", "private, max-age=3600");

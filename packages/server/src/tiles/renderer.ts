@@ -25,7 +25,7 @@
  */
 
 import { PNG } from "pngjs";
-import { ERASED, PALETTE_RGB, TILES_PER_AXIS, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@worldcanvas/shared";
+import { ERASED, PALETTE_RGB, TILES_PER_AXIS, TILE_SIZE, Z_PIXEL, pixelIndexInTile } from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { peekTile } from "./cache.js";
 import { tileEncodeTime, tileQueryTime } from "../metrics.js";

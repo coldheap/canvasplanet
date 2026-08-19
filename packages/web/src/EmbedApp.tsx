@@ -30,7 +30,7 @@ import {
   Z_PIXEL,
   latLngToPixel,
   pixelToLatLng,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { LiveOverlay } from "./canvas/liveOverlay.js";
 import { WsClient } from "./ws.js";
 
@@ -95,7 +95,7 @@ export function EmbedApp() {
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile",
+      className: "cp-pixel-tile",
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,
@@ -107,7 +107,7 @@ export function EmbedApp() {
       minZoom: Z_PIXEL,
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile wc-native-basemap-layer",
+      className: "cp-pixel-tile cp-native-basemap-layer",
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,
@@ -127,7 +127,7 @@ export function EmbedApp() {
     const canvasLayer = L.tileLayer(`/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
       maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
-      className: "wc-pixel-tile wc-canvas-layer",
+      className: "cp-pixel-tile cp-canvas-layer",
       keepBuffer: 1,
       updateWhenZooming: false,
       zIndex: 2,
@@ -180,9 +180,9 @@ export function EmbedApp() {
 
   return (
     <>
-      <div ref={ref} className="wc-embed-map" />
+      <div ref={ref} className="cp-embed-map" />
       <a
-        className="wc-embed-badge"
+        className="cp-embed-badge"
         href={`${location.origin}/#${Z_PIXEL}/${center.x}/${center.y}`}
         target="_blank"
         rel="noopener noreferrer"

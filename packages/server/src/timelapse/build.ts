@@ -8,7 +8,7 @@ import {
   TIMELAPSE_MAX_EVENTS,
   type PixelTuple,
   type TimelapseResponse,
-} from "@worldcanvas/shared";
+} from "@canvasplanet/shared";
 import { pool } from "../db/pool.js";
 import { geo } from "../geo/index.js";
 
