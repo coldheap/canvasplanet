@@ -145,6 +145,11 @@ button {
   cursor: pointer;
 }
 
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--cp-accent);
+  outline-offset: 2px;
+}
+
 .cp-btn {
   display: inline-flex;
   align-items: center;
@@ -225,59 +230,84 @@ button {
   border-color: var(--cp-danger-ink);
 }
 
-/* ---- icon rail ------------------------------------------------------------ */
+/* ---- compact navigation dock --------------------------------------------- */
 
-.cp-rail {
+.cp-dock {
   position: absolute;
-  /* Keep the rail's brand/control surface above full-width status banners. */
   z-index: 1150;
-  top: var(--cp-gap);
+  top: 50%;
   left: var(--cp-gap);
-  bottom: var(--cp-gap);
-  width: 52px;
+  width: 106px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
+  padding: 7px;
   gap: 4px;
-  overflow-y: auto;
+  transform: translateY(-50%);
 }
 
-.cp-rail-brand {
+.cp-dock-brand {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  height: 38px;
   border-radius: var(--cp-radius-sm);
   background: var(--cp-accent-soft);
   color: var(--cp-accent);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   flex: none;
 }
 
-.cp-rail-spacer {
-  flex: 1;
-}
-
-.cp-rail-btn {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
+.cp-dock-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 9px;
   border-radius: var(--cp-radius-sm);
   color: var(--cp-dim);
   flex: none;
   position: relative;
-  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 11px;
+  font-weight: 650;
+  transition: background 0.16s ease, color 0.16s ease;
 }
-.cp-rail-btn:hover {
+.cp-dock-btn:hover {
   background: var(--cp-subtle);
   color: var(--cp-text);
 }
-.cp-rail-btn[aria-pressed="true"] {
+.cp-dock-btn[aria-pressed="true"] {
   background: var(--cp-accent-soft);
   color: var(--cp-accent);
 }
+.cp-dock-btn > svg,
+.cp-dock-btn > .cp-user-avatar { flex: none; }
+.cp-dock-label { overflow: hidden; text-overflow: ellipsis; }
+
+.cp-explore-stack {
+  position: absolute;
+  z-index: 1150;
+  top: var(--cp-gap);
+  right: var(--cp-gap);
+  width: 86px;
+  overflow: hidden;
+  padding: 3px;
+}
+.cp-explore-stack button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: var(--cp-dim);
+  font-size: 11px;
+  font-weight: 650;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.cp-explore-stack button + button { border-top: 1px solid var(--cp-panel-border); border-radius: 0 0 9px 9px; }
+.cp-explore-stack button:hover { background: var(--cp-subtle); color: var(--cp-text); }
+.cp-explore-stack button[aria-pressed="true"] { background: var(--cp-accent-soft); color: var(--cp-accent); }
 .cp-activity-indicator {
   position: absolute;
   top: 7px;
@@ -322,7 +352,7 @@ button {
 
 .cp-leaderboard {
   top: var(--cp-gap);
-  left: calc(52px + var(--cp-gap) * 2);
+  right: calc(86px + var(--cp-gap) * 2);
   width: 300px;
   max-height: calc(100vh - 2 * var(--cp-gap));
   overflow-y: auto;
@@ -332,7 +362,7 @@ button {
 .cp-report-tool,
 .cp-embed-tool {
   top: var(--cp-gap);
-  left: calc(52px + var(--cp-gap) * 2);
+  left: calc(106px + var(--cp-gap) * 2);
   width: 320px;
   max-height: calc(100vh - 2 * var(--cp-gap));
   overflow-y: auto;
@@ -590,7 +620,7 @@ button {
   .cp-chat {
     right: var(--cp-gap);
     bottom: var(--cp-gap);
-    width: calc(100vw - 46px - 3 * var(--cp-gap));
+    width: calc(100vw - 2 * var(--cp-gap));
     height: min(68vh, 520px);
   }
   .cp-chat-meta button { opacity: 1; }
@@ -641,8 +671,8 @@ button {
   right: 14px;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   color: var(--cp-dim);
   z-index: 1;
@@ -858,7 +888,7 @@ button {
   object-fit: cover;
   display: block;
 }
-.cp-rail-btn[aria-pressed="true"] .cp-user-avatar {
+.cp-dock-btn[aria-pressed="true"] .cp-user-avatar {
   box-shadow: 0 0 0 2px var(--cp-accent);
 }
 .cp-streak {
@@ -1524,7 +1554,7 @@ fieldset select {
  * media query below. "on" forces the reduction even when the OS doesn't ask
  * for it. "off" excludes itself from the media query's selector rather than
  * trying to override the values it sets — `revert` would roll back past
- * every element's own declared duration (e.g. `.cp-rail-btn`'s 0.12s) to the
+ * every element's own declared duration (e.g. `.cp-dock-btn`'s 0.16s) to the
  * UA default of 0s, stripping transitions instead of restoring them. */
 @media (prefers-reduced-motion: reduce) {
   html:not(.cp-motion-full) * {
@@ -1537,22 +1567,28 @@ html.cp-motion-reduce * {
   transition-duration: 0.01ms !important;
 }
 
-/* Phones: keep the rail put, just tighten it; panels go full-ish width. */
+/* Phones keep a short icon dock instead of reserving a full-height gutter. */
 @media (max-width: 640px) {
-  .cp-rail {
-    width: 46px;
-    padding: 6px 0;
+  .cp-dock {
+    width: 52px;
+    padding: 5px;
   }
-  .cp-rail-btn,
-  .cp-rail-brand {
-    width: 34px;
-    height: 34px;
+  .cp-dock-brand { height: 36px; }
+  .cp-dock-btn {
+    min-height: 44px;
+    justify-content: center;
+    padding: 0;
   }
+  .cp-dock-label { display: none; }
+  .cp-explore-stack { top: 66px; width: 52px; }
+  .cp-explore-stack button { justify-content: center; padding: 0; }
+  .cp-explore-stack button span { display: none; }
   .cp-leaderboard,
   .cp-overlay-tool,
   .cp-report-tool {
-    left: calc(46px + var(--cp-gap) * 2);
-    width: calc(100vw - 46px - 3 * var(--cp-gap));
+    left: calc(52px + var(--cp-gap) * 2);
+    right: var(--cp-gap);
+    width: auto;
   }
   .cp-leaderboard {
     max-height: 60vh;
@@ -1575,13 +1611,13 @@ html.cp-motion-reduce * {
   50% { opacity: 0.25; }
 }
 
-/* Expanded activity lives beside the icon rail and is vertically centred,
+/* Expanded activity lives beside the compact dock and is vertically centred,
  * leaving the charge pill as the only top-level status control. */
 .cp-activity-panel {
   position: absolute;
   z-index: 1050;
   top: 50%;
-  left: calc(52px + var(--cp-gap) * 2);
+  left: calc(106px + var(--cp-gap) * 2);
   width: 390px;
   height: min(760px, calc(100vh - 2 * var(--cp-gap)));
   transform: translateY(-50%);
@@ -1614,8 +1650,8 @@ html.cp-motion-reduce * {
 .cp-activity-head h2 { font-size: 15px; }
 .cp-panel-icon-btn {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 8px;
   color: var(--cp-dim);
@@ -1780,7 +1816,7 @@ html.cp-motion-reduce * {
 
 .cp-inspector {
   position: absolute;
-  left: calc(52px + var(--cp-gap) * 2);
+  left: calc(106px + var(--cp-gap) * 2);
   bottom: var(--cp-gap);
   z-index: 1000;
   width: 240px;
@@ -1925,12 +1961,12 @@ html.cp-motion-reduce * {
 
 @media (max-width: 640px) {
   .cp-inspector {
-    left: calc(46px + var(--cp-gap) * 2);
-    width: calc(100vw - 46px - 3 * var(--cp-gap));
+    left: calc(52px + var(--cp-gap) * 2);
+    width: calc(100vw - 52px - 3 * var(--cp-gap));
   }
   .cp-activity-panel {
-    left: calc(46px + var(--cp-gap) * 2);
-    width: min(390px, calc(100vw - 46px - 3 * var(--cp-gap)));
+    left: calc(52px + var(--cp-gap) * 2);
+    width: min(390px, calc(100vw - 52px - 3 * var(--cp-gap)));
   }
 }
 
@@ -2568,4 +2604,104 @@ html.cp-motion-reduce * {
 }
 .cp-embed-badge:hover {
   background: rgba(20, 24, 32, 0.88);
+}
+
+/* ---- consolidated canvas tools ------------------------------------------ */
+
+.cp-tools-panel {
+  position: absolute;
+  z-index: 1050;
+  top: 50%;
+  left: calc(106px + var(--cp-gap) * 2);
+  display: flex;
+  width: min(430px, calc(100vw - 106px - 3 * var(--cp-gap)));
+  max-height: min(760px, calc(100dvh - 2 * var(--cp-gap)));
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(-50%);
+}
+.cp-tools-head {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 9px 8px 14px;
+  border-bottom: 1px solid var(--cp-panel-border);
+}
+.cp-tools-head h2 { margin: 0; font-size: 15px; }
+.cp-tools-tabs,
+.cp-account-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  padding: 6px;
+  border-bottom: 1px solid var(--cp-panel-border);
+  background: var(--cp-scrim-weak);
+}
+.cp-tools-tabs button,
+.cp-account-tabs button {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--cp-dim);
+  font-size: 11px;
+  font-weight: 650;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.cp-tools-tabs button:hover,
+.cp-account-tabs button:hover { background: var(--cp-subtle); color: var(--cp-text); }
+.cp-tools-tabs button[aria-selected="true"],
+.cp-account-tabs button[aria-selected="true"] { background: var(--cp-panel); color: var(--cp-accent); box-shadow: 0 1px 3px rgba(20, 30, 50, 0.08); }
+.cp-tools-scroll { min-height: 0; overflow-y: auto; padding: var(--cp-gap); }
+.cp-tool-pane[hidden] { display: none; }
+.cp-tools-panel .cp-overlay-tool,
+.cp-tools-panel .cp-timelapse,
+.cp-tools-panel .cp-embed-tool,
+.cp-tools-panel .cp-report-tool {
+  position: static;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.cp-tools-panel .cp-modal-close,
+.cp-tools-panel .cp-panel-title { display: none; }
+
+/* ---- account / community hub -------------------------------------------- */
+
+.cp-account-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: -8px 36px 16px -8px;
+  border: 0;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .cp-tools-panel,
+  .cp-leaderboard,
+  .cp-activity-panel {
+    top: auto;
+    right: var(--cp-gap);
+    bottom: 92px;
+    left: var(--cp-gap);
+    width: auto;
+    max-height: min(70dvh, 640px);
+    transform: none;
+  }
+  .cp-tools-tabs button { padding: 0 5px; }
+  .cp-tools-tabs button span { display: none; }
+  .cp-modal {
+    max-height: calc(100dvh - 2 * var(--cp-gap));
+    padding: 18px;
+  }
+  .cp-account-tabs { margin-left: -6px; }
 }

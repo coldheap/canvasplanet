@@ -6,7 +6,7 @@
  * their bank is what brings them back.
  */
 
-import { Settings as SettingsIcon, ShieldCheck, Link2, Radio } from "lucide-react";
+import { Settings as SettingsIcon, ShieldCheck, Link2 } from "lucide-react";
 import { useStore } from "../store.js";
 import { LegalFooter } from "./LegalFooter.js";
 
@@ -85,11 +85,6 @@ export function SettingsPanel() {
           Copy link to this view
         </button>
       </fieldset>
-
-      <button className="cp-btn" onClick={() => setPanel("status")}>
-        <Radio size={15} />
-        System status
-      </button>
 
       {staff && (
         <button className="cp-btn cp-admin-entry" onClick={() => setPanel("admin")}>

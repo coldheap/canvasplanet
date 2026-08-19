@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, Clapperboard, Flag, Code2, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
+import { Activity, Trophy, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon, Wrench } from "lucide-react";
 import {
   COST_BASE,
   ERASED,
@@ -25,19 +25,14 @@ import { EventBanner } from "./components/EventBanner.js";
 import { LeaderboardPanel } from "./components/LeaderboardPanel.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { AdminPanel } from "./components/AdminPanel.js";
-import { OverlayTool } from "./components/OverlayTool.js";
-import { ReportTool } from "./components/ReportTool.js";
-import { AccountPanel } from "./components/AccountPanel.js";
 import { UserAvatar } from "./components/UserAvatar.js";
-import { EmbedTool } from "./components/EmbedTool.js";
 import { ActivityPanel } from "./components/ActivityPanel.js";
 import { PixelInspector } from "./components/PixelInspector.js";
 import { CountryPage } from "./components/CountryPage.js";
-import { StatusPanel } from "./components/StatusPanel.js";
-import { TimelapsePanel } from "./components/TimelapsePanel.js";
 import { SharedTemplateBar } from "./components/SharedTemplateBar.js";
 import { ChatPanel } from "./components/ChatPanel.js";
-import { DiscordIcon, DiscordPanel } from "./components/DiscordPanel.js";
+import { CanvasToolsPanel } from "./components/CanvasToolsPanel.js";
+import { AccountHub } from "./components/AccountHub.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -457,86 +452,33 @@ export function App() {
         </div>
       </div>
 
-      <nav className="cp-rail cp-card" aria-label="Panels">
-        <span className="cp-rail-brand">
+      <nav className="cp-dock cp-card" aria-label="Main controls">
+        <span className="cp-dock-brand" aria-label="CanvasPlanet">
           <MapPinned size={18} />
         </span>
         <button
-          className="cp-rail-btn"
-          aria-pressed={viewMode === "globe"}
-          aria-label={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
-          title={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
-          onClick={viewMode === "globe" ? switchToMap : switchToGlobe}
-        >
-          {viewMode === "globe" ? <MapIcon size={19} /> : <Globe2 size={19} />}
-        </button>
-        <button
-          className="cp-rail-btn"
+          className="cp-dock-btn"
           aria-pressed={panel === "activity"}
           aria-label="Live activity"
           title="Live activity"
           onClick={() => togglePanel("activity")}
         >
           <Activity size={19} />
+          <span className="cp-dock-label">Activity</span>
           <span className={pps > 0 ? "cp-activity-indicator is-live" : "cp-activity-indicator"} aria-hidden />
         </button>
         <button
-          className="cp-rail-btn"
-          aria-pressed={panel === "leaderboard"}
-          aria-label="Leaderboard"
-          title="Leaderboard"
-          onClick={() => togglePanel("leaderboard")}
+          className="cp-dock-btn"
+          aria-pressed={panel === "tools"}
+          aria-label="Canvas tools"
+          title="Canvas tools"
+          onClick={() => togglePanel("tools")}
         >
-          <Trophy size={19} />
+          <Wrench size={19} />
+          <span className="cp-dock-label">Tools</span>
         </button>
         <button
-          className="cp-rail-btn"
-          aria-pressed={panel === "overlay"}
-          aria-label="Template overlay"
-          title="Template overlay"
-          onClick={() => togglePanel("overlay")}
-        >
-          <LayoutTemplate size={19} />
-        </button>
-        <button
-          className="cp-rail-btn"
-          aria-pressed={panel === "timelapse"}
-          aria-label="Timelapse"
-          title="Timelapse"
-          onClick={() => togglePanel("timelapse")}
-        >
-          <Clapperboard size={19} />
-        </button>
-        <button
-          className="cp-rail-btn"
-          aria-pressed={panel === "report"}
-          aria-label="Report an area"
-          title="Report an area"
-          onClick={() => togglePanel("report")}
-        >
-          <Flag size={19} />
-        </button>
-        <button
-          className="cp-rail-btn"
-          aria-pressed={panel === "embed"}
-          aria-label="Embed"
-          title="Embed on your site"
-          onClick={() => togglePanel("embed")}
-        >
-          <Code2 size={19} />
-        </button>
-        <span className="cp-rail-spacer" />
-        <button
-          className="cp-rail-btn cp-rail-btn-discord"
-          aria-pressed={panel === "discord"}
-          aria-label="Discord community"
-          title="Discord community"
-          onClick={() => togglePanel("discord")}
-        >
-          <DiscordIcon />
-        </button>
-        <button
-          className="cp-rail-btn"
+          className="cp-dock-btn"
           aria-pressed={panel === "account"}
           aria-label="Account"
           title={user ? user.displayName : "Sign in"}
@@ -547,24 +489,44 @@ export function App() {
           ) : (
             <UserCircle size={19} />
           )}
+          <span className="cp-dock-label">Account</span>
         </button>
         <button
-          className="cp-rail-btn"
+          className="cp-dock-btn"
           aria-pressed={panel === "settings" || panel === "admin"}
           aria-label="Settings"
           title="Settings"
           onClick={() => togglePanel("settings")}
         >
           <SettingsIcon size={19} />
+          <span className="cp-dock-label">Settings</span>
         </button>
       </nav>
 
+      <div className="cp-explore-stack cp-card" role="group" aria-label="Explore views">
+        <button
+          aria-pressed={viewMode === "globe"}
+          aria-label={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
+          title={viewMode === "globe" ? "Switch to flat map" : "Switch to 3D globe"}
+          onClick={viewMode === "globe" ? switchToMap : switchToGlobe}
+        >
+          {viewMode === "globe" ? <MapIcon size={18} /> : <Globe2 size={18} />}
+          <span>{viewMode === "globe" ? "Map" : "Globe"}</span>
+        </button>
+        <button
+          aria-pressed={panel === "leaderboard"}
+          aria-label="Leaderboard"
+          title="Leaderboard"
+          onClick={() => togglePanel("leaderboard")}
+        >
+          <Trophy size={18} />
+          <span>Ranks</span>
+        </button>
+      </div>
+
       {panel === "activity" && <ActivityPanel />}
       {panel === "leaderboard" && <LeaderboardPanel />}
-      {panel === "overlay" && <OverlayTool handle={handle.current} />}
-      {panel === "timelapse" && <TimelapsePanel handle={handle.current} />}
-      {panel === "report" && <ReportTool handle={handle.current} />}
-      {panel === "embed" && <EmbedTool handle={handle.current} />}
+      {panel === "tools" && <CanvasToolsPanel handle={handle.current} />}
       {chatOpen && (
         <ChatPanel
           onClose={() => {
@@ -613,21 +575,26 @@ export function App() {
       {(panel === "settings" ||
         panel === "admin" ||
         panel === "country" ||
-        panel === "status" ||
-        panel === "discord" ||
         panel === "account") && (
         <div
           className={mapPicking ? "cp-modal-backdrop cp-hidden" : "cp-modal-backdrop"}
           onClick={() => setPanel("none")}
         >
-          <div className="cp-modal cp-card" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="cp-modal cp-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={panel === "account" ? "Account" : panel === "country" ? "Country" : panel === "admin" ? "Administration" : "Settings"}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setPanel("none");
+            }}
+          >
             <button className="cp-modal-close" aria-label="Close" onClick={() => setPanel("none")}>
               <X size={18} />
             </button>
             {panel === "settings" && <SettingsPanel />}
-            {panel === "status" && <StatusPanel />}
-            {panel === "discord" && <DiscordPanel />}
-            {panel === "account" && <AccountPanel />}
+            {panel === "account" && <AccountHub />}
             {panel === "admin" && <AdminPanel handle={handle.current} />}
             {panel === "country" && openCountry && (
               <CountryPage

@@ -36,7 +36,7 @@
 }
 
 .cp-globe-view .maplibregl-ctrl-top-right {
-  top: var(--cp-gap);
+  top: calc(var(--cp-gap) + 102px);
   right: var(--cp-gap);
 }
 
@@ -74,8 +74,8 @@ html.cp-globe-active #root {
   overflow: hidden;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 640px) {
   .cp-globe-view .maplibregl-ctrl-top-right {
-    top: calc(var(--cp-gap) + 52px);
+    top: calc(var(--cp-gap) + 164px);
   }
 }
