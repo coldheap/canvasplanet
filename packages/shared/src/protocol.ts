@@ -91,6 +91,8 @@ export interface SCharges {
 export interface SPulse {
   t: "pulse";
   pps: number;
+  /** Unique full-app sessions currently connected; read-only embeds excluded. */
+  players: number;
   /** Rolling paints-per-second samples, oldest first (up to one minute). */
   history: number[];
   recent: number[];

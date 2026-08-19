@@ -36,6 +36,7 @@ import { CanvasToolsPanel } from "./components/CanvasToolsPanel.js";
 import { AccountPanel } from "./components/AccountPanel.js";
 import { StatusPanel } from "./components/StatusPanel.js";
 import { DiscordPanel } from "./components/DiscordPanel.js";
+import { PlayerCounter } from "./components/PlayerCounter.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -43,7 +44,7 @@ const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
 const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
-  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps } =
+  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
@@ -200,7 +201,7 @@ export function App() {
           }
           if (touched) useStore.setState((s) => ({ templateTick: s.templateTick + 1 }));
         },
-        onPulse: ({ pps, history = [], recent, active = [] }) => {
+        onPulse: ({ pps, players = 0, history = [], recent, active = [] }) => {
           // Turn each one-second country sample into compact timeline groups;
           // the richer minute-long totals and chart are server-owned.
           const at = Date.now();
@@ -210,6 +211,7 @@ export function App() {
           }
           useStore.setState((s) => ({
             pps,
+            activePlayers: players,
             pulseHistory: history,
             activeCountries: active,
             activityEvents: recent.length
@@ -541,6 +543,7 @@ export function App() {
           onLogin={() => setPanel("account")}
         />
       )}
+      {activePlayers !== null && <PlayerCounter count={activePlayers} />}
       <button
         className="cp-chat-toggle cp-card"
         aria-controls="world-chat-panel"

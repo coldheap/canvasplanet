@@ -1,0 +1,24 @@
+.cp-player-count {
+  position: absolute;
+  right: calc(var(--cp-gap) + 52px);
+  bottom: var(--cp-gap);
+  z-index: 1051;
+  display: inline-flex;
+  min-width: 64px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--cp-dim);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cp-player-count svg {
+  flex: none;
+  color: var(--cp-accent);
+}

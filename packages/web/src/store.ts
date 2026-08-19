@@ -59,6 +59,8 @@ interface State {
 
   /** Paints per second, from the pulse frame — drives the activity ticker. */
   pps: number;
+  /** Unique player sessions currently connected to the full app. */
+  activePlayers: number | null;
   /** Server-owned rolling minute of paints-per-second samples. */
   pulseHistory: number[];
   /** [countryId, paints] ranked over the rolling minute. */
@@ -168,6 +170,7 @@ export const useStore = create<State>((set) => ({
   hoverPixel: null,
 
   pps: 0,
+  activePlayers: null,
   pulseHistory: [],
   activeCountries: [],
   activityEvents: [],

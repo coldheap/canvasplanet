@@ -91,6 +91,7 @@ class Hub {
       this.broadcast({
         t: "pulse",
         pps,
+        players: this.bySession.size,
         history: this.pulseHistory,
         recent: this.recentCountries.slice(-12),
         active: rankActiveCountries(this.countryHistory),
