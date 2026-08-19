@@ -55,8 +55,8 @@ export const SUB_ZOOM = 10; // Z_PIXEL - 2
 // Economy
 // ---------------------------------------------------------------------------
 
-/** Seconds to regenerate one charge. */
-export const CHARGE_REGEN_MS = 30_000;
+/** Milliseconds to regenerate one charge. */
+export const CHARGE_REGEN_MS = 1_000;
 /** Maximum bank size. */
 export const CHARGE_MAX = 60;
 /** A brand-new session starts with a full bank (see IP_BUDGET_MAX for the
@@ -73,12 +73,12 @@ export const COST_RESTORE = 2;
 // Rate limiting
 // ---------------------------------------------------------------------------
 
-/** Paints per rolling hour per IP, regardless of how many cookies it holds.
- *  Exactly matches one honest user's regen rate (120 = 3600s / 30s). */
-export const IP_BUDGET_MAX = 120;
-export const IP_BUDGET_REFILL_MS = 30_000;
+/** Charges per rolling hour per IP, regardless of how many cookies it holds.
+ *  Exactly matches one honest user's regen rate (3600 = 3600s / 1s). */
+export const IP_BUDGET_MAX = 3600;
+export const IP_BUDGET_REFILL_MS = 1_000;
 /** Flagged datacenter/VPN ASNs get half the budget and forced Turnstile. */
-export const IP_BUDGET_FLAGGED_ASN = 60;
+export const IP_BUDGET_FLAGGED_ASN = 1800;
 
 /** Cheap origin-side request flood guard, before any paint-path I/O. */
 export const PAINT_REQUEST_BURST = 40;

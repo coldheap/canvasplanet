@@ -5,10 +5,10 @@
  *
  * This is the containment check for "a new session starts with a full bank
  * of 60". Naively, 200 cookie-wipes would mint 12,000 charges. The IP token
- * bucket must hold total spend to 120 charges per hour regardless of how many
+ * bucket must hold total spend to 3,600 charges per hour regardless of how many
  * sessions that IP mints.
  *
- * Pass criteria: total charges spent <= 120 plus whatever the bucket
+ * Pass criteria: total charges spent <= 3,600 plus whatever the bucket
  * legitimately refilled during the run.
  */
 
@@ -17,8 +17,8 @@ import { check } from "k6";
 import { Counter } from "k6/metrics";
 
 const BASE = __ENV.BASE_URL || "http://localhost:8080";
-const IP_BUDGET_MAX = 120;
-const IP_BUDGET_REFILL_MS = 30000;
+const IP_BUDGET_MAX = 3600;
+const IP_BUDGET_REFILL_MS = 1000;
 const MAX_DURATION_SECONDS = 180;
 const REFILL_SLACK = Math.ceil((MAX_DURATION_SECONDS * 1000) / IP_BUDGET_REFILL_MS) + 2;
 
@@ -34,7 +34,7 @@ export const options = {
     },
   },
   thresholds: {
-    // Allow the six charges that can refill during a three-minute run, plus
+    // Allow the 180 charges that can refill during a three-minute run, plus
     // two charges for setup/request timing at the boundary.
     charges_spent_from_one_ip: [`count<=${IP_BUDGET_MAX + REFILL_SLACK}`],
   },

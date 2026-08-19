@@ -372,8 +372,8 @@ function nextChargeAt(bank: { charges: number; updatedAt: number }, now: number,
 
 /**
  * IP-wide token bucket. Refilled lazily with the same arithmetic as the
- * charge bank, so a single honest user (regenerating 120 charges/hour)
- * exactly matches the 120/hour ceiling and never trips it — while a
+ * charge bank, so a single honest user (regenerating 3,600 charges/hour)
+ * exactly matches the 3,600/hour ceiling and never trips it — while a
  * cookie-wipe farm sharing one IP is capped within minutes.
  */
 async function takeIpBudget(

@@ -17,7 +17,7 @@ original MVP prompt, the reason is noted.
 | # | Decision | Value |
 |---|---|---|
 | 1 | Pixel grid | Web Mercator **zoom 12** — 1,048,576 × 1,048,576 pixels, **~38.22 m/px** at the equator |
-| 2 | Cooldown | **Charge bank**: +1 per 30s, cap 60, spendable in bursts |
+| 2 | Cooldown | **Charge bank**: +1 per second, cap 60, spendable in bursts |
 | 3 | New session | Starts with a **full bank of 60** |
 | 4 | History | `pixels` (current state) **+ append-only `pixel_events`** |
 | 5 | Cost table | base **2**, overpaint **4**, terrain-violating **4**, restore **2** |
@@ -35,7 +35,7 @@ original MVP prompt, the reason is noted.
 | 17 | Protection | **DB-backed protected regions**, admin-editable live |
 | 18 | Hosting | **Single VPS, Docker Compose, Cloudflare in front** |
 | 19 | Tile cache | **Dirty-mark + debounced re-render**, batched CF purge |
-| 20 | IP ceiling | **IP-wide token bucket, 120 charges/hour** (60 base-cost placements) |
+| 20 | IP ceiling | **IP-wide token bucket, 3,600 charges/hour** (1,800 base-cost placements) |
 | 21 | Staff | **Real accounts**, roles `mod` and `admin` |
 | 22 | Anti-bot | **Cloudflare WAF + Turnstile on first paint** and **datacenter/VPN ASN gating** |
 | 23 | Admin tools | Regions, revert, ban, freeze + stats, image stamp — all **in-app panel** |
@@ -245,28 +245,28 @@ there is no timer job:
 
 ```
 elapsed  = now - charges_updated_at
-regen    = floor(elapsed / 30s)
+regen    = floor(elapsed / 1s)
 charges' = min(60, charges + regen)
-updated' = charges_updated_at + regen * 30s     -- keeps partial progress
+updated' = charges_updated_at + regen * 1s      -- keeps partial progress
 ```
 
 This runs inside the same transaction as the paint, under
 `SELECT ... FOR UPDATE`, so two concurrent paints cannot double-spend.
 
-### `ip_budget` — token bucket, 120 charges/hour per IP
+### `ip_budget` — token bucket, 3,600 charges/hour per IP
 
 ```sql
 CREATE TABLE ip_budget (
   ip            INET PRIMARY KEY,
-  tokens        REAL NOT NULL DEFAULT 120,
+  tokens        REAL NOT NULL DEFAULT 3600,
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   blocked_until TIMESTAMPTZ,
   new_sessions  INTEGER NOT NULL DEFAULT 0
 );
 ```
 
-Same lazy-refill maths as charges: +1 token per 30s, cap 120. Because a single
-human regenerates at exactly 120 charges/hour, a legitimate solo user never touches
+Same lazy-refill maths as charges: +1 token per second, cap 3,600. Because a single
+human regenerates at exactly 3,600 charges/hour, a legitimate solo user never touches
 this ceiling; a cookie-wipe farm hits it within minutes. This is the
 containment for the "fresh session = 60 free charges" decision.
 
@@ -823,7 +823,7 @@ persistence check. *Done when §12 is fully ticked.*
       every zoom from 3 to 18
 - [ ] Color select + click-to-paint works; charge bank decrements by the
       **correct cost** for all six cases in §2
-- [ ] Charges regenerate at 1/30s to a cap of 60 across a server restart
+- [ ] Charges regenerate at 1/s to a cap of 60 across a server restart
 - [ ] New pixels appear for every other connected client within ~1s
 - [ ] Leaderboard updates live, both modes, without leaving the map view
 - [ ] Painted pixels survive a server restart *and* a full tile-cache wipe

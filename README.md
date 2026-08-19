@@ -115,11 +115,11 @@ k6/                load and abuse tests from the definition of done
 |---|---|
 | Grid | zoom 12 — 1,048,576 × 1,048,576 pixels, **~38.22 m/pixel** at the equator |
 | Grid centre | `(524288, 524288)` = 0°, 0° |
-| Charges | +1 per 30s, cap 60, new sessions start full |
-| Placement timing | 2 charges on unclaimed ground (**60s earned time**) · 4 on claimed ground (**120s earned time**) |
+| Charges | +1 per second, cap 60, new sessions start full |
+| Placement timing | 2 charges on unclaimed ground (**2s earned time**) · 4 on claimed ground (**4s earned time**) |
 | Terrain rule | 4 charges to place the wrong colour family · **2 to restore** the correct family |
 | Palette | 32 colours, indices 27–31 are the water family |
-| IP ceiling | 120 charges/hour (60 base-cost placements), shared across every cookie on that IP |
+| IP ceiling | 3,600 charges/hour (1,800 base-cost placements), shared across every cookie on that IP |
 | Request flood guard | 40-request burst, then 1 request per 2s/IP, before DB work |
 | Painting | z12 and in only |
 

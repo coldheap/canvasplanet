@@ -134,7 +134,7 @@ describe("paint charge rules", () => {
     mocks.query
       .mockResolvedValueOnce({ rows: [sessionRow()] })
       .mockResolvedValueOnce({ rows: pixelRow(currentColor) })
-      .mockResolvedValueOnce({ rows: [{ tokens: 120, refused: false, retry_ms: null }] })
+      .mockResolvedValueOnce({ rows: [{ tokens: 3600, refused: false, retry_ms: null }] })
       .mockResolvedValueOnce({ rows: [] });
 
     const result = await paint({
@@ -162,14 +162,14 @@ describe("paint charge rules", () => {
       currentColor: null,
       newColor: 20,
       cost: 2,
-      retryAfterMs: 60_000,
+      retryAfterMs: 2_000,
     },
     {
       case: "a claimed terrain-correct pixel",
       currentColor: 20,
       newColor: 0,
       cost: 4,
-      retryAfterMs: 120_000,
+      retryAfterMs: 4_000,
     },
   ])("reports the full wait until $case is affordable", async ({
     currentColor,
@@ -198,6 +198,6 @@ describe("paint charge rules", () => {
       retryAfterMs,
     });
     expect(mocks.query).toHaveBeenCalledTimes(2);
-    expect(cost).toBe(retryAfterMs / 30_000);
+    expect(cost).toBe(retryAfterMs / 1_000);
   });
 });

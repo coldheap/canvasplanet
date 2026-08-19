@@ -211,12 +211,12 @@ describe("IP token bucket", () => {
     // IP_BUDGET_MAX tokens/hr refilling at 1/IP_BUDGET_REFILL_MS == the
     // charge bank's own hourly regen rate. Never a false positive.
     expect((3600_000 / IP_BUDGET_REFILL_MS) | 0).toBe(IP_BUDGET_MAX);
-    expect(CHARGE_REGEN_MS).toBe(30_000);
-    expect(IP_BUDGET_MAX).toBe(120);
-    expect(IP_BUDGET_FLAGGED_ASN).toBe(60);
+    expect(CHARGE_REGEN_MS).toBe(1_000);
+    expect(IP_BUDGET_MAX).toBe(3600);
+    expect(IP_BUDGET_FLAGGED_ASN).toBe(1800);
   });
 
-  it("caps a cookie-wipe farm at IP_BUDGET_MAX paints per hour", () => {
+  it("caps a cookie-wipe farm at IP_BUDGET_MAX charges per hour", () => {
     let b = { tokens: IP_BUDGET_MAX, updatedAt: T0 };
     let paints = 0;
     // simulate 200 fresh sessions each trying to burn 30 charges instantly
