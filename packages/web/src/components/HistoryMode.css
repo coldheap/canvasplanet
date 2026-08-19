@@ -78,10 +78,16 @@ html.cp-history-mode .cp-inspector {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-width: 950px) and (max-height: 500px) {
   .cp-history-bar {
     top: auto;
-    bottom: var(--cp-gap);
+    bottom: var(--cp-mobile-controls-clearance);
+    width: calc(100vw - var(--cp-edge-left) - var(--cp-edge-right));
+  }
+
+  .cp-history-close {
+    width: 44px;
+    height: 44px;
   }
 
   .cp-history-fields span {

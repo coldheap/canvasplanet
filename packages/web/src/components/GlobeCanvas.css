@@ -76,6 +76,14 @@ html.cp-globe-active #root {
 
 @media (max-width: 640px) {
   .cp-globe-view .maplibregl-ctrl-top-right {
-    top: calc(var(--cp-gap) + 164px);
+    top: calc(var(--cp-edge-top) + 118px);
+    right: var(--cp-edge-right);
+  }
+}
+
+@media (max-width: 950px) and (max-height: 500px) {
+  .cp-globe-view .maplibregl-ctrl-top-right {
+    top: calc(var(--cp-edge-top) + 62px);
+    right: var(--cp-edge-right);
   }
 }

@@ -130,7 +130,10 @@ export function MapCanvas({
     // underneath the exact native-grid terrain layer added next.
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
-      maxZoom: MAX_MAP_ZOOM,
+      // The exact z12 terrain layer below owns paint zoom and closer. Keeping
+      // the coarse pyramid alive underneath it adds another set of scaled
+      // texture edges for mobile GPUs to composite without adding detail.
+      maxZoom: Z_PIXEL - 1,
       className: "cp-pixel-tile",
       updateWhenZooming: false,
       keepBuffer: 1,
@@ -598,9 +601,13 @@ const GridLayer = L.GridLayer.extend({
   createTile(coords: L.Coords) {
     const tile = L.DomUtil.create("canvas") as HTMLCanvasElement;
     const size = 256;
-    tile.width = size;
-    tile.height = size;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    tile.width = Math.round(size * dpr);
+    tile.height = Math.round(size * dpr);
+    tile.style.width = `${size}px`;
+    tile.style.height = `${size}px`;
     const ctx = tile.getContext("2d")!;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Pixel spacing grows as you zoom past Z_PIXEL; below 4px spacing the
     // lines would be denser than the pixels they describe.
@@ -610,7 +617,9 @@ const GridLayer = L.GridLayer.extend({
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let p = 0; p <= size; p += pxSize) {
+    // Each tile owns its top and left boundaries. Excluding the far edge
+    // prevents two neighbouring canvases from doubling the same gridline.
+    for (let p = 0; p < size; p += pxSize) {
       // +0.5 puts the stroke on the pixel centre so it renders 1px crisp
       // rather than 2px blurred.
       ctx.moveTo(p + 0.5, 0);
