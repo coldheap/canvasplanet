@@ -7,8 +7,8 @@
  */
 
 import { useEffect } from "react";
-import { Droplet, MapPin, MapPinOff } from "lucide-react";
-import { COST_VIOLATION, Family, MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
+import { MapPinOff } from "lucide-react";
+import { MIN_PAINT_ZOOM, PALETTE } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
 export function PalettePanel({ zoom }: { zoom: number }) {
@@ -40,32 +40,11 @@ export function PalettePanel({ zoom }: { zoom: number }) {
     );
   }
 
-  const land = PALETTE.filter((s) => s.family === Family.Land);
-  const water = PALETTE.filter((s) => s.family === Family.Water);
-
   return (
     <div className="cp-palette cp-card">
       <div className="cp-swatches">
-        <span className="cp-swatch-group-label" title="Land colours">
-          <MapPin />
-        </span>
         <div className="cp-swatch-group">
-          {land.map((s) => (
-            <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
-          ))}
-        </div>
-
-        {/* Water colours use the terrain-violation rate on land, so they get
-            their own group with an icon cue rather than a text label — the
-            tooltip carries the current rate. */}
-        <span
-          className="cp-swatch-group-label"
-          title={`Water colours — cost ${COST_VIOLATION} on land`}
-        >
-          <Droplet />
-        </span>
-        <div className="cp-swatch-group">
-          {water.map((s) => (
+          {PALETTE.map((s) => (
             <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={select} />
           ))}
         </div>

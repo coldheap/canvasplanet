@@ -962,22 +962,6 @@ button {
   transform: translateY(-1px) scale(1.12);
 }
 
-.cp-swatch-group-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--cp-dim);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-  padding-right: 2px;
-}
-.cp-swatch-group-label svg {
-  width: 12px;
-  height: 12px;
-}
-
 /* ---- charge pill (top-center, own thing) --------------------------------- */
 
 .cp-charge-pill {
