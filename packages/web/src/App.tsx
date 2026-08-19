@@ -417,6 +417,7 @@ export function App() {
       <div className="cp-visually-hidden">
         <h1>CanvasPlanet: a live pixel art world map</h1>
         <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
+        <a href="/about.html">Learn how CanvasPlanet works</a>
       </div>
       <MapCanvas
         active={viewMode === "map"}

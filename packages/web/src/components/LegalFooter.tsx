@@ -1,9 +1,9 @@
 /**
  * The legal and support footer, shared by every panel that should carry it.
  *
- * Plain anchors with `target="_blank"`, not in-app routes: /terms.html and
- * /privacy.html are dependency-free static files in web/public/ (see the
- * comment at the top of either one), so following one is a real navigation.
+ * Plain anchors with `target="_blank"`, not in-app routes: the about and
+ * legal pages are dependency-free static files in web/public/, so following
+ * one is a real navigation.
  * Opening in a new tab is what keeps that from throwing away whatever the
  * player had half-finished in the panel behind it — a part-typed signup, a
  * chosen-but-unsaved profile picture.
@@ -16,9 +16,15 @@
 export function LegalFooter() {
   return (
     <footer className="cp-legal-footer">
-      <a href="/terms.html" target="_blank" rel="noreferrer">
-        Terms
+      <a href="/about.html" target="_blank" rel="noreferrer">
+        About
       </a>
+      <span className="cp-legal-footer-item">
+        <span aria-hidden="true">·</span>
+        <a href="/terms.html" target="_blank" rel="noreferrer">
+          Terms
+        </a>
+      </span>
       <span className="cp-legal-footer-item">
         <span aria-hidden="true">·</span>
         <a href="/privacy.html" target="_blank" rel="noreferrer">

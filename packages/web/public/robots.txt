@@ -1,3 +1,18 @@
+# AI search and user-requested retrieval. These agents can read public pages
+# while avoiding high-volume canvas infrastructure and unlisted templates.
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+Allow: /
+Disallow: /api/
+Disallow: /avatars/
+Disallow: /basemap/
+Disallow: /tiles/
+Disallow: /t/
+
 User-agent: *
 Allow: /
 Disallow: /api/

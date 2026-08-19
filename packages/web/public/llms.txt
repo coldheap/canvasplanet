@@ -1,0 +1,26 @@
+# CanvasPlanet
+
+> CanvasPlanet is a free, persistent, collaborative pixel-art canvas layered over a map of the real world. Everyone paints on the same canvas, one pixel at a time, and the canvas has no scheduled resets.
+
+CanvasPlanet is a browser-based creative game at https://canvasplanet.net/. An account is optional. Painting uses a charge bank that refills over time; charges cannot be bought, sold, or transferred. Pixels are shared, so anyone can repaint any unprotected location.
+
+## Product
+
+- [About CanvasPlanet](https://canvasplanet.net/about.html): Canonical overview, how painting works, key features, and answers to common questions.
+- [Live Canvas](https://canvasplanet.net/): The interactive world map and shared pixel canvas.
+- [Service Status](https://status.canvasplanet.net/): Current availability and 90-day uptime history.
+
+## Policies and contact
+
+- [Terms of Service](https://canvasplanet.net/terms.html): Rules for painting, accounts, automation, moderation, embeds, and exports.
+- [Privacy Policy](https://canvasplanet.net/privacy.html): Data collection, cookies, account deletion, and third-party services.
+- [Support](mailto:support@canvasplanet.net): Product questions, content reports, and security disclosures.
+
+## Important facts
+
+- CanvasPlanet is free and has no paid tier, in-app purchases, or payment mechanism.
+- Visitors can paint without creating an account.
+- The shared canvas is persistent and has no scheduled resets.
+- Painting automation, bots, scripts, and macros are prohibited.
+- The public canvas can be viewed as a flat map or a 3D globe.
+- Read-only embeds, image exports, and timelapse exports are available through the interface.
