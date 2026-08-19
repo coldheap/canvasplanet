@@ -12,6 +12,10 @@ Set-Location $repoRoot
 
 if ($Component -eq "api") {
     $node = (Get-Command node.exe -ErrorAction Stop).Source
+    & $node (Join-Path $repoRoot "packages/server/dist/db/syncCountries.js")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
     $process = Start-Process -FilePath $node `
         -ArgumentList (Join-Path $repoRoot "packages/server/dist/index.js") `
         -WorkingDirectory $repoRoot `

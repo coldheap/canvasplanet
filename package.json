@@ -12,6 +12,7 @@
     "test": "pnpm -r test",
     "verify": "pnpm --filter @canvasplanet/server verify",
     "db:migrate": "pnpm --filter @canvasplanet/server db:migrate",
+    "db:sync-countries": "pnpm --filter @canvasplanet/server db:sync-countries",
     "db:partitions": "pnpm --filter @canvasplanet/server db:partitions",
     "geo:fetch": "pnpm --filter @canvasplanet/server geo:fetch",
     "geo:bake": "pnpm --filter @canvasplanet/server geo:bake",

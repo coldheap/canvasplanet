@@ -97,6 +97,7 @@ k6/                load and abuse tests from the definition of done
 | `pnpm test` | Vitest across the workspace |
 | `pnpm typecheck` | `tsc --noEmit` everywhere |
 | `pnpm db:migrate` | Apply pending SQL migrations (forward-only) |
+| `pnpm db:sync-countries` | Synchronize database country ids with the baked map |
 | `pnpm db:partitions` | Create next months' `pixel_events` partitions — **run monthly from cron** |
 | `pnpm geo:fetch` | Download boundary + ASN datasets (~50 MB) |
 | `pnpm geo:bake` | Build `data/geo-index.bin` (~147 KB, ~10 sec) |
