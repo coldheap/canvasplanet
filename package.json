@@ -13,6 +13,7 @@
     "verify": "pnpm --filter @canvasplanet/server verify",
     "db:migrate": "pnpm --filter @canvasplanet/server db:migrate",
     "db:rotate-password": "pnpm --filter @canvasplanet/server db:rotate-password",
+    "session:rotate-secret": "pnpm --filter @canvasplanet/server session:rotate-secret",
     "db:sync-countries": "pnpm --filter @canvasplanet/server db:sync-countries",
     "db:partitions": "pnpm --filter @canvasplanet/server db:partitions",
     "geo:fetch": "pnpm --filter @canvasplanet/server geo:fetch",

@@ -13,6 +13,7 @@
     "verify": "node verify/run.mjs",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:rotate-password": "tsx src/scripts/rotateDbPassword.ts",
+    "session:rotate-secret": "tsx src/scripts/rotateSessionSecret.ts",
     "db:sync-countries": "tsx src/db/syncCountries.ts",
     "db:partitions": "tsx scripts/ensure-partitions.ts",
     "geo:fetch": "tsx scripts/fetch-geodata.ts",
