@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, MapPinned, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
+import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
 import {
   COST_BASE,
   ERASED,
@@ -404,7 +404,12 @@ export function App() {
   }, []);
 
   if (!ready) {
-    return <div className="cp-boot">{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</div>;
+    return (
+      <div className="cp-boot">
+        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" />
+        <span>{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</span>
+      </div>
+    );
   }
 
   return (
@@ -463,8 +468,8 @@ export function App() {
       </div>
 
       <nav className="cp-dock cp-card" aria-label="Main controls">
-        <span className="cp-dock-brand" aria-label="CanvasPlanet">
-          <MapPinned size={18} />
+        <span className="cp-dock-brand" role="img" aria-label="CanvasPlanet">
+          <img src="/logo.png" alt="" width="32" height="32" />
         </span>
         <button
           className="cp-dock-btn"

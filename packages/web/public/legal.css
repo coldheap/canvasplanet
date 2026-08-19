@@ -62,12 +62,13 @@ a:hover { text-decoration-thickness: 2px; }
 /* ---- masthead --------------------------------------------------------- */
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   margin-bottom: 28px;
   font-size: 14px;
 }
-.brand a { font-weight: 700; font-size: 17px; text-decoration: none; }
+.brand a { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; text-decoration: none; }
+.brand img { display: block; border-radius: 6px; }
 .brand span { color: var(--muted); }
 
 h1 {

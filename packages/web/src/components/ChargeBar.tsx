@@ -19,7 +19,11 @@ export function ChargeBar() {
   useEffect(() => {
     if (!settings.notifyWhenFull || bank < max) return;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    new Notification("CanvasPlanet", { body: `Your ${max} charges are ready.` });
+    new Notification("CanvasPlanet", {
+      body: `Your ${max} charges are ready.`,
+      icon: "/logo.png",
+      badge: "/logo.png",
+    });
   }, [bank, max, settings.notifyWhenFull]);
 
   // Continuous fill: whole charges plus how far into the next one we are, so

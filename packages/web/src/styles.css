@@ -119,8 +119,15 @@ select {
   inset: 0;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 14px;
   color: var(--cp-dim);
   background: var(--cp-bg);
+}
+
+.cp-boot-logo {
+  border-radius: 18px;
+  box-shadow: var(--cp-shadow);
 }
 
 /* Leaflet puts GridLayer's className on the layer container, while the
@@ -280,6 +287,13 @@ button {
   color: var(--cp-accent);
   margin-bottom: 3px;
   flex: none;
+}
+
+.cp-dock-brand img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
 }
 
 .cp-dock-btn {
@@ -2634,6 +2648,9 @@ html.cp-motion-reduce * {
   right: 8px;
   bottom: 8px;
   z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(20, 24, 32, 0.72);
   color: #fff;
   font: 500 11px/1 system-ui, sans-serif;
@@ -2641,6 +2658,10 @@ html.cp-motion-reduce * {
   border-radius: 999px;
   text-decoration: none;
   backdrop-filter: blur(2px);
+}
+.cp-embed-badge img {
+  display: block;
+  border-radius: 4px;
 }
 .cp-embed-badge:hover {
   background: rgba(20, 24, 32, 0.88);

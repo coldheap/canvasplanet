@@ -68,6 +68,7 @@ header { border-bottom: 1px solid var(--border); }
   gap: 9px;
   text-decoration: none;
 }
+.brand img { display: block; border-radius: 7px; }
 .brand strong { font-size: 15px; }
 .brand span { padding-left: 9px; border-left: 1px solid var(--border); color: var(--muted); }
 .canvas-link { color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: none; }

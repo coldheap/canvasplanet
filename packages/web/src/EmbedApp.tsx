@@ -187,7 +187,8 @@ export function EmbedApp() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        live on {SITE_NAME}
+        <img src="/logo.png" alt="" width="18" height="18" />
+        <span>live on {SITE_NAME}</span>
       </a>
     </>
   );

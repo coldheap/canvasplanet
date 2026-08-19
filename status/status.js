@@ -31,7 +31,6 @@
   var incidentList = document.getElementById("incident-list");
   var lastChecked = document.getElementById("last-checked");
   var tooltip = document.getElementById("tooltip");
-  var favicon = document.getElementById("favicon");
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -71,12 +70,6 @@
     return "Updated " + Math.floor(elapsed / 60_000) + "m ago";
   }
 
-  function setFavicon(state) {
-    var colors = { operational: "#2e9b59", degraded: "#c68124", down: "#c94c4c", unknown: "#6b7280" };
-    var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='" + (colors[state] || colors.unknown) + "'/></svg>";
-    favicon.href = "data:image/svg+xml," + encodeURIComponent(svg);
-  }
-
   function renderBanner(override) {
     var state = override || (snapshot && snapshot.overall) || "unknown";
     if (!override && snapshot && snapshot.frozen && state === "operational") state = "degraded";
@@ -96,7 +89,6 @@
       statusDetail.hidden = false;
     }
 
-    setFavicon(state);
     document.title = statusTitle.textContent + " · CanvasPlanet Status";
   }
 

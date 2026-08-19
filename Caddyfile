@@ -123,7 +123,7 @@ status.{$DOMAIN} {
 		root * {$STATUS_ROOT:/srv/status}
 		header Cache-Control "no-cache"
 		header X-Frame-Options "DENY"
-		header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 		file_server
 	}
 
