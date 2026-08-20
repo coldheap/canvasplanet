@@ -51,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
   CMD wget -qO- http://127.0.0.1:8080/api/health || exit 1
 
 WORKDIR /app/packages/server
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/syncCountries.js && exec node dist/index.js"]

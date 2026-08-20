@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-canvasplanet}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-canvasplanet}
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -37,7 +37,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8080
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://${POSTGRES_USER:-canvasplanet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-canvasplanet}
       SESSION_SECRET: ${SESSION_SECRET}
       PUBLIC_URL: ${PUBLIC_URL}
       TRUST_CF_CONNECTING_IP: ${TRUST_CF_CONNECTING_IP:-false}
@@ -48,12 +48,12 @@ services:
       TURNSTILE_SECRET: ${TURNSTILE_SECRET}
       TURNSTILE_HOSTNAMES: ${TURNSTILE_HOSTNAMES}
       TILE_CACHE_DIR: /var/tilecache
-      GEO_INDEX_PATH: /var/data/geo-index.bin
-      BASEMAP_DIR: /var/data/basemap-tiles
+      GEO_INDEX_PATH: /app/data/geo-index.bin
+      BASEMAP_DIR: /app/data/basemap-tiles
       EXPORT_OUTPUT_DIR: /var/exports
     volumes:
       - ./tilecache:/var/tilecache
-      - ./data:/var/data:ro
+      - ./data:/app/data:ro
       - ./exports:/var/exports
     expose:
       - "8080"
