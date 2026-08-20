@@ -141,25 +141,19 @@ select {
 }
 
 /* Leaflet puts GridLayer's className on the layer container, while the
-   browser scales its descendant tile images during overzoom. Keep both the
-   painted canvas and land/ocean backdrop on nearest-neighbour sampling. */
+   browser scales its descendant tiles. The pixel layers now blit their own
+   nearest-neighbour tiles (see pixelTileLayer.ts) and land 1:1 on the device
+   grid, so this is a backstop for fractional device pixel ratios — and still
+   the only thing keeping the coarse basemap's <img> tiles sharp. */
 .cp-pixel-tile,
 .cp-pixel-tile img,
+.cp-pixel-tile canvas,
 .cp-heat-layer canvas {
   /* The unprefixed declaration is supported by current browsers; the first
      two cover older Firefox/Safari builds used by some embedded canvases. */
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   image-rendering: pixelated !important;
-}
-
-/* Leaflet uses additive blending to hide hairline gaps between ordinary map
-   tiles. On transparent, nearest-neighbour pixel-art tiles that workaround
-   does the opposite: a tiny mobile-GPU overlap becomes a bright cell edge.
-   Keep it for the opaque basemap, but render painted/history pixels normally. */
-.cp-canvas-layer img.leaflet-tile,
-.cp-history-layer img.leaflet-tile {
-  mix-blend-mode: normal;
 }
 
 /* ---- shared card chrome --------------------------------------------------- */

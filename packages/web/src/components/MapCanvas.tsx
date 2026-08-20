@@ -38,6 +38,7 @@ import {
 } from "@canvasplanet/shared";
 import { BboxDraw } from "../canvas/bboxDraw.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
+import { createPixelTileLayer } from "../canvas/pixelTileLayer";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
 import { PointPick } from "../canvas/pointPick.js";
 import { TemplateLayer } from "../canvas/templateLayer.js";
@@ -146,9 +147,9 @@ export function MapCanvas({
     // At painting zoom and closer, one basemap image pixel is exactly one
     // canvas pixel. This removes the old z8 overzoom where each coastline
     // sample covered a 16x16 block of independently paintable pixels.
-    L.tileLayer(`/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
+    createPixelTileLayer({
+      url: `/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`,
       minZoom: Z_PIXEL,
-      maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "cp-pixel-tile cp-native-basemap-layer",
       updateWhenZooming: false,
@@ -165,13 +166,19 @@ export function MapCanvas({
       zIndex: 1,
     });
 
-    // The canvas. maxNativeZoom pins requests to Z_PIXEL and lets Leaflet upscale
-    // beyond it, so zooming in shows crisp big pixels instead of asking the
-    // server for tiles that do not exist.
-    const canvasLayer = L.tileLayer(`/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
-      maxNativeZoom: Z_PIXEL,
+    // The canvas. Tiles are native at every zoom: past Z_PIXEL the layer crops
+    // and nearest-neighbour blits the z12 PNG itself rather than letting the
+    // compositor magnify one texture 64x (see pixelTileLayer.ts).
+    // Declared before the overlay because the two reference each other.
+    let overlay: LiveOverlay | null = null;
+    const canvasLayer = createPixelTileLayer({
+      url: `/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`,
       maxZoom: MAX_MAP_ZOOM,
       className: "cp-pixel-tile cp-canvas-layer",
+      // A tileload alone would not prove the image is current (the browser or
+      // edge may return a stale PNG), so the overlay verifies its pending
+      // colours against the decoded image before handing them off.
+      onNativeTile: (z, x, y, img) => overlay?.confirmTile(z, x, y, img),
       // A four-tile buffer could turn a 40-tile viewport into ~200 network
       // requests at every zoom level. One ring is enough to hide pan edges
       // without making visible tiles wait behind off-screen work.
@@ -183,12 +190,12 @@ export function MapCanvas({
     }).addTo(map);
 
     // Past states are rendered directly from pixel_events. Only native z12
-    // tiles exist; Leaflet overzooms those for close inspection and leaves
-    // the layer empty below z12, where a historical request would otherwise
-    // cover an unbounded portion of the world.
-    const historyLayer = L.tileLayer("", {
+    // tiles exist; the layer crops those for close inspection and stays empty
+    // below z12, where a historical request would otherwise cover an
+    // unbounded portion of the world.
+    const historyLayer = createPixelTileLayer({
+      url: "",
       minZoom: Z_PIXEL,
-      maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "cp-pixel-tile cp-history-layer",
       keepBuffer: 1,
@@ -198,16 +205,7 @@ export function MapCanvas({
     let renderedHistoryAt: number | null = null;
     let historyActive = false;
 
-    const overlay = new LiveOverlay(map, () => canvasLayer.redraw());
-
-    // ---- tile <-> overlay handoff -----------------------------------------
-    // A tileload alone does not prove the image is current (the browser or
-    // edge may return a stale PNG), so the overlay verifies its pending
-    // colours against the decoded image before handing them off.
-    canvasLayer.on("tileload", (e: L.TileEvent) => {
-      const c = e.coords;
-      overlay.confirmTile(c.z, c.x, c.y, e.tile);
-    });
+    overlay = new LiveOverlay(map, () => canvasLayer.redraw());
 
     const refreshTiles = () => canvasLayer.redraw();
 
@@ -277,8 +275,7 @@ export function MapCanvas({
       const at = normalizeHistoryAt(selected);
       if (at !== renderedHistoryAt) {
         renderedHistoryAt = at;
-        historyLayer.setUrl(`/api/history/tiles/${at}/{z}/{x}/{y}.png`, false);
-        historyLayer.redraw();
+        historyLayer.setUrl(`/api/history/tiles/${at}/{z}/{x}/{y}.png`);
       }
       if (!historyActive) {
         historyActive = true;

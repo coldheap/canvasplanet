@@ -31,6 +31,7 @@ import {
   latLngToPixel,
   pixelToLatLng,
 } from "@canvasplanet/shared";
+import { createPixelTileLayer } from "./canvas/pixelTileLayer";
 import { LiveOverlay } from "./canvas/liveOverlay.js";
 import { WsClient } from "./ws.js";
 
@@ -94,7 +95,9 @@ export function EmbedApp() {
     // MapCanvas.tsx's layer-stack doc comment.
     L.tileLayer("/basemap/{z}/{x}/{y}.png", {
       maxNativeZoom: BASEMAP_MAX_ZOOM,
-      maxZoom: MAX_MAP_ZOOM,
+      // The exact z12 terrain layer below owns paint zoom and closer, same as
+      // the main map. Left uncapped this pyramid would be stretched 1024x.
+      maxZoom: Z_PIXEL - 1,
       className: "cp-pixel-tile",
       updateWhenZooming: false,
       keepBuffer: 1,
@@ -103,9 +106,9 @@ export function EmbedApp() {
 
     // Swap the coarse backdrop for one-terrain-cell-per-canvas-pixel detail
     // at z12+, matching the interactive map exactly.
-    L.tileLayer(`/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
+    createPixelTileLayer({
+      url: `/basemap/z${Z_PIXEL}/{z}/{x}/{y}.png`,
       minZoom: Z_PIXEL,
-      maxNativeZoom: Z_PIXEL,
       maxZoom: MAX_MAP_ZOOM,
       className: "cp-pixel-tile cp-native-basemap-layer",
       updateWhenZooming: false,
@@ -122,22 +125,21 @@ export function EmbedApp() {
       }).addTo(map);
     }
 
-    // maxNativeZoom pins requests to Z_PIXEL and lets Leaflet upscale beyond it —
-    // same reasoning as the main map (see MapCanvas.tsx).
-    const canvasLayer = L.tileLayer(`/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`, {
-      maxNativeZoom: Z_PIXEL,
+    // Tiles are native at every zoom; past Z_PIXEL the layer crops and blits
+    // the z12 PNG itself — same reasoning as the main map (see MapCanvas.tsx).
+    // Declared before the overlay because the two reference each other.
+    let overlay: LiveOverlay | null = null;
+    const canvasLayer = createPixelTileLayer({
+      url: `/tiles/z${Z_PIXEL}/{z}/{x}/{y}.png`,
       maxZoom: MAX_MAP_ZOOM,
       className: "cp-pixel-tile cp-canvas-layer",
+      onNativeTile: (z, x, y, img) => overlay?.confirmTile(z, x, y, img),
       keepBuffer: 1,
       updateWhenZooming: false,
       zIndex: 2,
     }).addTo(map);
 
-    const overlay = new LiveOverlay(map, () => canvasLayer.redraw());
-    canvasLayer.on("tileload", (e: L.TileEvent) => {
-      const c = e.coords;
-      overlay.confirmTile(c.z, c.x, c.y, e.tile);
-    });
+    overlay = new LiveOverlay(map, () => canvasLayer.redraw());
 
     const ws = new WsClient(
       {
