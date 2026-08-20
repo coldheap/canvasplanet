@@ -195,6 +195,7 @@ async function main(): Promise<void> {
           t: "charges",
           bank: bank.charges,
           max: CHARGE_MAX,
+          bankVersion: session.totalPaints,
           nextAt: nextMs === null ? null : now + nextMs,
           serverNow: now,
         });

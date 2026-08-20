@@ -23,14 +23,17 @@ import {
   type UserLbRow,
   subKeysForBbox,
 } from "@canvasplanet/shared";
-import { localChargeDeadline } from "./chargeClock.js";
-
 type Handlers = {
   onPixels: (pixels: PixelTuple[]) => void;
   onLeaderboard: (world: number, rows: LbRow[]) => void;
   onAllianceLeaderboard: (rows: AllianceLbRow[]) => void;
   onUserLeaderboard: (rows: UserLbRow[]) => void;
-  onCharges: (bank: number, nextAt: number | null) => void;
+  onCharges: (
+    bank: number,
+    nextAt: number | null,
+    bankVersion: number,
+    serverNow: number,
+  ) => void;
   onPulse: (pulse: SPulse) => void;
   onFreeze: (on: boolean) => void;
   onEvent: (event: EventStateDTO | null) => void;
@@ -95,10 +98,7 @@ export class WsClient {
           this.handlers.onUserLeaderboard?.(msg.rows);
           break;
         case "charges":
-          this.handlers.onCharges?.(
-            msg.bank,
-            localChargeDeadline(msg.nextAt, msg.serverNow),
-          );
+          this.handlers.onCharges?.(msg.bank, msg.nextAt, msg.bankVersion, msg.serverNow);
           break;
         case "pulse":
           this.handlers.onPulse?.(msg);

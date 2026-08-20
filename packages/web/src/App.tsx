@@ -18,7 +18,6 @@ import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
 import { useStore } from "./store.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
-import { localChargeDeadline } from "./chargeClock.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
 import type { GlobeHandle, GlobeView } from "./components/GlobeCanvas.js";
 import { PalettePanel } from "./components/Palette.js";
@@ -45,7 +44,7 @@ const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
 const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
-  const { ready, hydrate, setBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
+  const { ready, hydrate, syncBank, settlePaint, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
@@ -204,7 +203,8 @@ export function App() {
       // Only now: /ws refuses a connection without a session cookie, and
       // bootstrap is what issues it. Connecting in parallel would race.
       const client = new WsClient({
-        onCharges: (bank, nextAt) => setBank(bank, nextAt),
+        onCharges: (bank, nextAt, bankVersion, serverNow) =>
+          syncBank(bank, nextAt, bankVersion, serverNow),
         onLeaderboard: (world, rows) => setLeaderboard(world, rows),
         onAllianceLeaderboard: (rows) => useStore.setState({ allianceLeaderboard: rows }),
         onUserLeaderboard: (rows) => useStore.setState({ playerLeaderboard: rows }),
@@ -279,7 +279,7 @@ export function App() {
       ws.current?.disconnect();
       ws.current = null;
     };
-  }, [hydrate, setBank, setLeaderboard]);
+  }, [hydrate, setLeaderboard, syncBank]);
 
   // ---- hover: fetch the pixel for the inspector and the paint-cost guess ----
   // Terrain is server-side only, so neither can be
@@ -359,45 +359,53 @@ export function App() {
     handle.current?.overlay.add([[x, y, selectedColor]]);
     useStore.getState().spendOptimistic(guess);
 
-    let res = await api.paint(x, y, selectedColor);
+    try {
+      let res = await api.paint(x, y, selectedColor);
 
-    // A session's first paint is challenged with 428 and a sitekey. Solve it
-    // once and retry — without this the whole anti-bot layer is unreachable
-    // from the browser, blocking real users and no one else.
-    if (!("ok" in res) || res.ok !== true) {
-      const err = res as PaintError;
-      if (err.reason === "turnstile_required" && err.turnstileSitekey) {
-        try {
-          const token = await solveTurnstile(err.turnstileSitekey);
-          res = await api.paint(x, y, selectedColor, token);
-        } catch (e) {
-          if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
-          showToast(e instanceof Error ? e.message : "Verification failed.");
-          void api.bootstrap().then(hydrate);
-          return;
+      // A session's first paint is challenged with 428 and a sitekey. Solve it
+      // once and retry — without this the whole anti-bot layer is unreachable
+      // from the browser, blocking real users and no one else.
+      if (!("ok" in res) || res.ok !== true) {
+        const err = res as PaintError;
+        if (err.reason === "turnstile_required" && err.turnstileSitekey) {
+          try {
+            const token = await solveTurnstile(err.turnstileSitekey);
+            res = await api.paint(x, y, selectedColor, token);
+          } catch (e) {
+            if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
+            showToast(e instanceof Error ? e.message : "Verification failed.");
+            void api.bootstrap().then(hydrate);
+            return;
+          }
         }
       }
-    }
 
-    if (!("ok" in res) || res.ok !== true) {
-      const err = res as PaintError;
+      if (!("ok" in res) || res.ok !== true) {
+        const err = res as PaintError;
+        if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
+        showToast(
+          err.reason === "no_charges" && err.retryAfterMs
+            ? `Not enough charges. Ready in ${formatRetryAfter(err.retryAfterMs)}.`
+            : err.message ?? "Could not paint that pixel.",
+        );
+        // Resync rather than guess at how far the optimistic bank drifted.
+        void api.bootstrap().then(hydrate);
+        return;
+      }
+
+      const ok = res as PaintResponse;
+      syncBank(ok.bank, ok.nextAt, ok.bankVersion, ok.serverNow);
+      // The pixel we just painted is now known-current; keep the cache honest
+      // so the next hover shows overpaint cost rather than base cost.
+      if (known) pixelCache.current.set(k, { ...known, color: selectedColor });
+    } catch (e) {
       if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
-      showToast(
-        err.reason === "no_charges" && err.retryAfterMs
-          ? `Not enough charges. Ready in ${formatRetryAfter(err.retryAfterMs)}.`
-          : err.message ?? "Could not paint that pixel.",
-      );
-      // Resync rather than guess at how far the optimistic bank drifted.
+      showToast(e instanceof Error ? e.message : "Could not place that pixel.");
       void api.bootstrap().then(hydrate);
-      return;
+    } finally {
+      settlePaint();
     }
-
-    const ok = res as PaintResponse;
-    setBank(ok.bank, localChargeDeadline(ok.nextAt, ok.serverNow));
-    // The pixel we just painted is now known-current; keep the cache honest
-    // so the next hover shows overpaint cost rather than base cost.
-    if (known) pixelCache.current.set(k, { ...known, color: selectedColor });
-  }, [hydrate, setBank]);
+  }, [hydrate, settlePaint, syncBank]);
 
   const onViewport = useCallback(
     (bbox: { x0: number; y0: number; x1: number; y1: number }, z: number) => {

@@ -20,7 +20,7 @@ import {
   type UserLbRow,
 } from "@canvasplanet/shared";
 import { create } from "zustand";
-import { localChargeDeadline } from "./chargeClock.js";
+import { isNewerChargeSnapshot, localChargeDeadline } from "./chargeClock.js";
 
 export interface Settings {
   grid: "auto" | "on" | "off";
@@ -56,6 +56,12 @@ interface State {
   max: number;
   nextAt: number | null;
   regenMs: number;
+  /** Latest server snapshot, kept separately while optimistic paints settle. */
+  settledBank: number;
+  settledNextAt: number | null;
+  bankVersion: number;
+  bankSnapshotAt: number;
+  pendingPaints: number;
   selectedColor: number;
   hoverPixel: { x: number; y: number } | null;
 
@@ -140,8 +146,15 @@ interface State {
 
   hydrate: (b: BootstrapResponse) => void;
   setBank: (bank: number, nextAt: number | null) => void;
+  syncBank: (
+    bank: number,
+    nextAt: number | null,
+    bankVersion: number,
+    serverNow: number,
+  ) => void;
   /** Optimistic decrement between click and response. */
   spendOptimistic: (cost: number) => void;
+  settlePaint: () => void;
   setLeaderboard: (world: number, rows: LbRow[]) => void;
   setAllianceLeaderboard: (rows: AllianceLbRow[]) => void;
   /** Full refresh of names/colours — the panel calls this after create/join/
@@ -169,6 +182,11 @@ export const useStore = create<State>((set) => ({
   max: CHARGE_MAX,
   nextAt: null,
   regenMs: CHARGE_REGEN_MS,
+  settledBank: 0,
+  settledNextAt: null,
+  bankVersion: -1,
+  bankSnapshotAt: Number.NEGATIVE_INFINITY,
+  pendingPaints: 0,
   selectedColor: 0,
   hoverPixel: null,
 
@@ -209,11 +227,9 @@ export const useStore = create<State>((set) => ({
   pendingResetToken: null,
 
   hydrate: (b) =>
-    set({
+    set((s) => ({
       ready: true,
-      bank: b.bank,
       max: b.max,
-      nextAt: localChargeDeadline(b.nextAt, b.serverNow),
       regenMs: b.regenMs,
       world: b.world,
       leaderboard: b.leaderboard,
@@ -231,19 +247,39 @@ export const useStore = create<State>((set) => ({
       verified: b.verified,
       turnstileSitekey: b.turnstileSitekey,
       discordEnabled: b.discordEnabled,
-    }),
+      ...chargeSnapshotPatch(s, b.bank, b.nextAt, b.bankVersion, b.serverNow),
+    })),
 
-  setBank: (bank, nextAt) => set({ bank, nextAt }),
+  setBank: (bank, nextAt) =>
+    set((s) => ({
+      bank,
+      nextAt,
+      ...(s.pendingPaints === 0 ? { settledBank: bank, settledNextAt: nextAt } : {}),
+    })),
+  syncBank: (bank, nextAt, bankVersion, serverNow) =>
+    set((s) => chargeSnapshotPatch(s, bank, nextAt, bankVersion, serverNow)),
   spendOptimistic: (cost) =>
     set((s) => {
       const bank = Math.max(0, s.bank - cost);
       return {
         bank,
+        pendingPaints: s.pendingPaints + 1,
         // Spending from a full bank is the one transition where nextAt is
         // still null. Start the countdown locally while the paint request is
         // in flight; the authoritative response will replace it shortly.
-        nextAt: bank < s.max && s.nextAt === null ? Date.now() + CHARGE_REGEN_MS : s.nextAt,
+        nextAt: bank < s.max && s.nextAt === null ? Date.now() + s.regenMs : s.nextAt,
       };
+    }),
+  settlePaint: () =>
+    set((s) => {
+      const pendingPaints = Math.max(0, s.pendingPaints - 1);
+      return pendingPaints === 0
+        ? {
+            pendingPaints,
+            bank: s.settledBank,
+            nextAt: s.settledNextAt,
+          }
+        : { pendingPaints };
     }),
   setLeaderboard: (world, leaderboard) => set({ world, leaderboard }),
   setAllianceLeaderboard: (allianceLeaderboard) => set({ allianceLeaderboard }),
@@ -303,4 +339,29 @@ function applyMotionClass(mode: Settings["reduceMotion"]): void {
 
 function applyThemeClass(darkMode: boolean): void {
   document.documentElement.classList.toggle("cp-dark", darkMode);
+}
+
+function chargeSnapshotPatch(
+  state: Pick<State, "bank" | "bankVersion" | "bankSnapshotAt" | "pendingPaints">,
+  bank: number,
+  serverNextAt: number | null,
+  bankVersion: number,
+  serverNow: number,
+): Partial<State> {
+  if (!isNewerChargeSnapshot(bankVersion, serverNow, state.bankVersion, state.bankSnapshotAt)) {
+    return {};
+  }
+
+  const nextAt = localChargeDeadline(serverNextAt, serverNow);
+  return {
+    bankVersion,
+    bankSnapshotAt: serverNow,
+    settledBank: bank,
+    settledNextAt: nextAt,
+    // A response for the first request in a mobile burst does not yet include
+    // the later optimistic spends. Never let that partial snapshot visually
+    // refund them; the final settled response supplies the exact balance.
+    bank: state.pendingPaints > 0 ? Math.min(state.bank, bank) : bank,
+    nextAt,
+  };
 }

@@ -29,6 +29,7 @@ describe("connection-scoped messages", () => {
         t: "charges",
         bank: 3,
         max: 60,
+        bankVersion: 29,
         nextAt: 1_000,
         serverNow: 500,
       });

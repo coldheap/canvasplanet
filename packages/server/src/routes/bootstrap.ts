@@ -55,6 +55,7 @@ export function registerBootstrapRoutes(app: FastifyInstance): void {
     const body: BootstrapResponse = {
       bank: bank.charges,
       max: CHARGE_MAX,
+      bankVersion: session.totalPaints,
       nextAt: nextMs === null ? null : now + nextMs,
       serverNow: now,
       regenMs,

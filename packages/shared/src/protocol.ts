@@ -83,6 +83,8 @@ export interface SCharges {
   t: "charges";
   bank: number;
   max: number;
+  /** Monotonic for every charged paint in this session. */
+  bankVersion: number;
   /** Epoch ms when the next charge lands; null when full. */
   nextAt: number | null;
   /** Server epoch ms paired with nextAt so clients never assume clocks agree. */
@@ -220,6 +222,8 @@ export interface BootstrapResponse {
   /** Charge bank, server-authoritative. */
   bank: number;
   max: number;
+  /** Monotonic for every charged paint in this session. */
+  bankVersion: number;
   nextAt: number | null;
   /** Server epoch ms paired with nextAt so clients can derive a duration. */
   serverNow: number;
@@ -274,6 +278,8 @@ export interface PaintRequest {
 export interface PaintResponse {
   ok: true;
   bank: number;
+  /** Monotonic for every charged paint in this session. */
+  bankVersion: number;
   nextAt: number | null;
   /** Server epoch ms paired with nextAt so clients can derive a duration. */
   serverNow: number;

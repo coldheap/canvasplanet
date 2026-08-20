@@ -68,6 +68,7 @@ describe("paint route charge synchronization", () => {
       changed: true,
       cost: 2,
       bank: 3,
+      bankVersion: 29,
       nextAt: 1_700_000_001_000,
       countryId: 1,
       prevColor: 2,
@@ -96,6 +97,7 @@ describe("paint route charge synchronization", () => {
       t: "charges",
       bank: 3,
       max: 60,
+      bankVersion: 29,
       nextAt: 1_700_000_001_000,
       serverNow: 1_700_000_000_250,
     });
@@ -103,6 +105,7 @@ describe("paint route charge synchronization", () => {
       expect.objectContaining({
         ok: true,
         bank: 3,
+        bankVersion: 29,
         serverNow: 1_700_000_000_250,
       }),
     );

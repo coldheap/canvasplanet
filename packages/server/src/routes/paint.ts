@@ -108,6 +108,7 @@ export function registerPaintRoutes(app: FastifyInstance): void {
         t: "charges",
         bank: result.bank,
         max: CHARGE_MAX,
+        bankVersion: result.bankVersion,
         nextAt: result.nextAt,
         serverNow,
       });
@@ -115,6 +116,7 @@ export function registerPaintRoutes(app: FastifyInstance): void {
       return reply.send({
         ok: true,
         bank: result.bank,
+        bankVersion: result.bankVersion,
         nextAt: result.nextAt,
         serverNow,
         cost: result.cost,

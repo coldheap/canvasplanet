@@ -27,6 +27,7 @@ export interface Session {
   id: number;
   charges: number;
   chargesUpdatedAt: number;
+  totalPaints: number;
   turnstileOk: boolean;
   lastCountryId: number | null;
   bannedUntil: number | null;
@@ -109,6 +110,7 @@ async function findByToken(token: string): Promise<Session | null> {
     id: number;
     charges: number;
     charges_updated_at: Date;
+    total_paints: number;
     turnstile_ok: boolean;
     last_country_id: number | null;
     banned_until: Date | null;
@@ -116,7 +118,7 @@ async function findByToken(token: string): Promise<Session | null> {
     event_bonus_until: Date | null;
     stale: boolean;
   }>(
-    `SELECT id, charges, charges_updated_at, turnstile_ok, last_country_id, banned_until, alliance_id,
+    `SELECT id, charges, charges_updated_at, total_paints, turnstile_ok, last_country_id, banned_until, alliance_id,
             event_bonus_until,
             last_seen_at < now() - ($2 || ' milliseconds')::interval AS stale
        FROM sessions WHERE token_hash = $1`,
@@ -138,6 +140,7 @@ async function findByToken(token: string): Promise<Session | null> {
     id: r.id,
     charges: r.charges,
     chargesUpdatedAt: r.charges_updated_at.getTime(),
+    totalPaints: r.total_paints,
     turnstileOk: r.turnstile_ok,
     lastCountryId: r.last_country_id,
     bannedUntil: r.banned_until?.getTime() ?? null,
@@ -182,6 +185,7 @@ async function createSession(req: FastifyRequest, reply: FastifyReply): Promise<
     id: row.id,
     charges: CHARGE_START,
     chargesUpdatedAt: row.charges_updated_at.getTime(),
+    totalPaints: 0,
     // A flagged ASN must pass Turnstile even for its first paint.
     turnstileOk: false,
     lastCountryId: null,

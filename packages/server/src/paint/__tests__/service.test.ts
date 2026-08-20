@@ -27,6 +27,7 @@ function sessionRow(charges = 60) {
   return {
     charges,
     charges_updated_at: new Date(NOW),
+    total_paints: 7,
     banned_until: null,
     asn: null,
     alliance_id: 2,
@@ -67,7 +68,13 @@ describe("paint identical colour", () => {
       staff: null,
     });
 
-    expect(result).toMatchObject({ ok: true, changed: false, cost: 0, bank: 60 });
+    expect(result).toMatchObject({
+      ok: true,
+      changed: false,
+      cost: 0,
+      bank: 60,
+      bankVersion: 7,
+    });
     expect(mocks.query).toHaveBeenCalledTimes(2);
     expect(mocks.query.mock.calls.map(([sql]) => String(sql)).join("\n")).not.toContain(
       "INSERT INTO",
@@ -148,7 +155,13 @@ describe("paint charge rules", () => {
       staff: null,
     });
 
-    expect(result).toMatchObject({ ok: true, changed: true, cost, bank: 60 - cost });
+    expect(result).toMatchObject({
+      ok: true,
+      changed: true,
+      cost,
+      bank: 60 - cost,
+      bankVersion: 8,
+    });
 
     const ipBudgetParams = mocks.query.mock.calls[2]?.[1];
     expect(ipBudgetParams?.[2]).toBe(cost);

@@ -15,3 +15,16 @@ export function localChargeDeadline(
   if (!Number.isFinite(serverNow)) return nextAt;
   return clientNow + Math.max(0, nextAt - serverNow);
 }
+
+/** Reject a balance snapshot that was created before one already applied. */
+export function isNewerChargeSnapshot(
+  bankVersion: number,
+  serverNow: number,
+  currentVersion: number,
+  currentServerNow: number,
+): boolean {
+  return (
+    bankVersion > currentVersion ||
+    (bankVersion === currentVersion && serverNow > currentServerNow)
+  );
+}

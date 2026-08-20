@@ -55,6 +55,7 @@ export type PaintOutcome =
       changed: boolean;
       cost: number;
       bank: number;
+      bankVersion: number;
       nextAt: number | null;
       countryId: number;
       prevColor: number | null;
@@ -94,6 +95,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
     const sess = await c.query<{
       charges: number;
       charges_updated_at: Date;
+      total_paints: number;
       banned_until: Date | null;
       asn: number | null;
       alliance_id: number | null;
@@ -101,7 +103,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
       event_bonus_until: Date | null;
       explicitly_banned: boolean;
     }>(
-      `SELECT s.charges, s.charges_updated_at, s.banned_until, s.asn,
+      `SELECT s.charges, s.charges_updated_at, s.total_paints, s.banned_until, s.asn,
               s.alliance_id, s.user_id, s.event_bonus_until,
               EXISTS (
                 SELECT 1 FROM bans b
@@ -149,6 +151,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
         changed: false,
         cost: 0,
         bank: bank.charges,
+        bankVersion: s.total_paints,
         nextAt: nextChargeAt(bank, now, regenMs),
         countryId,
         prevColor,
@@ -353,6 +356,7 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
       changed: true,
       cost,
       bank: bank.charges,
+      bankVersion: s.total_paints + (staff ? 0 : 1),
       nextAt: nextChargeAt(bank, now, regenMs),
       countryId,
       prevColor,
