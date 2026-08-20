@@ -59,6 +59,7 @@ import { registerPaintRoutes } from "../paint.js";
 describe("paint route charge synchronization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_250);
     mocks.beginPlayerPaint.mockReturnValue(mocks.finishEventPaint);
     mocks.getOrCreateSession.mockResolvedValue({ id: 17, turnstileOk: true });
     mocks.getStaff.mockResolvedValue(null);
@@ -96,7 +97,14 @@ describe("paint route charge synchronization", () => {
       bank: 3,
       max: 60,
       nextAt: 1_700_000_001_000,
+      serverNow: 1_700_000_000_250,
     });
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({ ok: true, bank: 3 }));
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: true,
+        bank: 3,
+        serverNow: 1_700_000_000_250,
+      }),
+    );
   });
 });

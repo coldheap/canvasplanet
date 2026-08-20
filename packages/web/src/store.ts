@@ -20,6 +20,7 @@ import {
   type UserLbRow,
 } from "@canvasplanet/shared";
 import { create } from "zustand";
+import { localChargeDeadline } from "./chargeClock.js";
 
 export interface Settings {
   grid: "auto" | "on" | "off";
@@ -54,6 +55,7 @@ interface State {
   bank: number;
   max: number;
   nextAt: number | null;
+  regenMs: number;
   selectedColor: number;
   hoverPixel: { x: number; y: number } | null;
 
@@ -166,6 +168,7 @@ export const useStore = create<State>((set) => ({
   bank: 0,
   max: CHARGE_MAX,
   nextAt: null,
+  regenMs: CHARGE_REGEN_MS,
   selectedColor: 0,
   hoverPixel: null,
 
@@ -210,7 +213,8 @@ export const useStore = create<State>((set) => ({
       ready: true,
       bank: b.bank,
       max: b.max,
-      nextAt: b.nextAt,
+      nextAt: localChargeDeadline(b.nextAt, b.serverNow),
+      regenMs: b.regenMs,
       world: b.world,
       leaderboard: b.leaderboard,
       countries: new Map(b.countries.map((c) => [c.id, c])),

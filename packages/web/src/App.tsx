@@ -18,6 +18,7 @@ import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
 import { useStore } from "./store.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
+import { localChargeDeadline } from "./chargeClock.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
 import type { GlobeHandle, GlobeView } from "./components/GlobeCanvas.js";
 import { PalettePanel } from "./components/Palette.js";
@@ -392,7 +393,7 @@ export function App() {
     }
 
     const ok = res as PaintResponse;
-    setBank(ok.bank, ok.nextAt);
+    setBank(ok.bank, localChargeDeadline(ok.nextAt, ok.serverNow));
     // The pixel we just painted is now known-current; keep the cache honest
     // so the next hover shows overpaint cost rather than base cost.
     if (known) pixelCache.current.set(k, { ...known, color: selectedColor });

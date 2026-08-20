@@ -103,17 +103,20 @@ export function registerPaintRoutes(app: FastifyInstance): void {
       // connection-time snapshot, which may have been read just before this
       // transaction and would otherwise overwrite the paint response with a
       // stale full bank on a newly opened page.
+      const serverNow = Date.now();
       hub.sendToSession(session.id, {
         t: "charges",
         bank: result.bank,
         max: CHARGE_MAX,
         nextAt: result.nextAt,
+        serverNow,
       });
 
       return reply.send({
         ok: true,
         bank: result.bank,
         nextAt: result.nextAt,
+        serverNow,
         cost: result.cost,
         countryId: result.countryId,
       } satisfies PaintResponse);

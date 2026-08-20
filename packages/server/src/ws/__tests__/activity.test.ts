@@ -25,7 +25,13 @@ describe("connection-scoped messages", () => {
     const siblingConn = hub.add(sibling as never, 17, "203.0.113.10");
 
     try {
-      hub.sendToConnection(firstConn, { t: "charges", bank: 3, max: 60, nextAt: 1_000 });
+      hub.sendToConnection(firstConn, {
+        t: "charges",
+        bank: 3,
+        max: 60,
+        nextAt: 1_000,
+        serverNow: 500,
+      });
       expect(first.send).toHaveBeenCalledOnce();
       expect(sibling.send).not.toHaveBeenCalled();
     } finally {

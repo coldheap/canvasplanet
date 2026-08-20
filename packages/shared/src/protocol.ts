@@ -85,6 +85,8 @@ export interface SCharges {
   max: number;
   /** Epoch ms when the next charge lands; null when full. */
   nextAt: number | null;
+  /** Server epoch ms paired with nextAt so clients never assume clocks agree. */
+  serverNow: number;
 }
 
 /** Live world activity, broadcast once per second. */
@@ -219,6 +221,8 @@ export interface BootstrapResponse {
   bank: number;
   max: number;
   nextAt: number | null;
+  /** Server epoch ms paired with nextAt so clients can derive a duration. */
+  serverNow: number;
   /**
    * Milliseconds per regenerated charge. Sent rather than assumed so that
    * anything modelling the bank — the countdown, the load test — tracks the
@@ -271,6 +275,8 @@ export interface PaintResponse {
   ok: true;
   bank: number;
   nextAt: number | null;
+  /** Server epoch ms paired with nextAt so clients can derive a duration. */
+  serverNow: number;
   cost: number;
   countryId: number;
 }

@@ -196,6 +196,7 @@ async function main(): Promise<void> {
           bank: bank.charges,
           max: CHARGE_MAX,
           nextAt: nextMs === null ? null : now + nextMs,
+          serverNow: now,
         });
       }
 

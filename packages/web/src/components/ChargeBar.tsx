@@ -7,12 +7,11 @@
 
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
-import { CHARGE_REGEN_MS } from "@canvasplanet/shared";
 import { useStore } from "../store.js";
 
 export function ChargeBar() {
-  const { bank, max, nextAt, settings, setBank } = useStore();
-  const seconds = useCountdown(bank, max, nextAt, setBank);
+  const { bank, max, nextAt, regenMs, settings, setBank } = useStore();
+  const seconds = useCountdown(bank, max, nextAt, regenMs, setBank);
 
   // Ask once, when the bank fills, if the user opted in. This is the single
   // strongest retention lever available without accounts.
@@ -28,7 +27,7 @@ export function ChargeBar() {
 
   // Continuous fill: whole charges plus how far into the next one we are, so
   // the bar creeps forward every second instead of jumping in 1/max steps.
-  const partial = seconds === null ? 0 : 1 - (seconds * 1000) / CHARGE_REGEN_MS;
+  const partial = seconds === null ? 0 : 1 - (seconds * 1000) / regenMs;
   const pct = ((bank + Math.max(0, Math.min(1, partial))) / max) * 100;
 
   return (
@@ -61,6 +60,7 @@ function useCountdown(
   bank: number,
   max: number,
   nextAt: number | null,
+  regenMs: number,
   setBank: (bank: number, nextAt: number | null) => void,
 ): number | null {
   const [, force] = useState(0);
@@ -72,12 +72,12 @@ function useCountdown(
         force((n) => n + 1);
         return;
       }
-      const gained = Math.min(max - bank, 1 + Math.floor((now - nextAt) / CHARGE_REGEN_MS));
+      const gained = Math.min(max - bank, 1 + Math.floor((now - nextAt) / regenMs));
       const newBank = bank + gained;
-      setBank(newBank, newBank >= max ? null : nextAt + gained * CHARGE_REGEN_MS);
+      setBank(newBank, newBank >= max ? null : nextAt + gained * regenMs);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [nextAt, bank, max, setBank]);
+  }, [nextAt, bank, max, regenMs, setBank]);
 
   if (nextAt === null) return null;
   return Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
