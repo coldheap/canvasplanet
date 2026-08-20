@@ -35,9 +35,15 @@
     />
     <meta name="twitter:image" content="https://canvasplanet.net/og-canvas.png" />
     <meta name="twitter:image:alt" content="The live CanvasPlanet world canvas and painting controls" />
-    <meta name="theme-color" content="#0b0f14" />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="/logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="preload" href="/logo.png" as="image" fetchpriority="high" />
+    <style>
+      html, body, #root { height: 100%; margin: 0; background: #fff; }
+      body { overflow: hidden; }
+      .cp-static-intro { height: 100%; display: grid; place-items: center; }
+    </style>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -73,11 +79,8 @@
   </head>
   <body>
     <div id="root">
-      <main class="cp-static-intro">
-        <img src="/logo.png" alt="" width="72" height="72" />
-        <h1>CanvasPlanet: a live pixel art world map</h1>
-        <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
-        <a href="/about.html">How CanvasPlanet works</a>
+      <main class="cp-static-intro" role="status" aria-label="CanvasPlanet is loading">
+        <img src="/logo.png" alt="" width="72" height="72" fetchpriority="high" />
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

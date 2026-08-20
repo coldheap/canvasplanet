@@ -444,9 +444,12 @@ export function App() {
 
   if (!ready) {
     return (
-      <div className="cp-boot">
-        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" />
-        <span>{bootError ? "The server is waking up — retrying…" : "Loading the canvas…"}</span>
+      <div
+        className="cp-boot"
+        role="status"
+        aria-label={bootError ? "CanvasPlanet is reconnecting" : "CanvasPlanet is loading"}
+      >
+        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" fetchPriority="high" />
       </div>
     );
   }

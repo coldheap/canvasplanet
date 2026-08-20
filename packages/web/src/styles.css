@@ -1,10 +1,5 @@
 /* CanvasPlanet — light UI shell: icon rail, floating cards, modal dialogs. */
 
-/* Country flags render as SVG backgrounds (flag-icons), not emoji: Windows
- * has no font support for the regional-indicator flag sequences and shows
- * the bare two-letter code instead. */
-@import "flag-icons/css/flag-icons.min.css";
-
 .fi {
   vertical-align: middle;
   border-radius: 2px;
@@ -138,14 +133,11 @@ select {
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 14px;
-  color: var(--cp-dim);
-  background: var(--cp-bg);
+  background: #fff;
 }
 
 .cp-boot-logo {
-  border-radius: 18px;
-  box-shadow: var(--cp-shadow);
+  display: block;
 }
 
 /* Leaflet puts GridLayer's className on the layer container, while the
