@@ -25,7 +25,7 @@
 
 import L from "leaflet";
 import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@canvasplanet/shared";
-import { livePixelScreenSize } from "./livePixels.js";
+import { livePixelRect, livePixelScreenSize } from "./livePixels.js";
 import { PixelHighlights, highlightAlpha, highlightRingWidth } from "./pixelHighlights.js";
 import { tilePixelMatches } from "./tilePixels.js";
 
@@ -53,6 +53,8 @@ export class LiveOverlay {
   private lastRefreshAt = 0;
   private visible = true;
   private highlights = new PixelHighlights();
+  /** Read once per resize so the backing store and draw() cannot disagree. */
+  private dpr = 1;
   /** Off by default, and never switched on by the embed. */
   private highlightsOn = false;
 
@@ -235,12 +237,12 @@ export class LiveOverlay {
     const size = this.map.getSize();
     // Match the backing store to the device pixel ratio, or the pixels come
     // out soft on a retina display — which defeats the point of pixel art.
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = size.x * dpr;
-    this.canvas.height = size.y * dpr;
+    this.dpr = window.devicePixelRatio || 1;
+    this.canvas.width = size.x * this.dpr;
+    this.canvas.height = size.y * this.dpr;
     this.canvas.style.width = `${size.x}px`;
     this.canvas.style.height = `${size.y}px`;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.reposition();
   }
 
@@ -273,16 +275,22 @@ export class LiveOverlay {
     const pxSize = livePixelScreenSize(zoom);
     if (pxSize === 0) return;
 
+    // Fill in device pixels rather than through the CSS transform: on a
+    // fractional device pixel ratio an integer CSS coordinate is a fractional
+    // device one, and the antialiased edge that produces lets the tile below
+    // show through the seam. See livePixelRect. The rings want the CSS
+    // transform, so it goes back afterwards.
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (const pixel of this.pending.values()) {
       const p = this.map.latLngToContainerPoint(pixelToLatLng({ x: pixel.x, y: pixel.y }) as never);
       // Cull offscreen work: at z18 a full viewport is only a few hundred
       // pixels, but a stale pending set can be much larger.
       if (p.x < -pxSize || p.y < -pxSize || p.x > size.x || p.y > size.y) continue;
       this.ctx.fillStyle = PALETTE[pixel.color]?.hex ?? "#ff00ff";
-      // Floor the origin and ceil the size so adjacent pixels never leave a
-      // sub-pixel seam between them.
-      this.ctx.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(pxSize), Math.ceil(pxSize));
+      const rect = livePixelRect(p.x, p.y, pxSize, this.dpr);
+      this.ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
     this.drawHighlights(size, pxSize, now);
 
