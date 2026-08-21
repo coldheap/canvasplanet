@@ -20,7 +20,7 @@
  * never flip it on top of the pixel canvas or under the land/ocean backdrop.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import L from "leaflet";
 import {
   BASEMAP_MAX_ZOOM,
@@ -609,9 +609,26 @@ export function MapCanvas({
     };
   }, []);
 
+  // Toggled imperatively, and `className` below is a constant on purpose.
+  //
+  // Leaflet writes its own classes onto this element — leaflet-container,
+  // leaflet-grab, and crucially leaflet-touch-drag/leaflet-touch-zoom, which
+  // are what give it `touch-action: none`. React owns the whole class
+  // attribute, so re-rendering it with a different value wiped all of them:
+  // one trip to the globe and back left the map with `touch-action: auto`,
+  // `overflow: visible` and no grab cursor. On a phone that hands rapid taps
+  // back to the browser's double-tap-to-zoom heuristic, which swallows some
+  // of them — painting appears to stop responding for no reason.
+  // Layout, not passive: the class decides whether this element is visible,
+  // so it has to be settled before the browser paints the frame that changed
+  // `active`.
+  useLayoutEffect(() => {
+    ref.current?.classList.toggle("cp-map-inactive", !active);
+  }, [active]);
+
   return (
     <>
-      <div ref={ref} className={active ? "cp-map" : "cp-map cp-map-inactive"} />
+      <div ref={ref} className="cp-map" />
       {uiVisible && <HistoryMode zoom={!active && inactiveZoom !== undefined ? inactiveZoom : zoom} />}
     </>
   );
