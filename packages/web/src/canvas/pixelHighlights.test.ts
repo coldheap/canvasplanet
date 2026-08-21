@@ -83,6 +83,30 @@ describe("PixelHighlights", () => {
     expect(h.record(10, 20, 7, 1_200)).toBe(true);
   });
 
+  it("knows which neighbours are also new, so a block is outlined once", () => {
+    const h = new PixelHighlights();
+    h.record(10, 20, 7, 1_000);
+    h.record(11, 20, 7, 1_000);
+    expect(h.has(10, 20)).toBe(true);
+    expect(h.has(11, 20)).toBe(true);
+    expect(h.has(12, 20)).toBe(false);
+    expect(h.has(10, 21)).toBe(false);
+  });
+
+  it("stops reporting a neighbour once its ring has been pruned", () => {
+    const h = new PixelHighlights();
+    h.record(10, 20, 7, 1_000);
+    h.prune(1_000 + HIGHLIGHT_MS);
+    expect(h.has(10, 20)).toBe(false);
+  });
+
+  it("does not treat your own suppressed paint as a neighbour", () => {
+    const h = new PixelHighlights();
+    h.markSelf(10, 20, 7, 1_000);
+    h.record(10, 20, 7, 1_100);
+    expect(h.has(10, 20)).toBe(false);
+  });
+
   it("drops marks once they have finished fading", () => {
     const h = new PixelHighlights();
     h.record(10, 20, 7, 1_000);

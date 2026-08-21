@@ -299,15 +299,20 @@ export class LiveOverlay {
     if (this.highlights.size === 0) return;
 
     const width = highlightRingWidth(pxSize);
-    // Inset the stroked path by the full width of the wider stroke, so both
+    // Offset the stroked path by the full width of the wider stroke, so both
     // strokes land outside the pixel instead of over it. At z12, where a world
     // pixel is one screen pixel, that is the difference between a marker that
     // frames the paint and one that replaces it.
     const spread = width * 2;
+    const off = spread / 2;
     const side = Math.ceil(pxSize);
+
+    // One path per distinct arrival time. Pixels from the same WS frame share
+    // a timestamp and therefore an alpha, so a 900-pixel template drop is two
+    // strokes rather than eighteen hundred.
+    const paths = new Map<number, Path2D>();
     for (const mark of this.highlights.values()) {
-      const alpha = highlightAlpha(now - mark.at);
-      if (alpha <= 0) continue;
+      if (highlightAlpha(now - mark.at) <= 0) continue;
       const p = this.map.latLngToContainerPoint(pixelToLatLng({ x: mark.x, y: mark.y }) as never);
       if (
         p.x < -pxSize - spread ||
@@ -318,18 +323,57 @@ export class LiveOverlay {
         continue;
       }
 
-      const x = Math.floor(p.x) - spread / 2;
-      const y = Math.floor(p.y) - spread / 2;
-      this.ctx.globalAlpha = alpha;
+      // Only the edges facing away from other new paint. Ringing each pixel
+      // separately reads fine for the one-off paint you notice by eye, but
+      // templates and scripts arrive as solid blocks, and there every ring
+      // sits on top of its neighbours: the region fills with a red mesh and
+      // the paint it is announcing is the one thing you cannot see. Skipping
+      // shared edges outlines the region instead.
+      const up = this.highlights.has(mark.x, mark.y - 1);
+      const down = this.highlights.has(mark.x, mark.y + 1);
+      const left = this.highlights.has(mark.x - 1, mark.y);
+      const right = this.highlights.has(mark.x + 1, mark.y);
+
+      const x = Math.floor(p.x);
+      const y = Math.floor(p.y);
+      // An open edge runs out to the far corner, so the perpendicular edge
+      // meeting it there needs no join; one stopping at a neighbour ends on
+      // the shared boundary, where that neighbour's own edge continues it.
+      const x0 = x - off;
+      const y0 = y - off;
+      const x1 = x + side + off;
+      const y1 = y + side + off;
+      let path = paths.get(mark.at);
+      if (!path) paths.set(mark.at, (path = new Path2D()));
+      if (!up) {
+        path.moveTo(left ? x : x0, y0);
+        path.lineTo(right ? x + side : x1, y0);
+      }
+      if (!down) {
+        path.moveTo(left ? x : x0, y1);
+        path.lineTo(right ? x + side : x1, y1);
+      }
+      if (!left) {
+        path.moveTo(x0, up ? y : y0);
+        path.lineTo(x0, down ? y + side : y1);
+      }
+      if (!right) {
+        path.moveTo(x1, up ? y : y0);
+        path.lineTo(x1, down ? y + side : y1);
+      }
+    }
+
+    for (const [at, path] of paths) {
+      this.ctx.globalAlpha = highlightAlpha(now - at);
       // Dark underneath, red over it. A bare red ring disappears against the
       // palette's own reds and against a dark stretch of canvas; the darker
       // stroke around it keeps the marker readable over anything.
       this.ctx.lineWidth = spread;
       this.ctx.strokeStyle = HIGHLIGHT_EDGE;
-      this.ctx.strokeRect(x, y, side + spread, side + spread);
+      this.ctx.stroke(path);
       this.ctx.lineWidth = width;
       this.ctx.strokeStyle = HIGHLIGHT_RING;
-      this.ctx.strokeRect(x, y, side + spread, side + spread);
+      this.ctx.stroke(path);
     }
     this.ctx.globalAlpha = 1;
   }

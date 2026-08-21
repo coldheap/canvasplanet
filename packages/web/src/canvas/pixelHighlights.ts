@@ -124,6 +124,14 @@ export class PixelHighlights {
     return this.marks.values();
   }
 
+  /** Whether a pixel is currently ringed. The overlay asks about the four
+   *  neighbours of every mark: a shared edge between two new pixels is an
+   *  interior edge of one new region, and drawing it is what turned a painted
+   *  block into a red mesh with the paint invisible underneath. */
+  has(x: number, y: number): boolean {
+    return this.marks.has(key(x, y));
+  }
+
   /** Any tracked pixel, for use as the frame's projection anchor. */
   anchor(): PixelMark | undefined {
     return this.marks.values().next().value;
