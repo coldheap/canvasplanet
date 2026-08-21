@@ -33,3 +33,37 @@ describe("eventBannerText", () => {
     ).toBe("Defeat — Zone lost at 50% corruption. Restoring canvas…");
   });
 });
+
+/* The phone banner sits in a strip a third the width of the desktop one, so
+ * it trades the threshold clauses for the marker on the bar. What it must
+ * not trade away is the live countdown or the current percentage. */
+describe("eventBannerText, compact", () => {
+  it("keeps the percentage and the countdown, drops the thresholds", () => {
+    expect(eventBannerText(active, 30_000, true)).toBe("Corruption 25% · 1:00 left");
+  });
+
+  it("shortens each resolved outcome without losing which one it is", () => {
+    expect(eventBannerText({ ...active, status: "resolving", result: null }, 0, true)).toBe(
+      "Finalizing at 25%…",
+    );
+    expect(eventBannerText({ ...active, status: "resolving", result: "defended" }, 0, true)).toBe(
+      "Victory — defended at 25%",
+    );
+    expect(
+      eventBannerText({ ...active, corruptionPct: 0.5, status: "resolving", result: "corrupted" }, 0, true),
+    ).toBe("Defeat — lost at 50%");
+  });
+
+  it("stays shorter than the desktop wording in every state", () => {
+    for (const e of [
+      active,
+      { ...active, status: "resolving", result: null } as const,
+      { ...active, status: "resolving", result: "defended" } as const,
+      { ...active, status: "resolving", result: "corrupted" } as const,
+    ]) {
+      expect(eventBannerText(e, 30_000, true).length).toBeLessThan(
+        eventBannerText(e, 30_000, false).length,
+      );
+    }
+  });
+});

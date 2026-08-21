@@ -1597,7 +1597,34 @@ fieldset select {
   background: var(--cp-danger-soft);
   color: var(--cp-danger-ink);
 }
+.cp-event-head {
+  display: flex;
+  /* Not `center`: once the status wraps to two lines on a narrow phone, a
+     centred icon floats against the middle of the block instead of reading
+     with the sentence. 2px is exactly the centring offset for the single
+     line it has everywhere else, so nothing moves at those widths. */
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.cp-event-head > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.cp-event-defenders {
+  flex: none;
+  /* Pulls back the flex gap so the separator sits a word space from the
+     status, not a word space plus a gap. */
+  margin-left: -4px;
+}
+/* Reads as one sentence at desktop width, where the count still sits inline
+   right after the status. The phone layout drops this — there the count has
+   wrapped onto the row below and a leading separator would dangle. */
+.cp-event-defenders::before {
+  content: "· ";
+}
 .cp-event-bar {
+  position: relative;
   width: 80px;
   height: 6px;
   border-radius: 3px;
@@ -1609,6 +1636,21 @@ fieldset select {
   height: 100%;
   background: currentColor;
   transition: width 0.4s ease;
+}
+/* The losing threshold, drawn on the bar for the phone banner whose wording
+   has no room to name it. A pale core inside a dark ring rather than one
+   flat colour, because it has to stay legible on both sides of the moment
+   that matters: against the empty track while the zone is still winnable,
+   and against the fill that has just swallowed it when it is not. */
+.cp-event-bar-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 .cp-event-locate {
   display: flex;
@@ -2996,12 +3038,81 @@ html.cp-motion-reduce * {
     border-radius: 0 9px 9px 0;
   }
 
+  /* The dock and the explore stack turn into horizontal rows pinned to this
+     same top edge on phones, and both sit at z-index 1150 against .cp-hud's
+     1100 — so a full-width banner starting at the top renders *underneath*
+     them, with only the gap between the two rows left to read it through.
+     Start the whole stack below that row instead. 76px is the row itself:
+     --cp-edge-top's 14px gap plus the 54px min-height the three docks share.
+     The flex `gap` then spaces the banners from the charge bar only when a
+     banner is actually there, which is why .cp-topbar's own margin goes. */
   .cp-hud {
     top: env(safe-area-inset-top, 0px);
+    padding-top: 76px;
+    gap: var(--cp-gap);
   }
 
   .cp-topbar {
-    margin-top: 76px;
+    margin-top: 0;
+  }
+
+  /* Stop the strip short of the top-right map controls. Leaflet's zoom
+     column hangs below the explore stack into exactly the rows a banner
+     occupies, and .cp-hud outranks it (1100 vs 1000), so a full-bleed
+     banner swallows the zoom buttons. Trimming the strip rather than
+     pushing the controls down keeps this true at any banner height — the
+     compact wording wraps to two lines on a narrow phone, and both banners
+     can be up at once. */
+  .cp-frozen-banner,
+  .cp-event-banner {
+    margin-right: calc(var(--cp-edge-right) + 52px);
+    border-radius: 0 var(--cp-radius-sm) var(--cp-radius-sm) 0;
+  }
+
+  /* Two fixed rows rather than a wrapping flex line. Left to wrap, the
+     pieces reshuffle every 20px of width — at some the Locate button is the
+     only thing on row two — and the banner's height changes with them. This
+     is the same at every phone width: status on top, bar and defender count
+     below, Locate spanning both so it gets a 44px touch target. */
+  .cp-event-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "head head      locate"
+      "bar  defenders locate";
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 6px;
+    padding: 8px var(--cp-edge-left);
+    text-align: left;
+  }
+
+  .cp-event-head {
+    grid-area: head;
+  }
+
+  .cp-event-defenders {
+    grid-area: defenders;
+    margin-left: 0;
+  }
+
+  .cp-event-defenders::before {
+    content: none;
+  }
+
+  .cp-event-bar {
+    grid-area: bar;
+    width: auto;
+    min-width: 0;
+  }
+
+  .cp-event-locate {
+    grid-area: locate;
+    min-height: 44px;
+  }
+
+  .cp-frozen-banner {
+    padding: 8px var(--cp-edge-left);
   }
 
   .cp-charge-pill {
@@ -3197,7 +3308,17 @@ html.cp-motion-reduce * {
     --cp-mobile-controls-clearance: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Landscape keeps the charge pill *in* the top row, between the two docks,
+     so the portrait offset would drop it a whole row for nothing. Order it
+     ahead of the banners instead and reserve the docks' own 54px, so the
+     banners still start below the row rather than across it. */
+  .cp-hud {
+    padding-top: 0;
+  }
+
   .cp-topbar {
+    order: -1;
+    min-height: 54px;
     margin-top: var(--cp-gap);
   }
 

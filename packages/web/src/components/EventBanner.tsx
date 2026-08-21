@@ -12,10 +12,34 @@
  */
 import { Biohazard, Crosshair } from "lucide-react";
 import { EVENT_WIN_THRESHOLD, type EventStateDTO } from "@canvasplanet/shared";
+import { usePhoneLayout } from "../layout.js";
 
-export function eventBannerText(event: EventStateDTO, now = Date.now()): string {
-  const pct = Math.min(1, event.corruptionPct);
-  const pctLabel = Math.round(pct * 100);
+/**
+ * `compact` is the phone wording. The full sentence is roughly three times
+ * the width of a phone banner, so there it drops the two threshold clauses
+ * and the "restoring canvas" tail. Neither end condition is actually lost:
+ * in compact mode the bar carries a tick at the threshold, and the banner
+ * still turns red the moment it is crossed.
+ */
+export function eventBannerText(event: EventStateDTO, now = Date.now(), compact = false): string {
+  const pctLabel = Math.round(Math.min(1, event.corruptionPct) * 100);
+
+  if (event.status !== "active") {
+    if (event.result === null) {
+      return compact
+        ? `Finalizing at ${pctLabel}%…`
+        : `Corruption event — Finalizing result at ${pctLabel}%…`;
+    }
+    if (event.result === "defended") {
+      return compact
+        ? `Victory — defended at ${pctLabel}%`
+        : `Victory — Zone defended at ${pctLabel}% corruption. Restoring canvas…`;
+    }
+    return compact
+      ? `Defeat — lost at ${pctLabel}%`
+      : `Defeat — Zone lost at ${pctLabel}% corruption. Restoring canvas…`;
+  }
+
   const thresholdLabel = Math.round(EVENT_WIN_THRESHOLD * 100);
   const msLeft = Math.max(0, event.endsAt - now);
   const mm = Math.floor(msLeft / 60_000);
@@ -23,22 +47,17 @@ export function eventBannerText(event: EventStateDTO, now = Date.now()): string 
     .toString()
     .padStart(2, "0");
 
-  return (
-    event.status === "active"
-      ? `Corruption event — ${pctLabel}% corrupted · Win below ${thresholdLabel}% · Lose at ${thresholdLabel}% or more · ${mm}:${ss} left`
-      : event.result === null
-        ? `Corruption event — Finalizing result at ${pctLabel}%…`
-        : event.result === "defended"
-          ? `Victory — Zone defended at ${pctLabel}% corruption. Restoring canvas…`
-          : `Defeat — Zone lost at ${pctLabel}% corruption. Restoring canvas…`
-  );
+  return compact
+    ? `Corruption ${pctLabel}% · ${mm}:${ss} left`
+    : `Corruption event — ${pctLabel}% corrupted · Win below ${thresholdLabel}% · Lose at ${thresholdLabel}% or more · ${mm}:${ss} left`;
 }
 
 export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocate: () => void }) {
+  const phone = usePhoneLayout();
   const pct = Math.min(1, event.corruptionPct);
   const danger =
     event.result === "corrupted" || (event.result === null && event.corruptionPct >= EVENT_WIN_THRESHOLD);
-  const status = eventBannerText(event);
+  const status = eventBannerText(event, Date.now(), phone);
 
   return (
     <div
@@ -46,12 +65,21 @@ export function EventBanner({ event, onLocate }: { event: EventStateDTO; onLocat
       role="status"
       aria-live="polite"
     >
-      <Biohazard size={15} />
-      <span>
-        {status}
-        {event.defenders > 0 ? ` · ${event.defenders} defending` : ""}
+      {/* Icon and status travel together: on a phone the row wraps, and the
+          biohazard mark stranded alone on the line above reads as a glitch. */}
+      <span className="cp-event-head">
+        <Biohazard size={15} />
+        <span className="cp-event-text">{status}</span>
       </span>
+      {/* Its own element rather than a tail on the status string, so the
+          phone layout can wrap it down beside the bar instead of pushing
+          the row to a third line. The desktop separator is CSS. */}
+      {event.defenders > 0 && <span className="cp-event-defenders">{event.defenders} defending</span>}
       <div className="cp-event-bar">
+        {/* Only where the wording dropped the thresholds — on a desktop
+            banner that spells both of them out, a second marker for the
+            same number is noise. */}
+        {phone && <div className="cp-event-bar-mark" style={{ left: `${EVENT_WIN_THRESHOLD * 100}%` }} />}
         <div className="cp-event-bar-fill" style={{ width: `${pct * 100}%` }} />
       </div>
       <button className="cp-event-locate" onClick={onLocate} title="Fly to the zone">
