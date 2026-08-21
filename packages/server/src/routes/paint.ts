@@ -81,6 +81,12 @@ export function registerPaintRoutes(app: FastifyInstance): void {
           message: REFUSAL_MESSAGE[result.reason],
           ...(result.retryAfterMs !== undefined && { retryAfterMs: result.retryAfterMs }),
           ...(result.regionName !== undefined && { regionName: result.regionName }),
+          ...(result.bank !== undefined && {
+            bank: result.bank,
+            bankVersion: result.bankVersion,
+            nextAt: result.nextAt,
+            serverNow: result.serverNow,
+          }),
         } satisfies PaintError);
       }
 

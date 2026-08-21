@@ -25,6 +25,16 @@ export class PaintColorTracker {
     this.revisions.set(key, (this.revisions.get(key) ?? 0) + 1);
   }
 
+  /**
+   * The colour this client last saw or requested for a pixel: a palette
+   * index, `null` for known-unpainted, `undefined` when it has never seen
+   * the pixel at all. Fresher than any tile image, because live paint frames
+   * land here before the tile worker has re-rendered.
+   */
+  known(x: number, y: number): number | null | undefined {
+    return this.colors.get(pixelKey(x, y));
+  }
+
   /** Revision used to keep a slow pixel-info response from replacing newer paint. */
   revision(x: number, y: number): number {
     return this.revisions.get(pixelKey(x, y)) ?? 0;

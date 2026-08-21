@@ -206,10 +206,17 @@ describe("paint charge rules", () => {
       staff: null,
     });
 
+    // The refusal carries the authoritative balance with it. That is what
+    // lets a client that guessed the price wrong correct itself from the
+    // refusal alone, instead of a full /api/bootstrap per refused pixel.
     expect(result).toEqual({
       ok: false,
       reason: "no_charges",
       retryAfterMs,
+      bank: 0,
+      bankVersion: 7,
+      nextAt: NOW + 1_000,
+      serverNow: NOW,
     });
     expect(mocks.query).toHaveBeenCalledTimes(2);
     expect(cost).toBe(retryAfterMs / 1_000);

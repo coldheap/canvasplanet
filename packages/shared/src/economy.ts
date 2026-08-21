@@ -32,6 +32,19 @@ export const enum Terrain {
 }
 
 /**
+ * The same two values as plain exported constants.
+ *
+ * `const enum` members are erased at compile time and only inlined *within*
+ * the file that declares them, so under `isolatedModules` (which every
+ * package here uses) a bundled client module importing `Terrain.Land` would
+ * compile and then be `undefined` at runtime. Client code that has to
+ * construct a Terrain — rather than just receive one over the wire — uses
+ * these instead.
+ */
+export const TERRAIN_WATER: Terrain = Terrain.Water;
+export const TERRAIN_LAND: Terrain = Terrain.Land;
+
+/**
  * Palette index an unpainted pixel is drawn as in a preview that has no
  * basemap behind it (report thumbnail, timelapse) — the terrain's canonical
  * shade instead of literal transparency, so an empty stretch of ocean or

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Trophy, LayoutTemplate, Settings as SettingsIcon, X, AlertTriangle, Square, UserCircle, MessageCircle, Globe2, Map as MapIcon } from "lucide-react";
 import {
-  COST_BASE,
+  COST_MAX,
   ERASED,
   MIN_MAP_ZOOM,
   MIN_PAINT_ZOOM,
@@ -17,6 +17,7 @@ import { api } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
 import { useStore } from "./store.js";
+import type { CostProbe } from "./canvas/costProbe.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
 import { MapCanvas, type MapHandle } from "./components/MapCanvas.js";
 import type { GlobeHandle, GlobeView } from "./components/GlobeCanvas.js";
@@ -44,7 +45,7 @@ const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
 const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
-  const { ready, hydrate, syncBank, settlePaint, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
+  const { ready, hydrate, syncBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
     useStore();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
@@ -337,6 +338,12 @@ export function App() {
   const onPaint = useCallback(async (x: number, y: number) => {
     const { selectedColor, bank } = useStore.getState();
     const k = x * WORLD_SIZE + y;
+    const known = pixelCache.current.get(k);
+
+    // Price the pixel before begin() below records the optimistic colour —
+    // afterwards the tracker would report the colour we are about to apply as
+    // the one already there and quote an overpaint at the base rate.
+    const price = priceOf(x, y, selectedColor, known, paintColors.current, handle.current?.probe);
 
     // Shift strokes can revisit a coordinate many times before the first
     // response arrives. Remember the optimistic colour so those revisits do
@@ -344,20 +351,14 @@ export function App() {
     const colorAttempt = paintColors.current.begin(x, y, selectedColor);
     if (!colorAttempt) return;
 
-    // Best guess at the cost so the bank does not visibly jump when the
-    // response lands. Falls back to the base rate for a pixel we have not
-    // inspected.
-    const known = pixelCache.current.get(k);
-    const guess = known ? costOf(known).cost : COST_BASE;
-
-    if (bank < guess) {
+    if (bank < price) {
       paintColors.current.rollback(colorAttempt);
       showToast("Not enough charges yet.");
       return;
     }
 
     handle.current?.overlay.add([[x, y, selectedColor]]);
-    useStore.getState().spendOptimistic(guess);
+    useStore.getState().reserveCharges(price);
 
     try {
       let res = await api.paint(x, y, selectedColor);
@@ -388,8 +389,14 @@ export function App() {
             ? `Not enough charges. Ready in ${formatRetryAfter(err.retryAfterMs)}.`
             : err.message ?? "Could not paint that pixel.",
         );
-        // Resync rather than guess at how far the optimistic bank drifted.
-        void api.bootstrap().then(hydrate);
+        // A refusal never spends: releasing the reservation in `finally` puts
+        // the bank back exactly. The single exception is "not enough
+        // charges", which proves this client's balance had drifted — and the
+        // server attaches the correct one to that refusal precisely so a
+        // burst of them does not turn into a burst of /api/bootstrap calls.
+        if (err.bank !== undefined && err.bankVersion !== undefined && err.serverNow !== undefined) {
+          syncBank(err.bank, err.nextAt ?? null, err.bankVersion, err.serverNow);
+        }
         return;
       }
 
@@ -401,11 +408,10 @@ export function App() {
     } catch (e) {
       if (paintColors.current.rollback(colorAttempt)) handle.current?.overlay.remove(x, y);
       showToast(e instanceof Error ? e.message : "Could not place that pixel.");
-      void api.bootstrap().then(hydrate);
     } finally {
-      settlePaint();
+      useStore.getState().releaseCharges(price);
     }
-  }, [hydrate, settlePaint, syncBank]);
+  }, [syncBank]);
 
   const onViewport = useCallback(
     (bbox: { x0: number; y0: number; x1: number; y1: number }, z: number) => {
@@ -703,14 +709,38 @@ export function App() {
   );
 }
 
-/** Runs the same shared cost function the server uses as the authority. */
-function costOf(info: PixelInfo): { cost: number; reason: string } {
-  const { selectedColor } = useStore.getState();
-  return paintCost({
-    currentColor: info.color,
-    newColor: selectedColor,
-    terrain: info.terrain,
-  });
+/**
+ * What this pixel will cost, using the same shared function the server runs
+ * as the authority.
+ *
+ * The two inputs come from whatever local source is freshest: live paint
+ * frames and this client's own paints (the tracker), then the tile images
+ * already on screen (the probe, see canvas/costProbe.ts), then a cached
+ * /api/pixel response. Terrain never changes, so either of the last two
+ * answers it permanently.
+ *
+ * When neither half can be established — the globe view, a tile that has not
+ * loaded — it falls back to COST_MAX rather than COST_BASE. Under-reserving
+ * is the failure that matters: it makes the charge bar promise paints the
+ * server then refuses, which reads as the canvas randomly refusing to accept
+ * pixels you appear to have the charges for.
+ */
+function priceOf(
+  x: number,
+  y: number,
+  newColor: number,
+  cached: PixelInfo | undefined,
+  tracker: PaintColorTracker,
+  probe: CostProbe | undefined,
+): number {
+  let currentColor = tracker.known(x, y);
+  if (currentColor === undefined) currentColor = probe?.colorAt(x, y);
+  if (currentColor === undefined && cached) currentColor = cached.color;
+
+  const terrain = cached ? cached.terrain : probe?.terrainAt(x, y);
+
+  if (currentColor === undefined || terrain === undefined) return COST_MAX;
+  return paintCost({ currentColor, newColor, terrain }).cost;
 }
 
 function formatRetryAfter(ms: number): string {

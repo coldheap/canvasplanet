@@ -37,6 +37,7 @@ import {
   latLngToPixel,
 } from "@canvasplanet/shared";
 import { BboxDraw } from "../canvas/bboxDraw.js";
+import { CostProbe } from "../canvas/costProbe.js";
 import { createHeatLayer } from "../canvas/heatLayer.js";
 import { createPixelTileLayer } from "../canvas/pixelTileLayer";
 import { LiveOverlay } from "../canvas/liveOverlay.js";
@@ -62,6 +63,8 @@ export interface MapHandle {
   point: PointPick;
   /** The template ghost, aligned to the pixel grid. */
   template: TemplateLayer;
+  /** Prices a pixel from the tiles already on screen — see costProbe.ts. */
+  probe: CostProbe;
 }
 
 export function MapCanvas({
@@ -128,6 +131,11 @@ export function MapCanvas({
     mapRef.current = map;
     L.control.zoom({ position: "topright" }).addTo(map);
 
+    // Reads the colour and terrain under a pixel out of the tile images the
+    // layers below are about to load, so a paint can be priced without a
+    // round trip. Declared here because those layers feed it.
+    const probe = new CostProbe();
+
     // Always on — see the file doc comment's layer 1. zIndex 0 pins it
     // under both the OSM overlay and the pixel canvas.
     // Coarse world context appears immediately and remains as a fallback
@@ -155,6 +163,10 @@ export function MapCanvas({
       updateWhenZooming: false,
       keepBuffer: 1,
       zIndex: 0,
+      // Two flat colours at one image pixel per canvas pixel: this layer is
+      // also the only local source of "is this pixel land or water", which
+      // half of the paint cost depends on.
+      onNativeTile: probe.observeTerrainTile,
     }).addTo(map);
 
     // Not added to the map here — toggled on by applyOsm() below, off by
@@ -178,7 +190,10 @@ export function MapCanvas({
       // A tileload alone would not prove the image is current (the browser or
       // edge may return a stale PNG), so the overlay verifies its pending
       // colours against the decoded image before handing them off.
-      onNativeTile: (z, x, y, img) => overlay?.confirmTile(z, x, y, img),
+      onNativeTile: (z, x, y, img) => {
+        overlay?.confirmTile(z, x, y, img);
+        probe.observeCanvasTile(z, x, y, img);
+      },
       // A four-tile buffer could turn a 40-tile viewport into ~200 network
       // requests at every zoom level. One ring is enough to hide pan edges
       // without making visible tiles wait behind off-screen work.
@@ -552,7 +567,7 @@ export function MapCanvas({
     const point = new PointPick(map);
     const template = new TemplateLayer(map);
     applyHistory();
-    cb.current.onReady({ map, overlay, refreshTiles, flyTo, fitTemplate, bbox, point, template });
+    cb.current.onReady({ map, overlay, refreshTiles, flyTo, fitTemplate, bbox, point, template, probe });
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
     // and the corruption zone changes on its own 1Hz WS push, not a map event.
@@ -578,6 +593,7 @@ export function MapCanvas({
       template.destroy();
       hidePaintPreview();
       overlay.destroy();
+      probe.clear();
       map.remove();
       mapRef.current = null;
     };

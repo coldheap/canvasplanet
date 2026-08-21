@@ -61,7 +61,16 @@ interface State {
   settledNextAt: number | null;
   bankVersion: number;
   bankSnapshotAt: number;
-  pendingPaints: number;
+  /**
+   * Charges held aside for paints whose response has not arrived yet.
+   *
+   * `bank` is always `settledBank - reserved`, never an independently
+   * mutated number. That is what makes a burst of taps add up exactly: each
+   * request reserves what it will cost, each response replaces the settled
+   * balance with the server's and hands its reservation back, and no
+   * response can refund a paint that has not been accounted for yet.
+   */
+  reserved: number;
   selectedColor: number;
   hoverPixel: { x: number; y: number } | null;
 
@@ -152,9 +161,10 @@ interface State {
     bankVersion: number,
     serverNow: number,
   ) => void;
-  /** Optimistic decrement between click and response. */
-  spendOptimistic: (cost: number) => void;
-  settlePaint: () => void;
+  /** Hold `cost` charges aside for a paint that has just been sent. */
+  reserveCharges: (cost: number) => void;
+  /** Hand back a reservation once its paint has been answered either way. */
+  releaseCharges: (cost: number) => void;
   setLeaderboard: (world: number, rows: LbRow[]) => void;
   setAllianceLeaderboard: (rows: AllianceLbRow[]) => void;
   /** Full refresh of names/colours — the panel calls this after create/join/
@@ -186,7 +196,7 @@ export const useStore = create<State>((set) => ({
   settledNextAt: null,
   bankVersion: -1,
   bankSnapshotAt: Number.NEGATIVE_INFINITY,
-  pendingPaints: 0,
+  reserved: 0,
   selectedColor: 0,
   hoverPixel: null,
 
@@ -252,34 +262,30 @@ export const useStore = create<State>((set) => ({
 
   setBank: (bank, nextAt) =>
     set((s) => ({
-      bank,
+      settledBank: bank,
+      settledNextAt: nextAt,
+      bank: visibleBank(bank, s.reserved, s.max),
       nextAt,
-      ...(s.pendingPaints === 0 ? { settledBank: bank, settledNextAt: nextAt } : {}),
     })),
   syncBank: (bank, nextAt, bankVersion, serverNow) =>
     set((s) => chargeSnapshotPatch(s, bank, nextAt, bankVersion, serverNow)),
-  spendOptimistic: (cost) =>
+  reserveCharges: (cost) =>
     set((s) => {
-      const bank = Math.max(0, s.bank - cost);
+      const reserved = s.reserved + cost;
+      const bank = visibleBank(s.settledBank, reserved, s.max);
       return {
+        reserved,
         bank,
-        pendingPaints: s.pendingPaints + 1,
         // Spending from a full bank is the one transition where nextAt is
         // still null. Start the countdown locally while the paint request is
         // in flight; the authoritative response will replace it shortly.
         nextAt: bank < s.max && s.nextAt === null ? Date.now() + s.regenMs : s.nextAt,
       };
     }),
-  settlePaint: () =>
+  releaseCharges: (cost) =>
     set((s) => {
-      const pendingPaints = Math.max(0, s.pendingPaints - 1);
-      return pendingPaints === 0
-        ? {
-            pendingPaints,
-            bank: s.settledBank,
-            nextAt: s.settledNextAt,
-          }
-        : { pendingPaints };
+      const reserved = Math.max(0, s.reserved - cost);
+      return { reserved, bank: visibleBank(s.settledBank, reserved, s.max) };
     }),
   setLeaderboard: (world, leaderboard) => set({ world, leaderboard }),
   setAllianceLeaderboard: (allianceLeaderboard) => set({ allianceLeaderboard }),
@@ -341,8 +347,13 @@ function applyThemeClass(darkMode: boolean): void {
   document.documentElement.classList.toggle("cp-dark", darkMode);
 }
 
+/** What the charge bar shows: the settled balance minus everything in flight. */
+function visibleBank(settledBank: number, reserved: number, max: number): number {
+  return Math.max(0, Math.min(max, settledBank - reserved));
+}
+
 function chargeSnapshotPatch(
-  state: Pick<State, "bank" | "bankVersion" | "bankSnapshotAt" | "pendingPaints">,
+  state: Pick<State, "bankVersion" | "bankSnapshotAt" | "reserved" | "max">,
   bank: number,
   serverNextAt: number | null,
   bankVersion: number,
@@ -358,10 +369,10 @@ function chargeSnapshotPatch(
     bankSnapshotAt: serverNow,
     settledBank: bank,
     settledNextAt: nextAt,
-    // A response for the first request in a mobile burst does not yet include
-    // the later optimistic spends. Never let that partial snapshot visually
-    // refund them; the final settled response supplies the exact balance.
-    bank: state.pendingPaints > 0 ? Math.min(state.bank, bank) : bank,
+    // A response for the first request in a burst has not seen the requests
+    // still in flight behind it. Subtracting what they reserved is what keeps
+    // that partial snapshot from visually refunding them.
+    bank: visibleBank(bank, state.reserved, state.max),
     nextAt,
   };
 }

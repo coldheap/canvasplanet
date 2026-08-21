@@ -68,6 +68,9 @@ export const COST_BASE = 2;
 export const COST_OVERPAINT = 4;
 export const COST_VIOLATION = 4;
 export const COST_RESTORE = 2;
+/** The most any single pixel can cost. What the client reserves from the
+ *  bank when it cannot yet work out the exact price of a pixel. */
+export const COST_MAX = 4;
 
 // ---------------------------------------------------------------------------
 // Rate limiting

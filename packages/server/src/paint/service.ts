@@ -65,7 +65,17 @@ export type PaintOutcome =
       userId: number | null;
       prevUserId: number | null;
     }
-  | { ok: false; reason: PaintRefusal; retryAfterMs?: number; regionName?: string };
+  | {
+      ok: false;
+      reason: PaintRefusal;
+      retryAfterMs?: number;
+      regionName?: string;
+      /** Only on NoCharges — see the refusal branch in `paint`. */
+      bank?: number;
+      bankVersion?: number;
+      nextAt?: number | null;
+      serverNow?: number;
+    };
 
 export async function paint(input: PaintInput): Promise<PaintOutcome> {
   const { x, y, color, sessionId, ip, originCountryId, staff } = input;
@@ -170,10 +180,18 @@ export async function paint(input: PaintInput): Promise<PaintOutcome> {
     if (!staff) {
       const spent = spend(bank, cost, now, CHARGE_MAX, regenMs);
       if (!spent) {
+        // The one refusal that means the client's own balance was wrong.
+        // Hand back the authoritative snapshot with it so a burst of these
+        // costs one response each instead of one full bootstrap each.
+        const current = regenerate(bank, now, CHARGE_MAX, regenMs);
         return {
           ok: false as const,
           reason: PaintRefusal.NoCharges,
           retryAfterMs: msUntilAffordable(bank, cost, now, CHARGE_MAX, regenMs) ?? 0,
+          bank: current.charges,
+          bankVersion: s.total_paints,
+          nextAt: nextChargeAt(current, now, regenMs),
+          serverNow: now,
         };
       }
       bank = spent;

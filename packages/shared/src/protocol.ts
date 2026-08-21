@@ -293,6 +293,18 @@ export interface PaintError {
   message: string;
   /** Set for 429s so the client can show an accurate countdown. */
   retryAfterMs?: number;
+  /**
+   * Set when the refusal was "not enough charges" — the one refusal that
+   * proves the client's own idea of the balance was wrong. Carrying the
+   * authoritative snapshot on the refusal itself is what lets the client
+   * correct itself without a full /api/bootstrap round trip per refused
+   * pixel. Every other refusal leaves the bank untouched, so there is
+   * nothing to resync.
+   */
+  bank?: number;
+  bankVersion?: number;
+  nextAt?: number | null;
+  serverNow?: number;
   /** Set for 423 protected. */
   regionName?: string;
   /** Set for 428. Null when Turnstile is configured off (the dev default). */
