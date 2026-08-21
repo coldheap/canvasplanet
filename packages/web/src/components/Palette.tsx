@@ -6,7 +6,7 @@
  * on a guess, so the UI refuses rather than letting people misfire.
  */
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { ChevronUp, MapPinOff } from "lucide-react";
 import {
   BASEMAP_LAND_COLOR_INDEX,
@@ -30,7 +30,8 @@ const WATER_SWATCHES = [
 const DISPLAY_SWATCHES = [...LAND_SWATCHES, ...WATER_SWATCHES];
 
 export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPaint: () => void }) {
-  const { selectedColor, select } = useStore();
+  const selectedColor = useStore((s) => s.selectedColor);
+  const select = useStore((s) => s.select);
   const [mobileOpen, setMobileOpen] = useState(false);
   const selectedSwatch = PALETTE[selectedColor] ?? PALETTE[0]!;
 
@@ -64,6 +65,16 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
     if (zoom < MIN_PAINT_ZOOM) setMobileOpen(false);
   }, [zoom]);
 
+  // Stable, so the 34 memoised swatches below only re-render when the
+  // selection actually moves between two of them.
+  const pick = useCallback(
+    (i: number) => {
+      select(i);
+      setMobileOpen(false);
+    },
+    [select],
+  );
+
   if (zoom < MIN_PAINT_ZOOM) {
     return (
       <button type="button" className="cp-palette cp-palette-locked cp-card" onClick={onZoomToPaint}>
@@ -78,17 +89,7 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
       <div className="cp-swatches cp-palette-grid cp-card" id="paint-colors">
         <div className="cp-swatch-group">
           {DISPLAY_SWATCHES.map((s) => (
-            <Swatch
-              key={s.i}
-              i={s.i}
-              hex={s.hex}
-              name={s.name}
-              on={s.i === selectedColor}
-              pick={(i) => {
-                select(i);
-                setMobileOpen(false);
-              }}
-            />
+            <Swatch key={s.i} i={s.i} hex={s.hex} name={s.name} on={s.i === selectedColor} pick={pick} />
           ))}
         </div>
       </div>
@@ -108,7 +109,7 @@ export function PalettePanel({ zoom, onZoomToPaint }: { zoom: number; onZoomToPa
   );
 }
 
-function Swatch({
+const Swatch = memo(function Swatch({
   i,
   hex,
   name,
@@ -133,4 +134,4 @@ function Swatch({
       <span className="cp-swatch-chip" style={{ background: hex }} aria-hidden />
     </button>
   );
-}
+});

@@ -12,7 +12,10 @@ import { DiscordIcon } from "./DiscordPanel.js";
 import { LegalFooter } from "./LegalFooter.js";
 
 export function SettingsPanel() {
-  const { settings, updateSettings, staff, setPanel } = useStore();
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const staff = useStore((s) => s.staff);
+  const setPanel = useStore((s) => s.setPanel);
 
   return (
     <div className="cp-settings">

@@ -8,7 +8,9 @@ import { CountryFlag } from "./CountryFlag.js";
 const PIE_COLORS = ["#5b8def", "#ec6b56", "#45b69c", "#f2b84b", "#9b72cf", "#94a3b8"];
 
 export function CountryLeaderboardTab() {
-  const { leaderboard, countries, yourCountryId } = useStore();
+  const leaderboard = useStore((s) => s.leaderboard);
+  const countries = useStore((s) => s.countries);
+  const yourCountryId = useStore((s) => s.yourCountryId);
   const [expanded, setExpanded] = useState(false);
 
   const ranked = [...leaderboard].filter((row) => row[1] > 0).sort((a, b) => b[1] - a[1]);

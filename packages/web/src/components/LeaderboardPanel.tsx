@@ -24,7 +24,8 @@ import { PlayerLeaderboardTab } from "./PlayerLeaderboardTab.js";
 type Tab = "player" | "faction" | "country";
 
 export function LeaderboardPanel() {
-  const { world, setPanel } = useStore();
+  const world = useStore((s) => s.world);
+  const setPanel = useStore((s) => s.setPanel);
   const [tab, setTab] = useState<Tab>("player");
   const [mode, setMode] = useState<"cumulative" | "held">("cumulative");
 

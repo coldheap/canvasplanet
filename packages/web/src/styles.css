@@ -2773,6 +2773,7 @@ html.cp-motion-reduce * {
  * desktop positions competing for the same screen edges. The top row is
  * navigation; the bottom row is account/chat, with a scrollable palette just
  * above it. Every outer edge includes the device safe area. */
+/* Mirrored in src/layout.ts as PHONE_LAYOUT_QUERY — keep the two in step. */
 @media (max-width: 640px), (max-width: 950px) and (max-height: 500px) {
   .cp-dock,
   .cp-account-dock,

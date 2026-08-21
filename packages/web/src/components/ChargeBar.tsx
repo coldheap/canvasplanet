@@ -10,20 +10,26 @@ import { Zap } from "lucide-react";
 import { useStore } from "../store.js";
 
 export function ChargeBar() {
-  const { bank, max, nextAt, regenMs, settings, setBank } = useStore();
+  const bank = useStore((s) => s.bank);
+  const max = useStore((s) => s.max);
+  const nextAt = useStore((s) => s.nextAt);
+  const regenMs = useStore((s) => s.regenMs);
+  // The whole settings object would re-render this on any unrelated toggle.
+  const notifyWhenFull = useStore((s) => s.settings.notifyWhenFull);
+  const setBank = useStore((s) => s.setBank);
   const seconds = useCountdown(bank, max, nextAt, regenMs, setBank);
 
   // Ask once, when the bank fills, if the user opted in. This is the single
   // strongest retention lever available without accounts.
   useEffect(() => {
-    if (!settings.notifyWhenFull || bank < max) return;
+    if (!notifyWhenFull || bank < max) return;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     new Notification("CanvasPlanet", {
       body: `Your ${max} charges are ready.`,
       icon: "/logo.png",
       badge: "/logo.png",
     });
-  }, [bank, max, settings.notifyWhenFull]);
+  }, [bank, max, notifyWhenFull]);
 
   // Continuous fill: whole charges plus how far into the next one we are, so
   // the bar creeps forward every second instead of jumping in 1/max steps.

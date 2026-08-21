@@ -16,6 +16,7 @@ import {
 import { api } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
+import { usePhoneLayout } from "./layout.js";
 import { useStore } from "./store.js";
 import type { CostProbe } from "./canvas/costProbe.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
@@ -45,8 +46,30 @@ const GlobeCanvas = lazy(() => import("./components/GlobeCanvas.js"));
 const GLOBE_TELEPORT_ZOOM = 6;
 
 export function App() {
-  const { ready, hydrate, syncBank, setLeaderboard, panel, setPanel, togglePanel, openCountry, mapPicking, user, frozen, event, pps, activePlayers } =
-    useStore();
+  // One subscription per value, never `useStore()` bare. The pulse frame
+  // rewrites pps/players/history every second, so a whole-store subscription
+  // re-rendered this component — and with it the map, palette and charge bar —
+  // once a second forever, plus once per paint.
+  const ready = useStore((s) => s.ready);
+  const hydrate = useStore((s) => s.hydrate);
+  const syncBank = useStore((s) => s.syncBank);
+  const setLeaderboard = useStore((s) => s.setLeaderboard);
+  const panel = useStore((s) => s.panel);
+  const setPanel = useStore((s) => s.setPanel);
+  const togglePanel = useStore((s) => s.togglePanel);
+  const openCountry = useStore((s) => s.openCountry);
+  const mapPicking = useStore((s) => s.mapPicking);
+  const user = useStore((s) => s.user);
+  const frozen = useStore((s) => s.frozen);
+  const event = useStore((s) => s.event);
+  // Only ever read as a boolean, and it changes every second — select the
+  // boolean so a busy canvas does not re-render the app at 1 Hz.
+  const live = useStore((s) => s.pps > 0);
+  const activePlayers = useStore((s) => s.activePlayers);
+  // The stylesheet does not render the pixel inspector in the phone
+  // composition, so neither hovering nor long-pressing should spend a
+  // request fetching what it would have shown.
+  const phoneLayout = usePhoneLayout();
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
   const [globeStart, setGlobeStart] = useState<GlobeView>(readGlobeStart);
@@ -103,6 +126,14 @@ export function App() {
   /** Colours learned from pixel info, live frames, and optimistic paints. */
   const paintColors = useRef(new PaintColorTracker());
   const hoverTimer = useRef<number | null>(null);
+  /** Latest hovered pixel, so a slow /api/pixel response for a pixel the
+   *  cursor has already left can be discarded. A ref rather than store state:
+   *  every mousemove would otherwise be a store write, waking every
+   *  subscriber in the app dozens of times a second. */
+  const hoverPixel = useRef<{ x: number; y: number } | null>(null);
+  /** Whether hoverInfo is currently non-null — lets the handler skip a
+   *  setState (and a render) for every mousemove over empty space. */
+  const hoverInfoShown = useRef(false);
 
   const switchToGlobe = useCallback(() => {
     const map = handle.current?.map;
@@ -286,48 +317,62 @@ export function App() {
   // Terrain is server-side only, so neither can be
   // computed client-side without asking. Debounced and cached, this is one
   // small request per hover-settle.
-  const onHover = useCallback((pixel: { x: number; y: number } | null) => {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    useStore.setState({ hoverPixel: pixel });
-    if (!pixel) {
-      setHoverInfo(null);
-      return;
-    }
-
-    const k = pixel.x * WORLD_SIZE + pixel.y;
-    const cached = pixelCache.current.get(k);
-    if (cached) {
-      setHoverInfo(cached);
-      return;
-    }
-
-    hoverTimer.current = window.setTimeout(() => {
-      const revision = paintColors.current.revision(pixel.x, pixel.y);
-      void api.pixel(pixel.x, pixel.y).then((info) => {
-        if (pixelCache.current.size > 2000) pixelCache.current.clear();
-        if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
-          pixelCache.current.set(k, info);
+  const onHover = useCallback(
+    (pixel: { x: number; y: number } | null) => {
+      if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+      hoverPixel.current = pixel;
+      if (!pixel || phoneLayout) {
+        if (hoverInfoShown.current) {
+          hoverInfoShown.current = false;
+          setHoverInfo(null);
         }
-        // Ignore a response for a pixel the cursor has already left.
-        const now = useStore.getState().hoverPixel;
-        if (now && now.x === pixel.x && now.y === pixel.y) setHoverInfo(info);
-      });
-    }, 150);
-  }, []);
+        return;
+      }
+
+      const k = pixel.x * WORLD_SIZE + pixel.y;
+      const cached = pixelCache.current.get(k);
+      if (cached) {
+        hoverInfoShown.current = true;
+        setHoverInfo(cached);
+        return;
+      }
+
+      hoverTimer.current = window.setTimeout(() => {
+        const revision = paintColors.current.revision(pixel.x, pixel.y);
+        void api.pixel(pixel.x, pixel.y).then((info) => {
+          if (pixelCache.current.size > 2000) pixelCache.current.clear();
+          if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
+            pixelCache.current.set(k, info);
+          }
+          // Ignore a response for a pixel the cursor has already left.
+          const now = hoverPixel.current;
+          if (now && now.x === pixel.x && now.y === pixel.y) {
+            hoverInfoShown.current = true;
+            setHoverInfo(info);
+          }
+        });
+      }, 150);
+    },
+    [phoneLayout],
+  );
 
   /** Right-click / long-press pins the inspector on a pixel. */
-  const onInspect = useCallback((pixel: { x: number; y: number }) => {
-    // Always refetch rather than trusting the hover cache: a pin is a
-    // deliberate "tell me about this one", and the cached copy may predate
-    // someone else painting over it.
-    const revision = paintColors.current.revision(pixel.x, pixel.y);
-    void api.pixel(pixel.x, pixel.y).then((info) => {
-      if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
-        pixelCache.current.set(pixel.x * WORLD_SIZE + pixel.y, info);
-      }
-      setPinnedInfo(info);
-    });
-  }, []);
+  const onInspect = useCallback(
+    (pixel: { x: number; y: number }) => {
+      if (phoneLayout) return;
+      // Always refetch rather than trusting the hover cache: a pin is a
+      // deliberate "tell me about this one", and the cached copy may predate
+      // someone else painting over it.
+      const revision = paintColors.current.revision(pixel.x, pixel.y);
+      void api.pixel(pixel.x, pixel.y).then((info) => {
+        if (paintColors.current.observeIfRevision(pixel.x, pixel.y, revision, info.color)) {
+          pixelCache.current.set(pixel.x * WORLD_SIZE + pixel.y, info);
+        }
+        setPinnedInfo(info);
+      });
+    },
+    [phoneLayout],
+  );
 
   // ---- paint --------------------------------------------------------------
   /**
@@ -455,7 +500,10 @@ export function App() {
         role="status"
         aria-label={bootError ? "CanvasPlanet is reconnecting" : "CanvasPlanet is loading"}
       >
-        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" fetchPriority="high" />
+        {/* No fetchPriority here: React 18 does not know the prop and logs a
+            warning for it on every load, and index.html already preloads this
+            exact image at high priority before React mounts at all. */}
+        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" />
       </div>
     );
   }
@@ -534,7 +582,7 @@ export function App() {
           onClick={() => togglePanel("activity")}
         >
           <Activity size={19} />
-          <span className={pps > 0 ? "cp-activity-indicator is-live" : "cp-activity-indicator"} aria-hidden />
+          <span className={live ? "cp-activity-indicator is-live" : "cp-activity-indicator"} aria-hidden />
         </button>
         <button
           className="cp-dock-btn"

@@ -571,14 +571,24 @@ export function MapCanvas({
 
     // Settings can toggle the grid or heatmap without a map event to hang off,
     // and the corruption zone changes on its own 1Hz WS push, not a map event.
-    const unsubscribe = useStore.subscribe(() => {
-      applyGrid();
-      applyHeat();
-      applyOsm();
-      applyEventZone();
-      applyHistory();
-      if (lastHoverPixel.current) schedulePaintPreview(lastHoverPixel.current);
-      else hidePaintPreview();
+    //
+    // The store also changes on every paint and on every one-second pulse
+    // frame, so this compares the slices each apply() actually reads rather
+    // than re-running all five (and rescheduling the paint preview) whenever
+    // anything anywhere in the app moves.
+    const unsubscribe = useStore.subscribe((state, prev) => {
+      const historyChanged = state.historyAt !== prev.historyAt;
+      if (state.settings !== prev.settings || historyChanged) {
+        applyGrid();
+        applyHeat();
+        applyOsm();
+      }
+      if (state.event !== prev.event || historyChanged) applyEventZone();
+      if (historyChanged) applyHistory();
+      if (state.selectedColor !== prev.selectedColor || state.mapPicking !== prev.mapPicking || historyChanged) {
+        if (lastHoverPixel.current) schedulePaintPreview(lastHoverPixel.current);
+        else hidePaintPreview();
+      }
     });
 
     return () => {

@@ -72,7 +72,6 @@ interface State {
    */
   reserved: number;
   selectedColor: number;
-  hoverPixel: { x: number; y: number } | null;
 
   /** Paints per second, from the pulse frame — drives the activity ticker. */
   pps: number;
@@ -198,7 +197,6 @@ export const useStore = create<State>((set) => ({
   bankSnapshotAt: Number.NEGATIVE_INFINITY,
   reserved: 0,
   selectedColor: 0,
-  hoverPixel: null,
 
   pps: 0,
   activePlayers: null,

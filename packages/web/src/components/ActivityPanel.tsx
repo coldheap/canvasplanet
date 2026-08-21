@@ -19,17 +19,15 @@ import { CountryFlag } from "./CountryFlag.js";
 type CountryView = "list" | "grid";
 
 export function ActivityPanel() {
-  const {
-    pps,
-    pulseHistory,
-    activeCountries,
-    activityEvents,
-    countries,
-    world,
-    user,
-    playerLeaderboard,
-    setPanel,
-  } = useStore();
+  const pps = useStore((s) => s.pps);
+  const pulseHistory = useStore((s) => s.pulseHistory);
+  const activeCountries = useStore((s) => s.activeCountries);
+  const activityEvents = useStore((s) => s.activityEvents);
+  const countries = useStore((s) => s.countries);
+  const world = useStore((s) => s.world);
+  const user = useStore((s) => s.user);
+  const playerLeaderboard = useStore((s) => s.playerLeaderboard);
+  const setPanel = useStore((s) => s.setPanel);
   const [countryView, setCountryView] = useState<CountryView>("list");
 
   useEffect(() => {

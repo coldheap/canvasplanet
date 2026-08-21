@@ -18,7 +18,11 @@ import { api } from "../api.js";
 import { useStore } from "../store.js";
 
 export function FactionLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) {
-  const { alliances, allianceLeaderboard, yourAllianceId, setAlliances, setYourAlliance } = useStore();
+  const alliances = useStore((s) => s.alliances);
+  const allianceLeaderboard = useStore((s) => s.allianceLeaderboard);
+  const yourAllianceId = useStore((s) => s.yourAllianceId);
+  const setAlliances = useStore((s) => s.setAlliances);
+  const setYourAlliance = useStore((s) => s.setYourAlliance);
   const [expanded, setExpanded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");

@@ -10,7 +10,13 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export function ChatPanel({ onClose, onLogin }: { onClose: () => void; onLogin: () => void }) {
-  const { chatMessages, mergeChatMessages, user, staff } = useStore();
+  // Selectors, not `useStore()`: chat can be open while painting, and a
+  // whole-store subscription re-rendered the entire message list on every
+  // paint and every one-second pulse frame.
+  const chatMessages = useStore((s) => s.chatMessages);
+  const mergeChatMessages = useStore((s) => s.mergeChatMessages);
+  const user = useStore((s) => s.user);
+  const staff = useStore((s) => s.staff);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(chatMessages.length === 0);
   const [hasMore, setHasMore] = useState(true);

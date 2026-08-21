@@ -52,7 +52,10 @@ function DiscordIcon({ size = 15 }: { size?: number }) {
 }
 
 export function AccountPanel() {
-  const { user, setUser, pendingResetToken, setPendingResetToken } = useStore();
+  const user = useStore((s) => s.user);
+  const setUser = useStore((s) => s.setUser);
+  const pendingResetToken = useStore((s) => s.pendingResetToken);
+  const setPendingResetToken = useStore((s) => s.setPendingResetToken);
 
   // A password-reset link takes priority over whatever else this panel would
   // otherwise show — arriving here at all means the browser just followed an

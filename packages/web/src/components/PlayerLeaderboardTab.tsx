@@ -17,7 +17,9 @@ import { useStore } from "../store.js";
 import { UserAvatar } from "./UserAvatar.js";
 
 export function PlayerLeaderboardTab({ mode }: { mode: "cumulative" | "held" }) {
-  const { playerLeaderboard, user, setPanel } = useStore();
+  const playerLeaderboard = useStore((s) => s.playerLeaderboard);
+  const user = useStore((s) => s.user);
+  const setPanel = useStore((s) => s.setPanel);
   const [expanded, setExpanded] = useState(false);
 
   // [userId, displayName, cumulative, held, streakDays, avatarRevision]
