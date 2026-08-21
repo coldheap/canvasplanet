@@ -3,23 +3,16 @@ import { createRoot } from "react-dom/client";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 import "./seo.css";
+import { startBootstrap } from "./api.js";
 import { App } from "./App.js";
+
+// Before the first render, not after it: see startBootstrap's comment. The
+// round trip then overlaps React's mount and Leaflet's map construction
+// instead of queueing behind them.
+startBootstrap();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
-
-// Country flags are used only after the canvas UI is interactive (panels and
-// pixel inspection). Their all-country stylesheet is much larger than the
-// startup shell, so fetch it during idle time instead of blocking first paint.
-const loadFlagStyles = () => void import("flag-icons/css/flag-icons.min.css");
-const idleWindow = window as Window & {
-  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-};
-if (idleWindow.requestIdleCallback) {
-  idleWindow.requestIdleCallback(loadFlagStyles, { timeout: 1_500 });
-} else {
-  window.setTimeout(loadFlagStyles, 0);
-}

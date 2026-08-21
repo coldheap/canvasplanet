@@ -35,6 +35,34 @@ const post = <T>(path: string, body: unknown) =>
     body: JSON.stringify(body),
   }).then(json<T>);
 
+/**
+ * The bootstrap request, started before React renders.
+ *
+ * Bootstrap is the only thing standing between a cold load and a usable
+ * interface, and it depends on nothing the app computes. Waiting for React to
+ * mount and Leaflet to build a map before asking for it puts hundreds of
+ * milliseconds of main-thread work in front of a network round trip that
+ * could have been in flight the whole time. main.tsx kicks it off; App
+ * consumes the same promise instead of issuing its own.
+ */
+let pendingBootstrap: Promise<BootstrapResponse> | null = null;
+
+export function startBootstrap(): Promise<BootstrapResponse> {
+  pendingBootstrap ??= api.bootstrap();
+  return pendingBootstrap;
+}
+
+/**
+ * The in-flight early request, once. Every later caller — a retry after a
+ * failure, a resync — gets a fresh request, because by then the point is to
+ * find out what changed.
+ */
+export function takeBootstrap(): Promise<BootstrapResponse> {
+  const first = pendingBootstrap;
+  pendingBootstrap = null;
+  return first ?? api.bootstrap();
+}
+
 export const api = {
   bootstrap: async () => {
     // A proxy can keep a request open while the API is restarting. Without a

@@ -13,9 +13,10 @@ import {
   paintCost,
   pixelToLatLng,
 } from "@canvasplanet/shared";
-import { api } from "./api.js";
+import { api, takeBootstrap } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
+import { loadFlagStyles } from "./flagStyles.js";
 import { usePhoneLayout } from "./layout.js";
 import { useStore } from "./store.js";
 import type { CostProbe } from "./canvas/costProbe.js";
@@ -117,7 +118,16 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showToast]);
 
+  // Country flags are only ever drawn by panels, and their stylesheet is
+  // large enough to be worth keeping off the startup thread entirely.
+  useEffect(() => {
+    if (ready) loadFlagStyles();
+  }, [ready]);
+
   const ws = useRef<WsClient | null>(null);
+  /** Latest viewport reported by whichever renderer is active, so a socket
+   *  created after the map can be told where to point. */
+  const viewport = useRef<{ bbox: { x0: number; y0: number; x1: number; y1: number }; z: number } | null>(null);
   const handle = useRef<MapHandle | null>(null);
   const globeHandle = useRef<GlobeHandle | null>(null);
   const flatZoom = useRef<number | null>(null);
@@ -192,7 +202,9 @@ export function App() {
     let attempts = 0;
 
     const load = () => {
-      void api.bootstrap().then((boot) => {
+      // The first pass consumes the request main.tsx already put in flight;
+      // a retry issues a fresh one.
+      void takeBootstrap().then((boot) => {
       if (cancelled) return;
       attempts = 0;
       setBootError(false);
@@ -292,6 +304,10 @@ export function App() {
       });
       client.connect();
       ws.current = client;
+      // Catch up on the viewport the map reported while this socket did not
+      // exist yet. setViewport queues when the socket is still connecting;
+      // WsClient replays it on open.
+      if (viewport.current) client.setViewport(viewport.current.bbox, viewport.current.z);
       }).catch(() => {
         if (cancelled) return;
         setBootError(true);
@@ -461,6 +477,13 @@ export function App() {
   const onViewport = useCallback(
     (bbox: { x0: number; y0: number; x1: number; y1: number }, z: number) => {
       setZoom(z);
+      // Remembered as well as forwarded. The renderer reports its opening
+      // viewport as soon as it mounts, which is now before bootstrap has
+      // answered and therefore before there is a socket to tell — and a
+      // visitor who opens a link and simply looks at it never fires a second
+      // map event to make up for it. Without this they would receive no live
+      // pixels at all until they panned.
+      viewport.current = { bbox, z };
       ws.current?.setViewport(bbox, z);
     },
     [],
@@ -493,21 +516,6 @@ export function App() {
       .catch(() => showToast("That template link is no longer available."));
   }, []);
 
-  if (!ready) {
-    return (
-      <div
-        className="cp-boot"
-        role="status"
-        aria-label={bootError ? "CanvasPlanet is reconnecting" : "CanvasPlanet is loading"}
-      >
-        {/* No fetchPriority here: React 18 does not know the prop and logs a
-            warning for it on every load, and index.html already preloads this
-            exact image at high priority before React mounts at all. */}
-        <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" />
-      </div>
-    );
-  }
-
   return (
     <main className={uiHidden ? "cp-app cp-ui-hidden" : "cp-app"}>
       <div className="cp-visually-hidden">
@@ -515,10 +523,16 @@ export function App() {
         <p>Explore and paint a shared canvas covering the world. Every pixel becomes part of one persistent, collaborative artwork.</p>
         <a href="/about.html">Learn how CanvasPlanet works</a>
       </div>
+      {/* Mounted before bootstrap answers, not after. The map needs nothing
+          from that response — the view comes from the URL hash and the tiles
+          are public — so gating it on `ready` meant a phone spent the whole
+          bootstrap round trip staring at a logo and only *then* started
+          fetching tiles. The boot screen below covers it until the interface
+          is ready to go with it. */}
       <MapCanvas
         active={viewMode === "map"}
         inactiveZoom={zoom}
-        uiVisible={!uiHidden}
+        uiVisible={ready && !uiHidden}
         onPaint={onPaint}
         onHover={onHover}
         onInspect={onInspect}
@@ -545,6 +559,20 @@ export function App() {
         </Suspense>
       )}
 
+      {!ready && (
+        <div
+          className="cp-boot"
+          role="status"
+          aria-label={bootError ? "CanvasPlanet is reconnecting" : "CanvasPlanet is loading"}
+        >
+          {/* No fetchPriority here: React 18 does not know the prop and logs a
+              warning for it on every load, and index.html already preloads this
+              exact image at high priority before React mounts at all. */}
+          <img className="cp-boot-logo" src="/logo.png" alt="" width="72" height="72" />
+        </div>
+      )}
+
+      {ready && (
       <div className="cp-ui-shell" hidden={uiHidden}>
       <div className="cp-hud">
         {frozen && (
@@ -746,6 +774,7 @@ export function App() {
         </div>
       )}
       </div>
+      )}
 
       {toast && (
         <div key={toast.id} className="cp-toast cp-card" role="status" onAnimationEnd={() => setToast(null)}>
