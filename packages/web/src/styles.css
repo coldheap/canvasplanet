@@ -2940,6 +2940,13 @@ html.cp-motion-reduce * {
   .cp-intro {
     bottom: min(calc(var(--cp-gap) + 280px), calc(100dvh - 200px));
   }
+
+  /* The card's own call to action, at the same finger size as everything else
+     in this block: 8px of padding either side of 13px text is a 37px target,
+     and this is the button the hint is asking them to press. */
+  .cp-intro-go {
+    min-height: 44px;
+  }
 }
 
 /* Mirrored in src/layout.ts as PHONE_LAYOUT_QUERY — keep the two in step. */
@@ -3161,6 +3168,17 @@ html.cp-motion-reduce * {
   /* Above the toast's slot, so a refusal message never lands on top of it. */
   .cp-intro {
     bottom: calc(var(--cp-mobile-controls-clearance) + 54px);
+  }
+
+  /* Leaflet parks its control corners at z-index 1000, above the hint, and on
+     a narrow phone the zoom rail lands squarely on the hint's own close
+     button: the tap meant to dismiss it hits zoom-out instead, which drops
+     the map below MIN_PAINT_ZOOM and unmounts the hint without ever marking
+     it seen, so it returns next visit — and from outside painting range. The
+     hint is transient and pinch zooms just as well, so for the moment it is
+     up, the rail stands down. */
+  .cp-app:has(.cp-intro) .leaflet-control-zoom {
+    display: none;
   }
 
   .cp-modal-backdrop {
