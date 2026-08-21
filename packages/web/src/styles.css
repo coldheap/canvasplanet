@@ -107,6 +107,13 @@ select {
 .cp-map {
   position: absolute;
   inset: 0;
+  /* iOS answers a long press over an element it thinks holds text with the
+     selection magnifier and the copy/share callout. There is no text on the
+     canvas to select, and the app has its own long-press gesture, so both
+     are pure interference on a phone. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* A display:contents shell lets the UI remain mounted (preserving open

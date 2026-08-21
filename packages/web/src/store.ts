@@ -153,7 +153,16 @@ interface State {
   pendingResetToken: string | null;
 
   hydrate: (b: BootstrapResponse) => void;
-  setBank: (bank: number, nextAt: number | null) => void;
+  /**
+   * Advance the balance locally once the countdown lands.
+   *
+   * The server only pushes charges on connect and after a spend, so an idle
+   * tab would otherwise sit at a stale number until it painted again. This
+   * moves the *settled* balance, never the displayed one: `bank` already has
+   * in-flight reservations subtracted out of it, and adding a regenerated
+   * charge to that and storing the result would subtract them a second time.
+   */
+  regenerateLocally: () => void;
   syncBank: (
     bank: number,
     nextAt: number | null,
@@ -258,13 +267,22 @@ export const useStore = create<State>((set) => ({
       ...chargeSnapshotPatch(s, b.bank, b.nextAt, b.bankVersion, b.serverNow),
     })),
 
-  setBank: (bank, nextAt) =>
-    set((s) => ({
-      settledBank: bank,
-      settledNextAt: nextAt,
-      bank: visibleBank(bank, s.reserved, s.max),
-      nextAt,
-    })),
+  regenerateLocally: () =>
+    set((s) => {
+      const now = Date.now();
+      if (s.settledNextAt === null || s.settledBank >= s.max || now < s.settledNextAt) return {};
+      // Catch up on however many periods actually elapsed: a backgrounded tab
+      // is throttled to far less than one tick a second.
+      const gained = Math.min(s.max - s.settledBank, 1 + Math.floor((now - s.settledNextAt) / s.regenMs));
+      const settledBank = s.settledBank + gained;
+      const settledNextAt = settledBank >= s.max ? null : s.settledNextAt + gained * s.regenMs;
+      return {
+        settledBank,
+        settledNextAt,
+        bank: visibleBank(settledBank, s.reserved, s.max),
+        nextAt: settledNextAt,
+      };
+    }),
   syncBank: (bank, nextAt, bankVersion, serverNow) =>
     set((s) => chargeSnapshotPatch(s, bank, nextAt, bankVersion, serverNow)),
   reserveCharges: (cost) =>

@@ -16,8 +16,8 @@ export function ChargeBar() {
   const regenMs = useStore((s) => s.regenMs);
   // The whole settings object would re-render this on any unrelated toggle.
   const notifyWhenFull = useStore((s) => s.settings.notifyWhenFull);
-  const setBank = useStore((s) => s.setBank);
-  const seconds = useCountdown(bank, max, nextAt, regenMs, setBank);
+  const regenerateLocally = useStore((s) => s.regenerateLocally);
+  const seconds = useCountdown(nextAt, regenMs, regenerateLocally);
 
   // Ask once, when the bank fills, if the user opted in. This is the single
   // strongest retention lever available without accounts.
@@ -54,36 +54,29 @@ export function ChargeBar() {
 }
 
 /**
- * Ticks once a second. Returns null when the bank is full.
+ * Ticks once a second. Returns the seconds left, or null when nothing is
+ * pending.
  *
  * The server only pushes a "charges" message on connect and after a spend —
- * there is no periodic broadcast while a client sits idle. So once the
- * countdown lands, this advances the bank locally (catching up on however
- * many periods actually elapsed, in case the tab was throttled in the
- * background) rather than waiting for a push that never comes.
+ * there is no periodic broadcast while a client sits idle — so once the
+ * countdown lands, the store advances the balance locally rather than waiting
+ * for a push that never comes. The arithmetic lives there because it has to
+ * be done against the settled balance, not the one on screen.
  */
 function useCountdown(
-  bank: number,
-  max: number,
   nextAt: number | null,
   regenMs: number,
-  setBank: (bank: number, nextAt: number | null) => void,
+  regenerateLocally: () => void,
 ): number | null {
   const [, force] = useState(0);
   useEffect(() => {
     if (nextAt === null) return;
     const id = window.setInterval(() => {
-      const now = Date.now();
-      if (now < nextAt) {
-        force((n) => n + 1);
-        return;
-      }
-      const gained = Math.min(max - bank, 1 + Math.floor((now - nextAt) / regenMs));
-      const newBank = bank + gained;
-      setBank(newBank, newBank >= max ? null : nextAt + gained * regenMs);
+      if (Date.now() < nextAt) force((n) => n + 1);
+      else regenerateLocally();
     }, 1000);
     return () => window.clearInterval(id);
-  }, [nextAt, bank, max, regenMs, setBank]);
+  }, [nextAt, regenMs, regenerateLocally]);
 
   if (nextAt === null) return null;
   return Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));

@@ -76,7 +76,42 @@ describe("charge reservations", () => {
     expect(useStore.getState().bank).toBe(0);
 
     useStore.getState().releaseCharges(1_000);
-    useStore.getState().setBank(999, null);
-    expect(useStore.getState().bank).toBe(useStore.getState().max);
+    expect(useStore.getState().bank).toBe(60);
+  });
+
+  /**
+   * Local regeneration has to move the *settled* balance. Adding a charge to
+   * the displayed one — which already has in-flight reservations taken out —
+   * and storing that would subtract those reservations a second time.
+   */
+  it("regenerates without spending the reservations again", () => {
+    useStore.setState({
+      settledBank: 50,
+      settledNextAt: Date.now() - 10,
+      bankVersion: 0,
+      bankSnapshotAt: 0,
+      reserved: 4,
+      bank: 46,
+    });
+
+    useStore.getState().regenerateLocally();
+
+    expect(useStore.getState().settledBank).toBe(51);
+    expect(useStore.getState().bank).toBe(47);
+  });
+
+  it("caps local regeneration at the maximum and stops the countdown there", () => {
+    useStore.setState({
+      settledBank: 59,
+      settledNextAt: Date.now() - 5_000,
+      bankVersion: 0,
+      bankSnapshotAt: 0,
+      reserved: 0,
+      bank: 59,
+    });
+
+    useStore.getState().regenerateLocally();
+
+    expect(useStore.getState()).toMatchObject({ settledBank: 60, bank: 60, nextAt: null });
   });
 });
