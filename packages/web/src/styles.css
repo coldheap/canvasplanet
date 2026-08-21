@@ -158,7 +158,14 @@ select {
 .cp-pixel-tile,
 .cp-pixel-tile img,
 .cp-pixel-tile canvas,
-.cp-heat-layer canvas {
+.cp-heat-layer canvas,
+/* The live overlay is pixel art too, and it was the one canvas left out of
+   this list. It is sized 1:1 with the device grid, so nothing should resample
+   it — but when something does, smoothing it fringes every pending pixel with
+   a half-transparent edge, which reads as an outline around paint that has
+   not baked into a tile yet. Nearest-neighbour costs nothing when the layer
+   is already 1:1. */
+.cp-live-overlay {
   /* The unprefixed declaration is supported by current browsers; the first
      two cover older Firefox/Safari builds used by some embedded canvases. */
   image-rendering: -moz-crisp-edges;
