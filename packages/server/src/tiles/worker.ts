@@ -9,7 +9,8 @@
  * Drains Z_PIXEL first so parents downsample from already-fresh children.
  */
 
-import { CF_PURGE_BATCH, TILE_WORKER_BATCH } from "@canvasplanet/shared";
+import { TILE_WORKER_BATCH } from "@canvasplanet/shared";
+import { purgeCloudflare } from "../cdn/purge.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { evict, tileUrl, writeTile } from "./cache.js";
@@ -139,40 +140,12 @@ async function drain(): Promise<void> {
       );
     }
 
-    await purgeCloudflare(urls);
+    await purgeCloudflare(urls, "tiles");
     lastDrain = { tiles: rows.length, ms: Date.now() - started };
   } catch (err) {
     console.error("[tiles] drain failed", err);
   } finally {
     running = false;
-  }
-}
-
-/**
- * Cloudflare accepts 30 URLs per purge call on the free plan. A purge failure
- * is logged and swallowed — a stale edge tile self-corrects within the
- * s-maxage window, and it must never fail a paint.
- */
-async function purgeCloudflare(urls: string[]): Promise<void> {
-  if (!env.cf.enabled || urls.length === 0) return;
-  for (let i = 0; i < urls.length; i += CF_PURGE_BATCH) {
-    const batch = urls.slice(i, i + CF_PURGE_BATCH);
-    try {
-      const res = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${env.cf.zoneId}/purge_cache`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.cf.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ files: batch }),
-        },
-      );
-      if (!res.ok) console.warn(`[tiles] CF purge ${res.status}`);
-    } catch (err) {
-      console.warn("[tiles] CF purge failed", err);
-    }
   }
 }
 

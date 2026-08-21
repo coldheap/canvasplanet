@@ -237,6 +237,28 @@ async function main(): Promise<void> {
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
+
+  // ---- last-resort crash logging ------------------------------------------
+  // events/engine.ts routes its own background promises through guard(), so
+  // the known offender is handled at the source. This is the backstop for
+  // everything else: one thread runs the API, the WS hub and the tile worker
+  // together, so any unhandled rejection anywhere takes all three down.
+  //
+  // Node's default is to terminate with a stack on stderr and nothing in the
+  // structured log — which, with no error tracking wired up, means a crash
+  // leaves no attributable record of itself. These handlers do not attempt to
+  // continue: an uncaught exception has left the process in an unknown state
+  // and pretending otherwise is how corrupt data gets written. They log
+  // through pino so the reason survives, then exit non-zero so the supervisor
+  // restarts.
+  process.on("unhandledRejection", (reason) => {
+    app.log.fatal({ err: reason }, "unhandled promise rejection — exiting");
+    process.exit(1);
+  });
+  process.on("uncaughtException", (err) => {
+    app.log.fatal({ err }, "uncaught exception — exiting");
+    process.exit(1);
+  });
 }
 
 main().catch((err) => {

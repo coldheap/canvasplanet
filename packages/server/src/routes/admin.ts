@@ -15,6 +15,7 @@ import { pool, tx } from "../db/pool.js";
 import { renderReportThumbnail, reportSuspects } from "../admin/reports.js";
 import { revert, type RevertSelector } from "../admin/revert.js";
 import { stamp, type StampInput } from "../admin/stamp.js";
+import { avatarUrl, purgeCloudflare } from "../cdn/purge.js";
 import { events } from "../events/engine.js";
 import { geo } from "../geo/index.js";
 import { eventLoopLag, resetEventLoopLag, tileEncodeTime, tileQueryTime } from "../metrics.js";
@@ -431,9 +432,19 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     if (!Number.isSafeInteger(id) || id < 1) {
       return reply.code(400).send({ error: "id must be a valid user id" });
     }
-    const { rows } = await pool.query(`DELETE FROM user_avatars WHERE user_id = $1 RETURNING user_id`, [id]);
+    // RETURNING the revision, not just the id: it is the only way to build
+    // the edge URL, and the row is gone immediately after this statement.
+    const { rows } = await pool.query<{ revision: string }>(
+      `DELETE FROM user_avatars WHERE user_id = $1 RETURNING revision::text AS revision`,
+      [id],
+    );
     if (!rows[0]) return reply.code(404).send();
     players.setAvatar(id, null);
+    // Without this the origin stops serving the picture but Cloudflare does
+    // not: avatars go out with s-maxage=604800, so a removed image would keep
+    // being handed to everyone for up to a week. Purge before the audit line
+    // so a failure here is still attributable to this action in the log.
+    await purgeCloudflare([avatarUrl(id, rows[0].revision)], "avatar");
     await audit(staff.id, "user.avatar.remove", { id }, null);
     return reply.send({ ok: true });
   });

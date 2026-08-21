@@ -48,7 +48,11 @@ USER wc
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
-  CMD wget -qO- http://127.0.0.1:8080/api/health || exit 1
+  # /api/status, not /api/health: health is `async () => ({ ok: true })`
+  # and reports healthy with a dead database, so the container would
+  # never be recycled. status probes the DB, the tile queue and the WS
+  # hub, and already returns 503 when overall state is down.
+  CMD wget -qO- http://127.0.0.1:8080/api/status || exit 1
 
 WORKDIR /app/packages/server
 CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/syncCountries.js && exec node dist/index.js"]

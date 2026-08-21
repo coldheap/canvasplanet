@@ -9,11 +9,14 @@
  * at any time; everything rebuilds on demand from `pixels`.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Z_PIXEL } from "@canvasplanet/shared";
 import { env } from "../env.js";
 import { EMPTY_TILE, renderTile, type TileMode } from "./renderer.js";
+
+/** Distinguishes concurrent temp files in writeTile. Wraps harmlessly. */
+let tmpSeq = 0;
 
 const LRU_MAX = 500;
 const lru = new Map<string, Buffer>();
@@ -96,7 +99,26 @@ export async function writeTile(
 ): Promise<void> {
   const p = pathOf(z, x, y, mode);
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, buf);
+  // Write-then-rename, not write-in-place. The read path treats existence as
+  // validity — it returns whatever bytes are on disk without checking they
+  // are a PNG — so a process killed mid-write would leave a truncated tile
+  // that is then served to every client until something repaints it. rename()
+  // is atomic within a filesystem, so a reader sees either the old tile or
+  // the new one and never a half-written one.
+  //
+  // The pid and a counter keep two concurrent writers off each other's temp
+  // file; the worker is single-threaded today, but a torn tile is exactly the
+  // kind of bug that would survive that assumption changing.
+  const tmp = `${p}.${process.pid}.${++tmpSeq}.tmp`;
+  try {
+    await writeFile(tmp, buf);
+    await rename(tmp, p);
+  } catch (err) {
+    // Leaving a stray .tmp behind would slowly fill TILE_CACHE_DIR with
+    // garbage no eviction path knows about.
+    await unlink(tmp).catch(() => {});
+    throw err;
+  }
   lru.delete(keyOf(z, x, y, mode));
 }
 

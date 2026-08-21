@@ -16,10 +16,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const scripts = ["tiles.mjs", "realtime.mjs", "economy.mjs", "geo.mjs", "timelapse.mjs", "templates.mjs", "features.mjs", "embed.mjs", "admin.mjs", "alliances.mjs", "export.mjs", "accounts.mjs", "discord.mjs", "streaks.mjs", "deletion.mjs"];
+// area.mjs, events.mjs and landmark.mjs were present in this directory but
+// absent from this list, so Phase 7 events, area reports and the protected
+// landmark had no regression gate at all despite having verify scripts
+// written for them.
+const scripts = ["tiles.mjs", "realtime.mjs", "economy.mjs", "geo.mjs", "timelapse.mjs", "templates.mjs", "features.mjs", "embed.mjs", "admin.mjs", "alliances.mjs", "export.mjs", "accounts.mjs", "discord.mjs", "streaks.mjs", "deletion.mjs", "area.mjs", "events.mjs", "landmark.mjs"];
 
 const base = process.env.VERIFY_BASE ?? "http://127.0.0.1:8080";
-const res = await fetch(`${base}/api/health`).catch(() => null);
+// Gate on the real check: /api/health answers 200 with a dead database, so
+// gating on it produced N confusing assertion failures instead of one
+// clear "the database is down".
+const res = await fetch(`${base}/api/status`).catch(() => null);
 if (!res?.ok) {
   console.error(`Server is not responding at ${base}. Start it before running verify.`);
   process.exit(1);
