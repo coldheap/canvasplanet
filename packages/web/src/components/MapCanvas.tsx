@@ -271,6 +271,15 @@ export function MapCanvas({
       else if (!on && map.hasLayer(osm)) map.removeLayer(osm);
     };
 
+    // ---- new-pixel highlights (optional, off by default) -------------------
+    // Never in history mode: a past state is not arriving, so ringing the live
+    // deltas still coming down the socket would mark pixels that are not on
+    // screen.
+    const applyHighlights = () => {
+      const state = useStore.getState();
+      overlay.setHighlights(state.settings.highlightNewPixels && state.historyAt === null);
+    };
+
     // Swap the authoritative live layer for an immutable historical one.
     // Live WS deltas continue accumulating underneath, so returning live is
     // immediate and does not need a reconnect.
@@ -561,6 +570,7 @@ export function MapCanvas({
     applyGrid();
     applyHeat();
     applyOsm();
+    applyHighlights();
     applyEventZone();
     emitViewport();
     const bbox = new BboxDraw(map);
@@ -582,6 +592,7 @@ export function MapCanvas({
         applyGrid();
         applyHeat();
         applyOsm();
+        applyHighlights();
       }
       if (state.event !== prev.event || historyChanged) applyEventZone();
       if (historyChanged) applyHistory();

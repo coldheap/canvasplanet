@@ -47,6 +47,11 @@ export function SettingsPanel() {
           on={settings.osmLayer}
           set={(osmLayer) => updateSettings({ osmLayer })}
         />
+        <Toggle
+          label="Highlight new pixels"
+          on={settings.highlightNewPixels}
+          set={(highlightNewPixels) => updateSettings({ highlightNewPixels })}
+        />
       </fieldset>
 
       <fieldset>

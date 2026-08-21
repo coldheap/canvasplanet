@@ -418,7 +418,9 @@ export function App() {
       return;
     }
 
-    handle.current?.overlay.add([[x, y, selectedColor]]);
+    // "self": this paint comes back over the socket like anyone else's, and
+    // the overlay needs to know not to ring your own cursor when it does.
+    handle.current?.overlay.add([[x, y, selectedColor]], "self");
     useStore.getState().reserveCharges(price);
 
     try {

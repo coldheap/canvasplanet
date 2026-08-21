@@ -35,6 +35,10 @@ export interface Settings {
   /** OSM raster basemap (roads/labels/land) under the pixel canvas. Off by
    *  default — the default view is the pixels themselves, unobscured. */
   osmLayer: boolean;
+  /** Ring every pixel someone else paints, for the ~1.5s after it lands — see
+   *  canvas/pixelHighlights.ts. Off by default: it is a watcher's tool, and on
+   *  a busy region it is the last thing you want while placing your own art. */
+  highlightNewPixels: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -48,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reduceMotion: "system",
   heatmap: false,
   osmLayer: false,
+  highlightNewPixels: false,
 };
 
 interface State {

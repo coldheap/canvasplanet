@@ -16,11 +16,17 @@
  * The image check is important: a time-to-live used to delete pixels after
  * 15 seconds whether or not a fresh tile had arrived. A stale browser/edge
  * tile then made paint disappear until a zoom fetched a newer image.
+ *
+ * The same canvas draws the optional "highlight new pixels" rings, because it
+ * already receives every incoming pixel and already sits directly above the
+ * tiles. The two sets only share a frame, though: a pending pixel lives until
+ * its tile proves it, a ring for a fixed 1.5s, so they are tracked apart.
  */
 
 import L from "leaflet";
 import { ERASED, PALETTE, TILE_SIZE, WORLD_SIZE, Z_PIXEL, pixelToLatLng } from "@canvasplanet/shared";
 import { livePixelScreenSize } from "./livePixels.js";
+import { PixelHighlights, highlightAlpha, highlightRingWidth } from "./pixelHighlights.js";
 import { tilePixelMatches } from "./tilePixels.js";
 
 interface PendingPixel {
@@ -34,6 +40,9 @@ interface PendingPixel {
 const REFRESH_AFTER_MS = 5_000;
 /** A stale edge response or a busy worker should not cause a request storm. */
 const REFRESH_RETRY_MS = 5_000;
+/** The ring itself, and the darker stroke that keeps it legible over red. */
+const HIGHLIGHT_RING = "#FF2D2D";
+const HIGHLIGHT_EDGE = "rgba(24, 0, 6, 0.8)";
 
 export class LiveOverlay {
   private canvas: HTMLCanvasElement;
@@ -43,6 +52,9 @@ export class LiveOverlay {
   private refreshTimer: number;
   private lastRefreshAt = 0;
   private visible = true;
+  private highlights = new PixelHighlights();
+  /** Off by default, and never switched on by the embed. */
+  private highlightsOn = false;
 
   constructor(
     private readonly map: L.Map,
@@ -76,10 +88,21 @@ export class LiveOverlay {
     this.canvas.remove();
   }
 
-  /** Pixels arriving over WebSocket, and the local optimistic paint. */
-  add(pixels: Array<[number, number, number]>): void {
+  /**
+   * Pixels arriving over WebSocket, and the local optimistic paint.
+   *
+   * `source` only decides whether a highlight ring is drawn: "self" is your
+   * own optimistic paint, remembered so that the copy the hub echoes back to
+   * you is not mistaken for someone else showing up.
+   */
+  add(pixels: Array<[number, number, number]>, source: "live" | "self" = "live"): void {
     const at = Date.now();
     for (const [x, y, color] of pixels) {
+      // A revert is not a placement, so it never gets a ring.
+      if (this.highlightsOn && color !== ERASED) {
+        if (source === "self") this.highlights.markSelf(x, y, color, at);
+        else this.highlights.record(x, y, color, at);
+      }
       if (color === ERASED) {
         // A revert deleted this pixel. Dropping it from the overlay is not
         // sufficient on its own — the tile underneath still shows the old
@@ -96,6 +119,19 @@ export class LiveOverlay {
   /** Roll back a single optimistic pixel after the server refused the paint. */
   remove(x: number, y: number): void {
     this.pending.delete(key(x, y));
+    // No echo is coming for a refused paint, so release the claim on this
+    // pixel — otherwise the next person to paint it inherits the suppression.
+    this.highlights.forgetSelf(x, y);
+    this.schedule();
+  }
+
+  /** The "highlight new pixels" setting. Off drops the tracking as well as the
+   *  drawing, so a session that does not want rings pays nothing for them on a
+   *  canvas taking hundreds of paints a second. */
+  setHighlights(on: boolean): void {
+    if (on === this.highlightsOn) return;
+    this.highlightsOn = on;
+    if (!on) this.highlights.clear();
     this.schedule();
   }
 
@@ -225,7 +261,9 @@ export class LiveOverlay {
   private draw(): void {
     const size = this.map.getSize();
     this.ctx.clearRect(0, 0, size.x, size.y);
-    if (this.pending.size === 0) return;
+    const now = Date.now();
+    this.highlights.prune(now);
+    if (this.pending.size === 0 && this.highlights.size === 0) return;
 
     const zoom = this.map.getZoom();
     // Below the native grid zoom, a world pixel occupies only a fraction of
@@ -245,6 +283,55 @@ export class LiveOverlay {
       // sub-pixel seam between them.
       this.ctx.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(pxSize), Math.ceil(pxSize));
     }
+
+    this.drawHighlights(size, pxSize, now);
+
+    // A fade needs frames nothing else is asking for. Every mark expires and
+    // prune() drops it, so this reschedules only while rings are alive.
+    if (this.highlights.size > 0) this.schedule();
+  }
+
+  /**
+   * The "highlight new pixels" rings, drawn after the pending fill so a marker
+   * never covers the paint it is pointing at.
+   */
+  private drawHighlights(size: L.Point, pxSize: number, now: number): void {
+    if (this.highlights.size === 0) return;
+
+    const width = highlightRingWidth(pxSize);
+    // Inset the stroked path by the full width of the wider stroke, so both
+    // strokes land outside the pixel instead of over it. At z12, where a world
+    // pixel is one screen pixel, that is the difference between a marker that
+    // frames the paint and one that replaces it.
+    const spread = width * 2;
+    const side = Math.ceil(pxSize);
+    for (const mark of this.highlights.values()) {
+      const alpha = highlightAlpha(now - mark.at);
+      if (alpha <= 0) continue;
+      const p = this.map.latLngToContainerPoint(pixelToLatLng({ x: mark.x, y: mark.y }) as never);
+      if (
+        p.x < -pxSize - spread ||
+        p.y < -pxSize - spread ||
+        p.x > size.x + spread ||
+        p.y > size.y + spread
+      ) {
+        continue;
+      }
+
+      const x = Math.floor(p.x) - spread / 2;
+      const y = Math.floor(p.y) - spread / 2;
+      this.ctx.globalAlpha = alpha;
+      // Dark underneath, red over it. A bare red ring disappears against the
+      // palette's own reds and against a dark stretch of canvas; the darker
+      // stroke around it keeps the marker readable over anything.
+      this.ctx.lineWidth = spread;
+      this.ctx.strokeStyle = HIGHLIGHT_EDGE;
+      this.ctx.strokeRect(x, y, side + spread, side + spread);
+      this.ctx.lineWidth = width;
+      this.ctx.strokeStyle = HIGHLIGHT_RING;
+      this.ctx.strokeRect(x, y, side + spread, side + spread);
+    }
+    this.ctx.globalAlpha = 1;
   }
 
   get size(): number {
