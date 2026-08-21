@@ -17,7 +17,7 @@ import { api, takeBootstrap } from "./api.js";
 import { WsClient } from "./ws.js";
 import { solveTurnstile } from "./turnstile.js";
 import { loadFlagStyles } from "./flagStyles.js";
-import { usePhoneLayout } from "./layout.js";
+import { COARSE_POINTER_QUERY, useMediaQuery, usePhoneLayout } from "./layout.js";
 import { useStore } from "./store.js";
 import type { CostProbe } from "./canvas/costProbe.js";
 import { PaintColorTracker } from "./canvas/paintColorTracker.js";
@@ -40,6 +40,7 @@ import { AccountPanel } from "./components/AccountPanel.js";
 import { StatusPanel } from "./components/StatusPanel.js";
 import { DiscordPanel } from "./components/DiscordPanel.js";
 import { PlayerCounter } from "./components/PlayerCounter.js";
+import { FirstRunHint, rememberFirstRunHint, shouldShowFirstRunHint } from "./components/FirstRunHint.js";
 
 // MapLibre is a substantial WebGL renderer. Keep it out of the flat editor's
 // initial bundle and fetch it only after the player asks for the globe.
@@ -71,6 +72,15 @@ export function App() {
   // composition, so neither hovering nor long-pressing should spend a
   // request fetching what it would have shown.
   const phoneLayout = usePhoneLayout();
+  const coarsePointer = useMediaQuery(COARSE_POINTER_QUERY);
+  /** The one-time "here is how this works" card — see FirstRunHint.tsx. */
+  const [showIntro, setShowIntro] = useState(false);
+  const dismissIntro = useCallback(() => {
+    setShowIntro((shown) => {
+      if (shown) rememberFirstRunHint();
+      return false;
+    });
+  }, []);
   const [zoom, setZoom] = useState(Z_PIXEL);
   const [viewMode, setViewMode] = useState<"map" | "globe">(readViewMode);
   const [globeStart, setGlobeStart] = useState<GlobeView>(readGlobeStart);
@@ -209,6 +219,9 @@ export function App() {
       attempts = 0;
       setBootError(false);
       hydrate(boot);
+      // bankVersion is the session's paint count, so this asks "has this
+      // browser ever placed a pixel" rather than trusting local storage alone.
+      if (shouldShowFirstRunHint(boot.bankVersion)) setShowIntro(true);
 
       // /api/auth/verify redirects back here with a flag (the emailed link
       // is a plain browser navigation, not a fetch call — see routes/auth.ts)
@@ -464,6 +477,7 @@ export function App() {
       }
 
       const ok = res as PaintResponse;
+      dismissIntro();
       syncBank(ok.bank, ok.nextAt, ok.bankVersion, ok.serverNow);
       // The pixel we just painted is now known-current; keep the cache honest
       // so the next hover shows overpaint cost rather than base cost.
@@ -474,7 +488,7 @@ export function App() {
     } finally {
       useStore.getState().releaseCharges(price);
     }
-  }, [syncBank]);
+  }, [dismissIntro, syncBank]);
 
   const onViewport = useCallback(
     (bbox: { x0: number; y0: number; x1: number; y1: number }, z: number) => {
@@ -711,6 +725,13 @@ export function App() {
           pinned={pinnedInfo !== null}
           onUnpin={() => setPinnedInfo(null)}
         />
+      )}
+
+      {/* Not while zoomed out past painting range: down there the picker is
+          replaced by a "zoom in to paint" prompt and "pick a colour, then tap
+          the map" would be describing controls that are not on screen. */}
+      {showIntro && zoom >= MIN_PAINT_ZOOM && (
+        <FirstRunHint touch={coarsePointer} onDismiss={dismissIntro} />
       )}
 
       <PalettePanel zoom={zoom} onZoomToPaint={zoomToPaint} />

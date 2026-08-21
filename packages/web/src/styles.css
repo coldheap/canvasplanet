@@ -2606,6 +2606,97 @@ html.cp-motion-reduce * {
 }
 .cp-shared-bar span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ---- first-run hint ------------------------------------------------------
+ * Sits above the colour picker rather than in front of the canvas, so the map
+ * stays visible and live behind it. See FirstRunHint.tsx. */
+
+.cp-intro {
+  position: absolute;
+  /* Clears the colour picker, which is one 66px row with a cursor. The two
+     blocks below raise it where the picker is taller. */
+  bottom: calc(var(--cp-gap) + 90px);
+  left: 50%;
+  transform: translateX(-50%);
+  /* Below the picker (1000) on purpose. On a phone the picker opens upward
+     into this space, and a hint about how to paint must never be the thing
+     standing between a finger and the colour it is asking them to choose. */
+  z-index: 990;
+  width: min(370px, calc(100vw - 2 * var(--cp-gap)));
+  padding: 14px 16px 13px;
+  font-size: 13px;
+  line-height: 1.45;
+  animation: cp-intro-in 0.28s ease-out both;
+}
+
+.cp-intro-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  /* A full finger target rather than the 28px the glyph needs: this is the
+     control someone reaches for when they do not want the hint at all. */
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cp-dim);
+  cursor: pointer;
+  place-items: center;
+}
+.cp-intro-close:hover {
+  background: var(--cp-subtle);
+  color: var(--cp-text);
+}
+
+.cp-intro-lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 34px 10px 0;
+  font-weight: 700;
+}
+.cp-intro-lead svg {
+  flex: none;
+  color: var(--cp-accent);
+}
+
+.cp-intro-rows {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 0;
+  color: var(--cp-dim);
+  list-style: none;
+}
+.cp-intro-rows li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.cp-intro-rows svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cp-accent);
+}
+
+.cp-intro-go {
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* And once the picker is actually open, step aside entirely rather than
+   sitting half-covered behind it. */
+.cp-ui-shell:has(.cp-palette-open) .cp-intro {
+  display: none;
+}
+
+@keyframes cp-intro-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* ---- turnstile ---------------------------------------------------------- */
 
 .cp-turnstile-backdrop {
@@ -2842,6 +2933,13 @@ html.cp-motion-reduce * {
     font-size: 20px;
     line-height: 44px;
   }
+
+  /* Finger-sized swatches wrap the picker into five rows, roughly 256px, so
+     the hint has to start much higher than it does with a cursor. Clamped so
+     it can never be pushed off the top of a short screen. */
+  .cp-intro {
+    bottom: min(calc(var(--cp-gap) + 280px), calc(100dvh - 200px));
+  }
 }
 
 /* Mirrored in src/layout.ts as PHONE_LAYOUT_QUERY — keep the two in step. */
@@ -3058,6 +3156,11 @@ html.cp-motion-reduce * {
   .cp-shared-bar,
   .cp-toast {
     bottom: var(--cp-mobile-controls-clearance);
+  }
+
+  /* Above the toast's slot, so a refusal message never lands on top of it. */
+  .cp-intro {
+    bottom: calc(var(--cp-mobile-controls-clearance) + 54px);
   }
 
   .cp-modal-backdrop {

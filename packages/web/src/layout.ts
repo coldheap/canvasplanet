@@ -13,19 +13,27 @@ export const PHONE_LAYOUT_QUERY = "(max-width: 640px), (max-width: 950px) and (m
 
 import { useEffect, useState } from "react";
 
-/** True while the phone composition is active. Follows rotation and resize. */
-export function usePhoneLayout(): boolean {
-  const [phone, setPhone] = useState(() => matches(PHONE_LAYOUT_QUERY));
+/** A finger rather than a cursor — a phone or a tablet, whatever its width. */
+export const COARSE_POINTER_QUERY = "(pointer: coarse)";
+
+/** Subscribe to a media query. Follows rotation and resize. */
+export function useMediaQuery(query: string): boolean {
+  const [active, setActive] = useState(() => matches(query));
 
   useEffect(() => {
-    const query = window.matchMedia(PHONE_LAYOUT_QUERY);
-    const onChange = () => setPhone(query.matches);
+    const list = window.matchMedia(query);
+    const onChange = () => setActive(list.matches);
     onChange();
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, []);
+    list.addEventListener("change", onChange);
+    return () => list.removeEventListener("change", onChange);
+  }, [query]);
 
-  return phone;
+  return active;
+}
+
+/** True while the phone composition is active. */
+export function usePhoneLayout(): boolean {
+  return useMediaQuery(PHONE_LAYOUT_QUERY);
 }
 
 function matches(query: string): boolean {
