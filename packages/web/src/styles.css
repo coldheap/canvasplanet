@@ -1567,6 +1567,18 @@ fieldset select {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  /* The stack is full-width but its contents are not: the charge pill is
+     centred, and on phones the column reserves the height of the dock row
+     above it. All of that empty box sat at z-index 1100 over the map and ate
+     drags that started in it — a 68px band across the top in landscape. Only
+     the surfaces you can actually see take the pointer; the gaps let the map
+     have it. */
+  pointer-events: none;
+}
+.cp-frozen-banner,
+.cp-event-banner,
+.cp-topbar {
+  pointer-events: auto;
 }
 
 .cp-frozen-banner {
