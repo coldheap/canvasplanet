@@ -1,11 +1,49 @@
+<div align="center">
+
+<img src="docs/images/logo.png" alt="" width="170">
+
 # CanvasPlanet
 
-A persistent, live pixel-art canvas layered on a real world map. Anyone can
-paint, one pixel at a time, from a charge bank. Nothing ever resets. A live
-leaderboard tracks pixels painted per country.
+**A persistent, live pixel-art canvas layered on a real world map.**
 
-**[PLAN.md](PLAN.md) is the spec.** Every decision, constant and trade-off is
-recorded there. This file is just how to run it.
+Anyone can paint, one pixel at a time, from a charge bank that refills with
+time. Nothing ever resets.
+
+[**Play at canvasplanet.net**](https://canvasplanet.net) · [Status](https://status.canvasplanet.net) · [Spec](PLAN.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md)
+
+[![CI](https://github.com/coldheap/canvasplanet/actions/workflows/ci.yml/badge.svg)](https://github.com/coldheap/canvasplanet/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-5FA04E?logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+<img src="docs/images/globe.jpg" alt="The CanvasPlanet globe view: a pale blue world against the Milky Way" width="820">
+
+</div>
+
+---
+
+## What it is
+
+One shared canvas, **1,048,576 × 1,048,576 pixels**, projected onto the real
+world at roughly **38 metres per pixel**. Zoom to a place, pick a colour,
+spend charges, and the pixel is there for everyone — permanently. There are
+no resets, no accounts required, and nothing to buy.
+
+Painting costs *time*, not money. Charges refill at one per second up to a
+cap of 60, and a placement costs 2 charges on unclaimed ground but 4 over
+somebody else's pixel — so overwriting another player's work costs twice the
+earned time that claiming empty ground does. That asymmetry is the whole
+game: it makes art cheaper to defend than to erase, without ever freezing
+the canvas.
+
+|  |  |
+|---|---|
+| <img src="docs/images/canvas.png" alt="A terminal-prompt artwork painted at pixel scale on the canvas"> | <img src="docs/images/leaderboard.png" alt="The leaderboard panel showing total pixels painted worldwide"> |
+| **Real pixel art at real coordinates.** Communities coordinate work around places that matter to them. | **Live leaderboards** by player, faction, and country, over a canvas that has never been reset. |
+
+Read [**PLAN.md**](PLAN.md) for the spec — every decision, constant and
+trade-off is argued there. This file is just how to run it.
 
 ---
 
@@ -300,3 +338,30 @@ API key) — see `.env.example`.
 Basemap © OpenStreetMap contributors. Water polygons © OpenStreetMap (ODbL —
 attribution is required and is carried in the map's attribution control).
 Country boundaries from Natural Earth (public domain).
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome — start with
+[CONTRIBUTING.md](CONTRIBUTING.md), which covers the setup, what CI gates on,
+and the handful of constraints that come from running a canvas that never
+resets. Please open an issue before building anything that changes game
+balance or the database schema.
+
+Found a security issue? **Do not open a public issue** — see
+[SECURITY.md](SECURITY.md) for private disclosure.
+
+Everyone taking part is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Licence
+
+CanvasPlanet is free software under the
+[**GNU Affero General Public License v3.0**](LICENSE).
+
+You may run, study, modify and share it. The one obligation worth
+highlighting, because it is the reason this licence was chosen: under AGPL
+§13, if you run a modified version as a **public network service**, you must
+offer your users the source of your modified version. Self-hosting privately
+or for a community carries no such duty.

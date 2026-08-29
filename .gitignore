@@ -24,3 +24,7 @@ coverage/
 
 # local learning notes
 PERSONAL_CODING_GUIDE.txt
+
+# new dev
+dist-new/
+tilecache-dev/
