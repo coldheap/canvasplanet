@@ -56,11 +56,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # 24 is what every test, typecheck and verify run actually happens
-          # on. Note that packages/server/Dockerfile still pins node:20-alpine,
-          # which left maintenance on 2026-04-30 — so production currently
-          # ships a runtime this job does not cover. Bump the Dockerfile and
-          # this comment stops being true; until then it is a known gap, not
-          # an oversight.
+          # on, and packages/server/Dockerfile now pins node:24-alpine for
+          # both its build and runtime stages — so this job exercises the
+          # same major version production ships. Keep the two in step: if the
+          # Dockerfile moves, move this with it, or the build goes back to
+          # being green on a runtime nobody deploys.
           node-version: 24
           cache: pnpm
 
