@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/coldheap/canvasplanet/security/advisories/new
+    about: Please disclose privately. Never open a public issue for a vulnerability.
+  - name: Report canvas content or a player
+    url: mailto:support@canvasplanet.net
+    about: Rule-breaking artwork, harassment, or a player to review. Use in-app reporting where possible.
+  - name: Service status
+    url: https://status.canvasplanet.net/
+    about: Check whether canvasplanet.net is currently degraded before filing an outage issue.
+  - name: Question or idea
+    url: https://github.com/coldheap/canvasplanet/discussions
+    about: Open-ended questions, showing off artwork, and self-hosting help.

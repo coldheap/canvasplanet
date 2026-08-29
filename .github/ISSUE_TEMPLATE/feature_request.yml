@@ -1,0 +1,58 @@
+name: Feature request
+description: Suggest a change or addition
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check **[ROADMAP.md](https://github.com/coldheap/canvasplanet/blob/main/ROADMAP.md)** first — it may
+        already be planned — and **[PLAN.md](https://github.com/coldheap/canvasplanet/blob/main/PLAN.md)**, which
+        argues most of the design decisions you might be about to question.
+        Disagreeing with one of them is fine; knowing the existing reasoning
+        makes for a much shorter conversation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you hit, not the solution you have in mind. This is the most useful box on the form.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - Canvas and painting
+        - Map, globe, or tiles
+        - Charge economy and balance
+        - Accounts, profiles, or chat
+        - Leaderboards and stats
+        - Timelapse and export
+        - Templates and embeds
+        - Moderation and admin tooling
+        - Self-hosting and deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: balance
+    attributes:
+      label: Game balance
+      options:
+        - label: This would change charge costs, cooldowns, the terrain rule, or the palette. (Ticking this is fine — it just means the discussion is a game-design one and should settle here before any code is written.)
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

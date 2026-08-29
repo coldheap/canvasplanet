@@ -1,0 +1,78 @@
+name: Bug report
+description: Something behaves incorrectly on the live site or in a local checkout
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security vulnerabilities do not go here** —
+        see [SECURITY.md](https://github.com/coldheap/canvasplanet/blob/main/SECURITY.md) for private disclosure.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Zoom to ...
+        2. Select the ... colour
+        3. Paint at ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: coordinates
+    attributes:
+      label: Canvas coordinates
+      description: If the bug is tied to a place on the canvas, the pixel or lat/lon helps a lot.
+      placeholder: "524288, 524288  (or 0.0, 0.0)"
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you hit this?
+      options:
+        - The live site (canvasplanet.net)
+        - A local checkout (pnpm dev)
+        - A self-hosted deployment
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: For a local checkout, the output of `git rev-parse --short HEAD`.
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS
+      placeholder: "Firefox 128 on Windows 11 / Safari on iOS 18"
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console or server output
+      description: Any errors from the browser devtools console or the server log. Pasted here it gets formatted as code automatically.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through SECURITY.md).
+          required: true
