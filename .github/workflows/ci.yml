@@ -44,16 +44,16 @@ jobs:
       SESSION_SECRET: ci-only-session-secret-0000000000000000000000
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           # Matches `packageManager` in the root package.json. Pinned rather
           # than floating so a pnpm release can never be the thing that
           # broke the build.
           version: 9.12.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # 24 is what every test, typecheck and verify run actually happens
           # on, and packages/server/Dockerfile now pins node:24-alpine for
@@ -91,11 +91,11 @@ jobs:
     # bugfix from merging at 2am.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.12.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
