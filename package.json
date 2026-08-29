@@ -1,10 +1,34 @@
 {
   "name": "canvasplanet",
   "version": "0.1.0",
+  "description": "A persistent, live pixel-art canvas layered on a real world map.",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://canvasplanet.net",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coldheap/canvasplanet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/coldheap/canvasplanet/issues"
+  },
+  "keywords": [
+    "pixel-art",
+    "canvas",
+    "collaborative",
+    "map",
+    "leaflet",
+    "multiplayer",
+    "websocket",
+    "place",
+    "game",
+    "typescript"
+  ],
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.12.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm --parallel --filter \"./packages/*\" dev",
     "build": "pnpm -r build",
