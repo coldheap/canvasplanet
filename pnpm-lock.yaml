@@ -21,6 +21,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@canvasplanet/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@fastify/cookie':
         specifier: ^10.0.1
         version: 10.0.1
@@ -33,12 +36,9 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.3.0
-      '@canvasplanet/shared':
-        specifier: workspace:*
-        version: link:../shared
       adm-zip:
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.6.1
+        version: 0.6.1
       argon2:
         specifier: ^0.41.1
         version: 0.41.1
@@ -1153,8 +1153,8 @@ packages:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
 
-  adm-zip@0.6.0:
-    resolution: {integrity: sha512-XleryMhbuksdKtofnWZ9Sk+4CUTbms4Mb/EU32SZwToAyZ5RgVos/ki8n+yr0LWHOGKuakbXTuuYNHLQjhddgg==}
+  adm-zip@0.6.1:
+    resolution: {integrity: sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ==}
     engines: {node: '>=14.0'}
 
   agent-base@7.1.4:
@@ -3426,7 +3426,7 @@ snapshots:
       mime-types: 3.0.2
       negotiator: 1.0.0
 
-  adm-zip@0.6.0: {}
+  adm-zip@0.6.1: {}
 
   agent-base@7.1.4: {}
 
