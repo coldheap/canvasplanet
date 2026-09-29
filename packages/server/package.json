@@ -40,7 +40,7 @@
     "rbush": "^4.0.1",
     "shapefile": "^0.6.6",
     "sharp": "^0.35.3",
-    "undici": "^6.20.1",
+    "undici": "^6.28.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
